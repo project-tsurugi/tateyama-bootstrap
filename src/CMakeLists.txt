@@ -31,6 +31,13 @@ target_link_libraries(server
         PRIVATE rt
         )
 
+if (OGAWAYAMA)
+    target_link_libraries(server
+            PRIVATE ${ogawayama_bridge}
+            )
+    target_compile_definitions(server PUBLIC OGAWAYAMA)
+endif()
+      
 set_compile_options(server)
 
 install_custom(server ${export_name})

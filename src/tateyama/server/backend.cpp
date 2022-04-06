@@ -27,6 +27,9 @@
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
+#ifdef OGAWAYAMA
+#include <ogawayama/bridge/provider.h>
+#endif
 #include <jogasaki/api.h>
 
 #include "server.h"
@@ -107,6 +110,17 @@ int backend_main(int argc, char **argv) {
     if (auto rc = stream_endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
         std::abort();
     }
+#ifdef OGAWAYAMA
+    // ogawayama bridge
+    ogawayama::bridge::api::prepare();
+    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
+    if (bridge) {
+        if (auto rc = bridge->initialize(db.get(), std::addressof(init_context)); rc != status::ok) {
+            std::abort();
+        }
+        LOG(INFO) << "ogawayama bridge created";
+    }
+#endif
     if (FLAGS_load) {
         if (tpcc_mode) {
             // load tpc-c tables
@@ -140,6 +154,14 @@ int backend_main(int argc, char **argv) {
         std::abort();
     }
     LOG(INFO) << "stream endpoint service listener started";
+#ifdef OGAWAYAMA
+    if (bridge) {
+        if (auto rc = bridge->start(); rc != status::ok) {
+            std::abort();
+        }
+        LOG(INFO) << "ogawayama bridge listener started";
+    }
+#endif
 
     // wait for signal to terminate this
     int signo;
@@ -156,6 +178,12 @@ int backend_main(int argc, char **argv) {
             switch(signo) {
             case SIGINT:
                 // termination process
+#ifdef OGAWAYAMA
+                if (bridge) {
+                    LOG(INFO) << "bridge->shutdown()";
+                    bridge->shutdown();
+                }
+#endif
                 LOG(INFO) << "ipc_endpoint->shutdown()";
                 ipc_endpoint->shutdown();
                 LOG(INFO) << "stream_endpoint->shutdown()";
