@@ -5,14 +5,14 @@
 * CMake `>= 3.10`
 * C++ Compiler `>= C++17`
 * access to installed dependent modules: 
+  * tateyama
+  * jogasaki
   * sharksfin
   * takatori
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
   * fpdecimal
-  * tsubakuro (for proto definition)
-  * performance-tools (optional)
 * and see *Dockerfile* section
 
 ```sh
@@ -30,8 +30,6 @@ RUN apt update -y && apt install -y git build-essential cmake ninja-build libboo
 
 optional packages:
 
-* `doxygen`
-* `graphviz`
 * `clang-tidy-8`
 
 ## How to build
