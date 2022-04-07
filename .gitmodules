@@ -1,3 +1,6 @@
 [submodule "third_party/jogasaki"]
 	path = third_party/jogasaki
 	url = git@github.com:project-tsurugi/jogasaki.git
+[submodule "third_party/ogawayama"]
+	path = third_party/ogawayama
+	url = git@github.com:project-tsurugi/ogawayama.git

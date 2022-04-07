@@ -7,6 +7,7 @@
 * access to installed dependent modules: 
   * tateyama
   * jogasaki
+  * ogawayama
   * sharksfin
   * takatori
   * yugawara
