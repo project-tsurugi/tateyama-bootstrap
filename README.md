@@ -7,7 +7,7 @@
 * access to installed dependent modules: 
   * tateyama
   * jogasaki
-  * ogawayama
+  * ogawayama (when -DOGAWAYAMA=ON is specified in cmake)
   * sharksfin
   * takatori
   * yugawara
@@ -49,6 +49,7 @@ available options:
 * `-DFORCE_INSTALL_RPATH=ON` - automatically configure `INSTALL_RPATH` for non-default library paths
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
 * for debugging only
+  * `-DOGAWAYAMA=ON` - enable ogawayama bridge
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
   * `-DENABLE_COVERAGE=ON` - enable code coverage analysis (requires `-DCMAKE_BUILD_TYPE=Debug`)
