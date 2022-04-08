@@ -72,6 +72,14 @@ include(InstallOptions)
 set(export_name "tateyama-bootstrap-${SHARKSFIN_IMPLEMENTATION}")
 set(package_name "tateyama-bootstrap-${SHARKSFIN_IMPLEMENTATION}")
 
+add_library(api INTERFACE)
+
+target_include_directories(api
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/tateyama-bootstrap>
+)
+
 add_subdirectory(src)
 if (BUILD_DOCUMENTS)
     add_subdirectory(doxygen)
