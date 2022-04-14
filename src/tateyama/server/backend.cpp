@@ -27,6 +27,7 @@
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
+#include <tateyama/api/configuration.h>
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/provider.h>
 #endif
@@ -35,6 +36,7 @@
 #include "server.h"
 #include "utils.h"
 
+DEFINE_string(config_dir, "", "the directory of configuration file");  // NOLINT
 DEFINE_string(dbname, "tateyama", "database name");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
@@ -59,6 +61,14 @@ int backend_main(int argc, char **argv) {
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    auto env = std::make_shared<tateyama::api::environment>();
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_config_dir); conf != nullptr) {
+        env->configuration(conf);
+    } else {
+        LOG(ERROR) << "error in create_configuration";
+        exit(1);
+    }
+
     bool tpch_mode = false;
     bool tpcc_mode = true;
     if (FLAGS_tpch) {
@@ -67,6 +77,12 @@ int backend_main(int argc, char **argv) {
     }
 
     // database
+    auto jogasaki_config = env->configuration()->get_section("jogasaki");
+    if (jogasaki_config == nullptr) {
+        LOG(ERROR) << "cannot find jogasaki section in the configuration";
+        exit(1);
+    }
+
     auto cfg = std::make_shared<jogasaki::configuration>();
     if (tpcc_mode) {
         cfg->prepare_benchmark_tables(true);
@@ -74,8 +90,20 @@ int backend_main(int argc, char **argv) {
     if (tpch_mode) {
         cfg->prepare_analytics_benchmark_tables(true);
     }
-    cfg->thread_pool_size(FLAGS_threads);
-    cfg->lazy_worker(FLAGS_lazy_worker);
+    std::size_t thread_pool_size;
+    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
+        cfg->thread_pool_size(thread_pool_size);
+    } else {
+        LOG(ERROR) << "cannot find thread_pool_size in the jogasaki section of the configuration";
+        exit(1);
+    }
+    bool lazy_worker;
+    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
+        cfg->lazy_worker(lazy_worker);
+    } else {
+        LOG(ERROR) << "cannot find lazy_worker in the jogasaki section of the configuration";
+        exit(1);
+    }
 
     auto db = jogasaki::api::create_database(cfg);
     db->start();
@@ -83,7 +111,6 @@ int backend_main(int argc, char **argv) {
     LOG(INFO) << "database started";
 
     // service
-    auto env = std::make_shared<tateyama::api::environment>();
     auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
     env->add_application(app);
     app->initialize(*env, db.get());
@@ -115,7 +142,7 @@ int backend_main(int argc, char **argv) {
     ogawayama::bridge::api::prepare();
     auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
     if (bridge) {
-        if (auto rc = bridge->initialize(db.get(), std::addressof(init_context)); rc != status::ok) {
+        if (auto rc = bridge->initialize(*env, db.get(), std::addressof(init_context)); rc != status::ok) {
             std::abort();
         }
         LOG(INFO) << "ogawayama bridge created";
