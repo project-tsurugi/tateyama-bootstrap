@@ -35,15 +35,13 @@
 
 #include "server.h"
 #include "utils.h"
-#include "restore.h"
 
-DEFINE_string(config, "", "the directory where the configuration file is");  // NOLINT
+DEFINE_string(config_dir, "", "the directory where the configuration file is");  // NOLINT
+DEFINE_bool(background, false, "start tateyama-server as a background prodess");  //NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
-DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  //NOLINT
-DEFINE_bool(keep_backup, false, "back up file should be kept or not");  //NOLINT
-DEFINE_string(restore_tag, "", "tag name specifying restore");  //NOLINT
+
 
 namespace tateyama::server {
 
@@ -53,27 +51,24 @@ struct endpoint_context {
 };
 
 int backend_main(int argc, char **argv) {
+    if (FLAGS_background) {
+        if (fork() != 0) {
+            return 0;
+        }
+    }
+
     google::InitGoogleLogging("tateyama_database_server");
 
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_config); conf != nullptr) {
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_config_dir); conf != nullptr) {
         env->configuration(conf);
     } else {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
-    }
-
-    // backup, recovery
-    if (!FLAGS_restore_backup.empty()) {
-        tateyama::bootstrap::restore_backup(FLAGS_restore_backup, FLAGS_keep_backup);
-    }
-    if (!FLAGS_restore_tag.empty()) {
-        tateyama::bootstrap::restore_tag(FLAGS_restore_tag);
     }
 
     bool tpch_mode = false;
@@ -84,9 +79,9 @@ int backend_main(int argc, char **argv) {
     }
 
     // database
-    auto jogasaki_config = env->configuration()->get_section("sql");
+    auto jogasaki_config = env->configuration()->get_section("jogasaki");
     if (jogasaki_config == nullptr) {
-        LOG(ERROR) << "cannot find sql section in the configuration";
+        LOG(ERROR) << "cannot find jogasaki section in the configuration";
         exit(1);
     }
 

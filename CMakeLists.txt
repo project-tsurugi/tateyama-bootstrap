@@ -28,6 +28,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
+option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
 option(OGAWAYAMA "activate ogawayama brigde" OFF)
 
@@ -69,6 +70,10 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 include(InstallOptions)
 
+if (BUILD_TESTS OR BUILD_EXAMPLES)
+    enable_testing()
+endif()
+
 set(export_name "tateyama-bootstrap-${SHARKSFIN_IMPLEMENTATION}")
 set(package_name "tateyama-bootstrap-${SHARKSFIN_IMPLEMENTATION}")
 
@@ -81,6 +86,9 @@ target_include_directories(api
 )
 
 add_subdirectory(src)
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
 if (BUILD_DOCUMENTS)
     add_subdirectory(doxygen)
 endif()
