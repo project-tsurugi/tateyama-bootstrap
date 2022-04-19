@@ -77,7 +77,7 @@ int backend_main(int argc, char **argv) {
     }
 
     // database
-    auto jogasaki_config = env->configuration()->get_section("jogasaki");
+    auto jogasaki_config = env->configuration()->get_section("sql");
     if (jogasaki_config == nullptr) {
         LOG(ERROR) << "cannot find jogasaki section in the configuration";
         exit(1);
@@ -140,7 +140,7 @@ int backend_main(int argc, char **argv) {
 #ifdef OGAWAYAMA
     // ogawayama bridge
     ogawayama::bridge::api::prepare();
-    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
+    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("fdw");
     if (bridge) {
         if (auto rc = bridge->initialize(*env, db.get(), std::addressof(init_context)); rc != status::ok) {
             std::abort();
