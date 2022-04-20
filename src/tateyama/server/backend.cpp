@@ -105,6 +105,17 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
 
+    // data_store
+    auto data_store_config = env->configuration()->get_section("data_store");
+    if (data_store_config == nullptr) {
+        LOG(ERROR) << "cannot find data_store section in the configuration";
+        exit(1);
+    }
+    std::string log_location;
+    if (data_store_config->get<std::string>("log_location", log_location)) {
+        cfg->db_location(log_location);
+    }
+
     auto db = jogasaki::api::create_database(cfg);
     db->start();
     DBCloser dbcloser{db};
