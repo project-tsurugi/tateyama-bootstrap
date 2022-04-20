@@ -35,6 +35,7 @@
 
 #include "server.h"
 #include "utils.h"
+#include "proc_mutex.h"
 #include "restore.h"
 
 DEFINE_string(config, "", "the directory where the configuration file is");  // NOLINT
@@ -65,6 +66,13 @@ int backend_main(int argc, char **argv) {
         env->configuration(conf);
     } else {
         LOG(ERROR) << "error in create_configuration";
+        exit(1);
+    }
+
+    // mutex
+    auto mutex = std::make_unique<proc_mutex>(env);
+    if (!mutex->lock()) {
+        LOG(ERROR) << "another tateyama-server is running on " << env->configuration()->get_directory();
         exit(1);
     }
 
