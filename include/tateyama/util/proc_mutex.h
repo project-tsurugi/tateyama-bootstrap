@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 tsurugi project.
+ * Copyright 2022-2022 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,24 +20,30 @@
 #include <unistd.h>
 
 #include <boost/filesystem/path.hpp>
-
-#include <tateyama/api/environment.h>
-#include <tateyama/api/configuration.h>
+#include <boost/filesystem/operations.hpp>
 
 namespace tateyama::server {
 
+static const boost::filesystem::path LOCK_FILE_NAME = boost::filesystem::path("tsurugi.pid");
+
 class proc_mutex {
   public:
-    const boost::filesystem::path LOCK_FILE_NAME{"tsurugi.pid"};
-    
-    proc_mutex(std::shared_ptr<tateyama::api::environment> env) : env_(env) {
-        if ((fd_ = open((env_->configuration()->get_directory() / LOCK_FILE_NAME).generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
+    proc_mutex(boost::filesystem::path directory) : file_name_(directory / LOCK_FILE_NAME) {}
+    ~proc_mutex() {
+        close(fd_);
+        unlink(file_name_.generic_string().c_str());
+    }
+
+    proc_mutex(proc_mutex const& other) = delete;
+    proc_mutex& operator=(proc_mutex const& other) = delete;
+    proc_mutex(proc_mutex&& other) noexcept = delete;
+    proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
+
+    bool lock() {
+        if ((fd_ = open(file_name_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
             perror("open");
             exit(-1);
         }
-    }
-
-    bool lock() {
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {
             if (ftruncate(fd_, 0) < 0) {
                 perror("ftruncate");
@@ -55,8 +61,9 @@ class proc_mutex {
     void unlock() {
         flock(fd_, LOCK_UN);
     }
-  private:
-    std::shared_ptr<tateyama::api::environment> env_;
+
+private:
+    boost::filesystem::path file_name_;
     int fd_{};
 };
 

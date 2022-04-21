@@ -20,6 +20,7 @@ target_include_directories(server
         )
 
 target_link_libraries(server
+        PRIVATE api
         PRIVATE ${jogasaki_engine}
         PRIVATE ${tateyama_engine}
         PRIVATE takatori

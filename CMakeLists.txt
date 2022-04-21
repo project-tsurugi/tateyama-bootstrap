@@ -82,7 +82,7 @@ add_library(api INTERFACE)
 target_include_directories(api
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/tateyama-bootstrap>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/tateyama>
 )
 
 add_subdirectory(src)

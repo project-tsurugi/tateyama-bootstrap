@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2022 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
 #include <tateyama/api/configuration.h>
+#include <tateyama/util/proc_mutex.h>
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/provider.h>
 #endif
@@ -35,10 +36,9 @@
 
 #include "server.h"
 #include "utils.h"
-#include "proc_mutex.h"
 #include "restore.h"
 
-DEFINE_string(config, "", "the directory where the configuration file is");  // NOLINT
+DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
@@ -62,7 +62,7 @@ int backend_main(int argc, char **argv) {
 
     // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_config); conf != nullptr) {
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         env->configuration(conf);
     } else {
         LOG(ERROR) << "error in create_configuration";
@@ -70,7 +70,7 @@ int backend_main(int argc, char **argv) {
     }
 
     // mutex
-    auto mutex = std::make_unique<proc_mutex>(env);
+    auto mutex = std::make_unique<proc_mutex>(env->configuration()->get_directory());
     if (!mutex->lock()) {
         LOG(ERROR) << "another tateyama-server is running on " << env->configuration()->get_directory();
         exit(1);

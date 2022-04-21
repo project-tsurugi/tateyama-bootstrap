@@ -16,6 +16,9 @@ target_include_directories(oltp
         )
 
 target_link_libraries(oltp
+        PRIVATE api
+        PRIVATE ${tateyama_engine}
+        PRIVATE glog::glog
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE pthread
