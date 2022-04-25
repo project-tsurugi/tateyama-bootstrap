@@ -24,7 +24,6 @@
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
 
 #include <tateyama/api/configuration.h>
 #include <tateyama/util/proc_mutex.h>
@@ -45,6 +44,7 @@ static int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     } else {
         VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
     }
+    usleep(100 * 1000);
     return 0;
 }
 
@@ -54,31 +54,53 @@ static int oltp_shutdown_kill(int argc, char* argv[], bool force) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf); conf != nullptr) {
-        boost::filesystem::path path = conf->get_directory() / tateyama::server::LOCK_FILE_NAME;
-        if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path)) {
-            std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(path));
-            std::string str{};
-            str.resize(sz, '\0');
-
-            boost::filesystem::ifstream file(path);
-            file.read(&str[0], sz);
+        auto file_mutex = std::make_unique<tateyama::server::proc_mutex>(conf->get_directory(), false);
+        std::string str{};
+        if (file_mutex->contents(str)) {
             if (force) {
-                VLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << path;
+                VLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
                 kill(stoi(str), SIGKILL);
-                boost::filesystem::remove(path);
+                unlink(file_mutex->name().c_str());
             } else {
                 VLOG(log_trace) << "kill (SIGINT) to process " << str;
                 kill(stoi(str), SIGINT);
             }
+            usleep(100 * 1000);
             return 0;
         } else {
-            LOG(ERROR) << path << " (LOCK FILE) does not exist, means no " << server_name << " is running";
+            LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
             return 1;
         }
     } else {
         LOG(ERROR) << "error in create_configuration";
         return 2;
     }
+}
+
+static int oltp_status(int argc, char* argv[]) {
+    // command arguments
+    gflags::SetUsageMessage("tateyama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf); conf != nullptr) {
+        auto directory = conf->get_directory();
+        auto file_mutex = std::make_unique<tateyama::server::proc_mutex>(directory, false);
+        using state = tateyama::server::proc_mutex::lock_state;
+        switch (file_mutex->check()) {
+        case state::no_file:
+            std::cout << "no " << server_name << " is running on " << directory << std::endl;
+            break;
+        case state::not_locked:
+            std::cout << "not_locked, may be  intermediate state (in the middle of running or stopping)" << std::endl;
+            break;
+        case state::locked:
+            std::cout << "a " << server_name << " is running on " << directory << std::endl;
+            break;
+        default:
+            std::cout << "error occured" << std::endl;
+        }
+    }
+    return 0;
 }
 
 int oltp_main(int argc, char* argv[]) {
@@ -92,8 +114,7 @@ int oltp_main(int argc, char* argv[]) {
         return oltp_shutdown_kill(argc - 1, argv + 1, true);
     }
     if (strcmp(*(argv + 1), "status") == 0) {
-        LOG(INFO) << "'status' has not been implemented";
-        return 0;
+        return oltp_status(argc - 1, argv + 1);
     }
     LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
     return -1;
