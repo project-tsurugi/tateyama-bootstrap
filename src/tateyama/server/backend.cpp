@@ -23,6 +23,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <tateyama/framework/server.h>
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
@@ -62,12 +63,12 @@ int backend_main(int argc, char **argv) {
 
     // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf); conf != nullptr) {
-        env->configuration(conf);
-    } else {
+    auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf);
+    if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
+    env->configuration(conf);
 
     // mutex
     auto mutex = std::make_unique<proc_mutex>(env->configuration()->get_directory());
@@ -77,11 +78,12 @@ int backend_main(int argc, char **argv) {
     }
 
     // backup, recovery
+    framework::server sv{framework::boot_mode::database_server, conf};
     if (!FLAGS_restore_backup.empty()) {
-        tateyama::bootstrap::restore_backup(FLAGS_restore_backup, FLAGS_keep_backup);
+        tateyama::bootstrap::restore_backup(sv, FLAGS_restore_backup, FLAGS_keep_backup);
     }
     if (!FLAGS_restore_tag.empty()) {
-        tateyama::bootstrap::restore_tag(FLAGS_restore_tag);
+        tateyama::bootstrap::restore_tag(sv, FLAGS_restore_tag);
     }
 
     bool tpch_mode = false;

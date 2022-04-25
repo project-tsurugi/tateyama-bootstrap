@@ -17,14 +17,16 @@
 
 #include <iostream>
 
+#include <tateyama/framework/server.h>
+
 namespace tateyama::bootstrap {
 
-    void restore_backup(std::string_view name, bool keep) {
-        std::cout << __func__ << ": name = " << name << ", keep = " << (keep ? "true" : "false") << std::endl;  // for test
-    }
+void restore_backup([[maybe_unused]] framework::server& sv, std::string_view name, bool keep) {
+    std::cout << __func__ << ": name = " << name << ", keep = " << (keep ? "true" : "false") << std::endl;  // for test
+}
 
-    void restore_tag(std::string_view tag) {
-        std::cout << __func__ << ": tag = " << tag << std::endl;  // for test
-    }
+void restore_tag([[maybe_unused]] framework::server& sv, std::string_view tag) {
+    std::cout << __func__ << ": tag = " << tag << std::endl;  // for test
+}
 
 }  // tateyama::bootstrap {
