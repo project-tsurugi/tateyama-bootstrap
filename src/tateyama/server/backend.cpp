@@ -77,13 +77,21 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
 
-    // backup, recovery
-    framework::server sv{framework::boot_mode::database_server, conf};
-    if (!FLAGS_restore_backup.empty()) {
-        tateyama::bootstrap::restore_backup(sv, FLAGS_restore_backup, FLAGS_keep_backup);
-    }
-    if (!FLAGS_restore_tag.empty()) {
-        tateyama::bootstrap::restore_tag(sv, FLAGS_restore_tag);
+    framework::boot_mode mode = (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) ? framework::boot_mode::maintenance_standalone : framework::boot_mode::database_server;
+    framework::server sv{mode, conf};
+    sv.start();
+
+    // maintenance_standalone mode
+    if (mode == framework::boot_mode::maintenance_standalone) {
+        // backup, recovery
+        if (!FLAGS_restore_backup.empty()) {
+            tateyama::bootstrap::restore_backup(sv, FLAGS_restore_backup, FLAGS_keep_backup);
+        }
+        if (!FLAGS_restore_tag.empty()) {
+            tateyama::bootstrap::restore_tag(sv, FLAGS_restore_tag);
+        }
+        sv.shutdown();
+        return 0;
     }
 
     bool tpch_mode = false;
@@ -242,6 +250,7 @@ int backend_main(int argc, char **argv) {
                 LOG(INFO) << "db->stop()";
                 db->stop();
                 LOG(INFO) << "exiting";
+                sv.shutdown();
                 return 0;
             }
         } else {
