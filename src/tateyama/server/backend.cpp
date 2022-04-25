@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 tsurugi project.
+ * Copyright 2019-2022 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
 #include <tateyama/api/configuration.h>
+#include <tateyama/util/proc_mutex.h>
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/provider.h>
 #endif
@@ -35,17 +36,15 @@
 
 #include "server.h"
 #include "utils.h"
+#include "restore.h"
 
-DEFINE_string(config_dir, "", "the directory of configuration file");  // NOLINT
-DEFINE_string(dbname, "tateyama", "database name");  // NOLINT
+DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
-DEFINE_uint32(threads, 5, "thread pool size");  //NOLINT
-DEFINE_bool(remove_shm, false, "remove the shared memory prior to the execution");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
-DEFINE_bool(lazy_worker, false, "(experimental) worker sleeps frequently to wait for queue content");  //NOLINT
-DECLARE_int32(dump_batch_size);  //NOLINT
-DECLARE_int32(load_batch_size);  //NOLINT
+DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  //NOLINT
+DEFINE_bool(keep_backup, false, "back up file should be kept or not");  //NOLINT
+DEFINE_string(restore_tag, "", "tag name specifying restore");  //NOLINT
 
 namespace tateyama::server {
 
@@ -61,12 +60,28 @@ int backend_main(int argc, char **argv) {
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_config_dir); conf != nullptr) {
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         env->configuration(conf);
     } else {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
+    }
+
+    // mutex
+    auto mutex = std::make_unique<proc_mutex>(env->configuration()->get_directory());
+    if (!mutex->lock()) {
+        LOG(ERROR) << "another tateyama-server is running on " << env->configuration()->get_directory();
+        exit(1);
+    }
+
+    // backup, recovery
+    if (!FLAGS_restore_backup.empty()) {
+        tateyama::bootstrap::restore_backup(FLAGS_restore_backup, FLAGS_keep_backup);
+    }
+    if (!FLAGS_restore_tag.empty()) {
+        tateyama::bootstrap::restore_tag(FLAGS_restore_tag);
     }
 
     bool tpch_mode = false;
@@ -79,7 +94,7 @@ int backend_main(int argc, char **argv) {
     // database
     auto jogasaki_config = env->configuration()->get_section("sql");
     if (jogasaki_config == nullptr) {
-        LOG(ERROR) << "cannot find jogasaki section in the configuration";
+        LOG(ERROR) << "cannot find sql section in the configuration";
         exit(1);
     }
 
@@ -136,24 +151,18 @@ int backend_main(int argc, char **argv) {
     env->add_endpoint(stream_endpoint);
     LOG(INFO) << "stream endpoint service created";
 
-    endpoint_context init_context{};
-    init_context.options_ = std::unordered_map<std::string, std::string>{
-        {"dbname", FLAGS_dbname},
-        {"threads", std::to_string(FLAGS_threads)},
-        {"port", std::to_string(12345)},
-    };
-    if (auto rc = ipc_endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
+    if (auto rc = ipc_endpoint->initialize(*env, nullptr); rc != status::ok) {
         std::abort();
     }
-    if (auto rc = stream_endpoint->initialize(*env, std::addressof(init_context)); rc != status::ok) {
+    if (auto rc = stream_endpoint->initialize(*env, nullptr); rc != status::ok) {
         std::abort();
     }
 #ifdef OGAWAYAMA
     // ogawayama bridge
     ogawayama::bridge::api::prepare();
-    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("fdw");
+    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
     if (bridge) {
-        if (auto rc = bridge->initialize(*env, db.get(), std::addressof(init_context)); rc != status::ok) {
+        if (auto rc = bridge->initialize(*env, db.get(), nullptr); rc != status::ok) {
             std::abort();
         }
         LOG(INFO) << "ogawayama bridge created";
