@@ -173,7 +173,7 @@ jobs:
       - id: CMake_Build
         name: CMake_Build
         run: |
-          mkdir build
+          mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug -DSHARKSFIN_IMPLEMENTATION=shirakami -DOGAWAYAMA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first -- -j
