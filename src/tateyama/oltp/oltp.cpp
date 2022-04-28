@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 #include <csignal>
-
+#include <cstdlib>
 #include <unistd.h>
 
 #include <gflags/gflags.h>
@@ -34,12 +34,11 @@ DEFINE_string(conf, "", "the directory where the configuration file is");  // NO
 namespace tateyama::oltp {
 
 const std::string server_name = "tateyama-server";
-static boost::filesystem::path base;
 
 static int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     if (auto pid = fork(); pid == 0) {
-        auto cmd = server_name.c_str();
-        argv[0] = const_cast<char *>(cmd);
+        argv[0] = const_cast<char *>(server_name.c_str());
+        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path();
         execv((base / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
         perror("execvp");
     } else {
@@ -105,8 +104,6 @@ static int oltp_status(int argc, char* argv[]) {
 }
 
 int oltp_main(int argc, char* argv[]) {
-    base = boost::filesystem::path(argv[0]).parent_path();
-
     if (strcmp(*(argv + 1), "start") == 0) {
         return oltp_start(argc - 1, argv + 1);
     }
