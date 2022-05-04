@@ -38,8 +38,8 @@ const std::string server_name = "tateyama-server";
 static int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     if (auto pid = fork(); pid == 0) {
         argv[0] = const_cast<char *>(server_name.c_str());
-        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path();
-        execv((base / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
+        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
+        execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
         perror("execvp");
     } else {
         VLOG(log_trace) << "start " << server_name << ", pid = " << pid;

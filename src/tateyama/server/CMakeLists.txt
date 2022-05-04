@@ -41,4 +41,4 @@ endif()
 
 set_compile_options(server)
 
-install_custom(server ${export_name})
+install_libexec(server ${export_name})

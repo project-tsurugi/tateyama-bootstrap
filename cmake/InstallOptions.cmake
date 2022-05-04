@@ -1,19 +1,4 @@
-function(install_custom target_name export_name)
-    install(
-        TARGETS
-            ${target_name}
-        EXPORT
-            ${export_name}
-        LIBRARY
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Runtime
-        ARCHIVE
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/${export_name}
-            COMPONENT Development
-        RUNTIME
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-            COMPONENT Runtime
-    )
+function(install_common target_name export_name)
     # Add INSTALL_RPATH from CMAKE_INSTALL_PREFIX and CMAKE_PREFIX_PATH
     # The default behavior of CMake omits RUNPATH if it is already in CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES.
     if (FORCE_INSTALL_RPATH)
@@ -84,4 +69,42 @@ function(install_custom target_name export_name)
             PATTERN "doxygen.h" EXCLUDE
         )
     endif()
+endfunction(install_common)
+
+function(install_custom target_name export_name)
+    install(
+        TARGETS
+            ${target_name}
+        EXPORT
+            ${export_name}
+        LIBRARY
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            COMPONENT Runtime
+        ARCHIVE
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/${export_name}
+            COMPONENT Development
+        RUNTIME
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            COMPONENT Runtime
+    )
+    install_common(${target_name} ${export_name})
 endfunction(install_custom)
+
+function(install_libexec target_name export_name)
+    install(
+        TARGETS
+            ${target_name}
+        EXPORT
+            ${export_name}
+        LIBRARY
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            COMPONENT Runtime
+        ARCHIVE
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/${export_name}
+            COMPONENT Development
+        RUNTIME
+        DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
+            COMPONENT Runtime
+    )
+
+endfunction(install_libexec)
