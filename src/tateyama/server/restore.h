@@ -18,15 +18,51 @@
 #include <iostream>
 
 #include <tateyama/framework/server.h>
+#include <tateyama/datastore/resource/bridge.h>
+#include <tateyama/datastore/service/bridge.h>
 
 namespace tateyama::bootstrap {
 
 void restore_backup([[maybe_unused]] framework::server& sv, std::string_view name, bool keep) {
     std::cout << __func__ << ": name = " << name << ", keep = " << (keep ? "true" : "false") << std::endl;  // for test
+
+    auto svc = sv.find_service<tateyama::datastore::service::bridge>();
+    if(! svc) {
+        LOG(ERROR) << "datastore service not found";
+        return;
+    }
+
+    auto ds = sv.find_resource<tateyama::datastore::resource::bridge>();
+    if(! ds) {
+        LOG(ERROR) << "datastore resource not found";
+        return;
+    }
+    auto* core = ds->core_object();
+
+    // TODO manipulate service and resource core to do restore
+    (void) svc;
+    (void) core;
 }
 
 void restore_tag([[maybe_unused]] framework::server& sv, std::string_view tag) {
     std::cout << __func__ << ": tag = " << tag << std::endl;  // for test
+
+    auto svc = sv.find_service<tateyama::datastore::service::bridge>();
+    if(! svc) {
+        LOG(ERROR) << "datastore service not found";
+        return;
+    }
+
+    auto ds = sv.find_resource<tateyama::datastore::resource::bridge>();
+    if(! ds) {
+        LOG(ERROR) << "datastore resource not found";
+        return;
+    }
+    auto* core = ds->core_object();
+
+    // TODO manipulate service and resource core to do restore
+    (void) svc;
+    (void) core;
 }
 
 }  // tateyama::bootstrap {
