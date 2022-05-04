@@ -79,6 +79,7 @@ int backend_main(int argc, char **argv) {
 
     framework::boot_mode mode = (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) ? framework::boot_mode::maintenance_standalone : framework::boot_mode::database_server;
     framework::server sv{mode, conf};
+    framework::install_core_components(sv);
     sv.start();
 
     // maintenance_standalone mode
@@ -151,22 +152,6 @@ int backend_main(int argc, char **argv) {
     env->add_application(app);
     app->initialize(*env, db.get());
 
-    auto service = tateyama::api::endpoint::create_service(*env);
-    env->endpoint_service(service);
-
-    auto ipc_endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("ipc_endpoint");
-    env->add_endpoint(ipc_endpoint);
-    LOG(INFO) << "ipc endpoint service created";
-    auto stream_endpoint = tateyama::api::registry<tateyama::api::endpoint::provider>::create("stream_endpoint");
-    env->add_endpoint(stream_endpoint);
-    LOG(INFO) << "stream endpoint service created";
-
-    if (auto rc = ipc_endpoint->initialize(*env, nullptr); rc != status::ok) {
-        std::abort();
-    }
-    if (auto rc = stream_endpoint->initialize(*env, nullptr); rc != status::ok) {
-        std::abort();
-    }
 #ifdef OGAWAYAMA
     // ogawayama bridge
     ogawayama::bridge::api::prepare();
@@ -203,14 +188,6 @@ int backend_main(int argc, char **argv) {
         }
     }
 
-    if (auto rc = ipc_endpoint->start(); rc != status::ok) {
-        std::abort();
-    }
-    LOG(INFO) << "ipc endpoint service listener started";
-    if (auto rc = stream_endpoint->start(); rc != status::ok) {
-        std::abort();
-    }
-    LOG(INFO) << "stream endpoint service listener started";
 #ifdef OGAWAYAMA
     if (bridge) {
         if (auto rc = bridge->start(); rc != status::ok) {
@@ -241,10 +218,6 @@ int backend_main(int argc, char **argv) {
                     bridge->shutdown();
                 }
 #endif
-                LOG(INFO) << "ipc_endpoint->shutdown()";
-                ipc_endpoint->shutdown();
-                LOG(INFO) << "stream_endpoint->shutdown()";
-                stream_endpoint->shutdown();
                 LOG(INFO) << "app->shutdown()";
                 app->shutdown();
                 LOG(INFO) << "db->stop()";
