@@ -30,6 +30,9 @@
 #include <tateyama/api/registry.h>
 #include <tateyama/api/configuration.h>
 #include <tateyama/util/proc_mutex.h>
+
+#include <jogasaki/api/service/bridge.h>
+
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/provider.h>
 #endif
@@ -77,9 +80,26 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
 
+    bool tpch_mode = false;
+    bool tpcc_mode = true;
+    if (FLAGS_tpch) {
+        tpch_mode = true;
+        tpcc_mode = false;
+    }
+
     framework::boot_mode mode = (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) ? framework::boot_mode::maintenance_standalone : framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::install_core_components(sv);
+    auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
+    sv.add_service(sqlsvc);
+    sv.setup();
+    auto* db = sqlsvc->database();
+    if (tpcc_mode) {
+        db->config()->prepare_benchmark_tables(true);
+    }
+    if (tpch_mode) {
+        db->config()->prepare_analytics_benchmark_tables(true);
+    }
     sv.start();
 
     // maintenance_standalone mode
@@ -95,62 +115,7 @@ int backend_main(int argc, char **argv) {
         return 0;
     }
 
-    bool tpch_mode = false;
-    bool tpcc_mode = true;
-    if (FLAGS_tpch) {
-        tpch_mode = true;
-        tpcc_mode = false;
-    }
-
-    // database
-    auto jogasaki_config = env->configuration()->get_section("sql");
-    if (jogasaki_config == nullptr) {
-        LOG(ERROR) << "cannot find sql section in the configuration";
-        exit(1);
-    }
-
-    auto cfg = std::make_shared<jogasaki::configuration>();
-    if (tpcc_mode) {
-        cfg->prepare_benchmark_tables(true);
-    }
-    if (tpch_mode) {
-        cfg->prepare_analytics_benchmark_tables(true);
-    }
-    std::size_t thread_pool_size;
-    if (jogasaki_config->get<>("thread_pool_size", thread_pool_size)) {
-        cfg->thread_pool_size(thread_pool_size);
-    } else {
-        LOG(ERROR) << "cannot find thread_pool_size in the jogasaki section of the configuration";
-        exit(1);
-    }
-    bool lazy_worker;
-    if (jogasaki_config->get<>("lazy_worker", lazy_worker)) {
-        cfg->lazy_worker(lazy_worker);
-    } else {
-        LOG(ERROR) << "cannot find lazy_worker in the jogasaki section of the configuration";
-        exit(1);
-    }
-
-    // data_store
-    auto data_store_config = env->configuration()->get_section("data_store");
-    if (data_store_config == nullptr) {
-        LOG(ERROR) << "cannot find data_store section in the configuration";
-        exit(1);
-    }
-    std::string log_location;
-    if (data_store_config->get<std::string>("log_location", log_location)) {
-        cfg->db_location(log_location);
-    }
-
-    auto db = jogasaki::api::create_database(cfg);
-    db->start();
-    DBCloser dbcloser{db};
     LOG(INFO) << "database started";
-
-    // service
-    auto app = tateyama::api::registry<tateyama::api::server::service>::create("jogasaki");
-    env->add_application(app);
-    app->initialize(*env, db.get());
 
 #ifdef OGAWAYAMA
     // ogawayama bridge
@@ -218,10 +183,6 @@ int backend_main(int argc, char **argv) {
                     bridge->shutdown();
                 }
 #endif
-                LOG(INFO) << "app->shutdown()";
-                app->shutdown();
-                LOG(INFO) << "db->stop()";
-                db->stop();
                 LOG(INFO) << "exiting";
                 sv.shutdown();
                 return 0;
