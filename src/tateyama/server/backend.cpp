@@ -32,6 +32,7 @@
 #include <tateyama/util/proc_mutex.h>
 
 #include <jogasaki/api/service/bridge.h>
+#include <jogasaki/api/resource/bridge.h>
 
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/provider.h>
@@ -90,6 +91,8 @@ int backend_main(int argc, char **argv) {
     framework::boot_mode mode = (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) ? framework::boot_mode::maintenance_standalone : framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::install_core_components(sv);
+    auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
+    sv.add_resource(sqlres);
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
     sv.add_service(sqlsvc);
     sv.setup();
