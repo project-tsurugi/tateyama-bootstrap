@@ -106,5 +106,5 @@ function(install_libexec target_name export_name)
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
             COMPONENT Runtime
     )
-
+    install_common(${target_name} ${export_name})
 endfunction(install_libexec)
