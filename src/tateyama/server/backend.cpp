@@ -28,8 +28,8 @@
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
-#include <tateyama/api/configuration.h>
-#include <tateyama/util/proc_mutex.h>
+#include <tateyama/bootstrap/proc_mutex.h>
+#include <tateyama/bootstrap/configuration.h>
 
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -45,13 +45,15 @@
 
 DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
-DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  //NOLINT
-DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  //NOLINT
-DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  //NOLINT
-DEFINE_bool(keep_backup, false, "back up file should be kept or not");  //NOLINT
-DEFINE_string(restore_tag, "", "tag name specifying restore");  //NOLINT
+DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
+DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
+DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  // NOLINT
+DEFINE_bool(keep_backup, false, "back up file should be kept or not");  // NOLINT
+DEFINE_string(restore_tag, "", "tag name specifying restore");  // NOLINT
 
-namespace tateyama::server {
+namespace tateyama::bootstrap {
+
+using namespace tateyama::bootstrap::utils;
 
 // should be in sync one in ipc_provider/steram_provider
 struct endpoint_context {
@@ -67,7 +69,7 @@ int backend_main(int argc, char **argv) {
 
     // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf);
+    auto conf = bootstrap_configuration(FLAGS_conf).create_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
@@ -75,9 +77,9 @@ int backend_main(int argc, char **argv) {
     env->configuration(conf);
 
     // mutex
-    auto mutex = std::make_unique<proc_mutex>(env->configuration()->get_directory());
+    auto mutex = std::make_unique<proc_mutex>(conf->get_directory());
     if (!mutex->lock()) {
-        LOG(ERROR) << "another tateyama-server is running on " << env->configuration()->get_directory();
+        LOG(ERROR) << "another tateyama-server is running on " << conf->get_directory().string();
         exit(1);
     }
 
@@ -196,9 +198,9 @@ int backend_main(int argc, char **argv) {
     } while(true);
 }
 
-}  // tateyama::server
+}  // tateyama::bootstrap
 
 
 int main(int argc, char **argv) {
-    return tateyama::server::backend_main(argc, argv);
+    return tateyama::bootstrap::backend_main(argc, argv);
 }
