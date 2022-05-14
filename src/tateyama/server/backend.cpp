@@ -126,7 +126,7 @@ int backend_main(int argc, char **argv) {
     ogawayama::bridge::api::prepare();
     auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
     if (bridge) {
-        if (auto rc = bridge->initialize(*env, db.get(), nullptr); rc != status::ok) {
+        if (auto rc = bridge->initialize(*env, db, nullptr); rc != status::ok) {
             std::abort();
         }
         LOG(INFO) << "ogawayama bridge created";
