@@ -23,7 +23,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-namespace tateyama::server {
+namespace tateyama::bootstrap::utils {
 
 static const boost::filesystem::path LOCK_FILE_NAME = boost::filesystem::path("tsurugi.pid");
 
@@ -123,4 +123,4 @@ private:
     bool create_file_;
 };
 
-}  // tateyama::server;
+}  // tateyama::bootstrap::utils;
