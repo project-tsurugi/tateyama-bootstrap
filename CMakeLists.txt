@@ -65,6 +65,7 @@ find_package(Boost
         COMPONENTS filesystem thread system container stacktrace_backtrace
         REQUIRED
         )
+find_package(Protobuf REQUIRED)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

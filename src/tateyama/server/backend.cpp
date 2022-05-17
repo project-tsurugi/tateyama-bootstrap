@@ -28,8 +28,6 @@
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
 #include <tateyama/api/registry.h>
-#include <tateyama/bootstrap/proc_mutex.h>
-#include <tateyama/bootstrap/configuration.h>
 
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -42,6 +40,8 @@
 #include "server.h"
 #include "utils.h"
 #include "restore.h"
+#include "proc_mutex.h"
+#include "configuration.h"
 
 DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
