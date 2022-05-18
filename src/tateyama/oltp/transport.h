@@ -36,24 +36,15 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(std::string_view name) {
-        auto cc = tateyama::common::wire::connection_container(name);
-        auto& q = cc.get_connection_queue();
-        std::size_t id = q.request();  // connect
-        q.check(id, true);  // wait
-        std::string sn{name};
-        sn += "-";
-        sn += std::to_string(id);
-
-        wire_ = std::make_unique<tateyama::common::wire::session_wire_container>(sn);
+    explicit transport(std::string_view name) :
+        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(name).connect())) {
         header_.set_message_version(MESSAGE_VERSION);
         header_.set_service_id(tateyama::framework::service_id_datastore);
     }
 
-
     template <typename T>
     std::optional<T> send(::tateyama::proto::datastore::request::Request& request) {
-        auto box = wire_->get_response_box();
+        auto box = wire_.get_response_box();
         if (box == nullptr) {
             return std::nullopt;
         }
@@ -66,8 +57,8 @@ public:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
             return std::nullopt;
         }
-        wire_->write(ss.str());
-        wire_->flush();
+        wire_.write(ss.str());
+        wire_.flush();
 
         auto res = box->recv();
         ::tateyama::proto::framework::response::Header header{};
@@ -87,7 +78,7 @@ public:
     }
 
 private:
-    std::unique_ptr<tateyama::common::wire::session_wire_container> wire_{};
+    tateyama::common::wire::session_wire_container wire_;
     ::tateyama::proto::framework::request::Header header_{};
 };
 

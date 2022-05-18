@@ -211,6 +211,16 @@ public:
     connection_queue& get_connection_queue() {
         return *connection_queue_;
     }
+
+    std::string connect() {
+        auto& q = get_connection_queue();
+        std::size_t id = q.request();  // connect
+        q.check(id, true);  // wait
+        std::string sn{db_name_};
+        sn += "-";
+        sn += std::to_string(id);
+        return sn;
+    }
     
 private:
     std::string db_name_;
