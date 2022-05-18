@@ -134,6 +134,9 @@ int oltp_main(int argc, char* argv[]) {
         if (strcmp(*(argv + 2), "backup") == 0) {
             return backup::oltp_restore_backup(argc - 2, argv + 2);
         }
+        if (strcmp(*(argv + 2), "tag") == 0) {
+            return backup::oltp_restore_tag(argc - 2, argv + 2);
+        }
         LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
         return -1;
     }

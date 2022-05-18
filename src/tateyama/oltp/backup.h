@@ -20,5 +20,6 @@ namespace tateyama::bootstrap::backup {
     int oltp_backup_create( int argc,  char* argv[]);
     int oltp_backup_estimate( int argc,  char* argv[]);
     int oltp_restore_backup( int argc,  char* argv[]);
+    int oltp_restore_tag( int argc,  char* argv[]);
 
 } //  tateyama::bootstrap::backup

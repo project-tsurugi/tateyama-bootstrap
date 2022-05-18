@@ -144,6 +144,8 @@ public:
             return std::nullopt;
         }
         request.clear_restore_tag();
+        wire_->write(ss.str());
+        wire_->flush();
 
         auto res = box->recv();
         ::tateyama::proto::framework::response::Header header{};
