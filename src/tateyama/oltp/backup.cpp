@@ -20,9 +20,9 @@
 
 #include <tateyama/logging.h>
 
+#include "oltp.h"
 #include "configuration.h"
 #include "transport.h"
-#include "backup.h"
 
 DEFINE_bool(overwrite, false, "backup files will be over written");  // NOLINT
 DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
@@ -72,7 +72,11 @@ int oltp_backup_estimate([[maybe_unused]] int argc, [[maybe_unused]] char* argv[
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
-        auto response = transport->backup_estimate();
+        ::tateyama::proto::datastore::request::Request request{};
+        request.mutable_backup_estimate();
+        auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
+        request.clear_backup_estimate();
+
         if (response) {
             switch(response.value().result_case()) {
             case ::tateyama::proto::datastore::response::BackupEstimate::kSuccess: {
@@ -105,8 +109,13 @@ int oltp_restore_backup([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
 
-        auto name = std::string(path_to_backup);
-        auto response = transport->restore_backup(name, true);
+        ::tateyama::proto::datastore::request::Request request{};
+        auto restore_backup = request.mutable_restore_backup();
+        restore_backup->set_path(path_to_backup);
+        restore_backup->set_keep_backup(FLAGS_keep_backup);
+        auto response = transport->send<::tateyama::proto::datastore::response::RestoreBackup>(request);
+        request.clear_restore_backup();
+
         if (response) {
             switch(response.value().result_case()) {
             case ::tateyama::proto::datastore::response::RestoreBackup::kSuccess:
@@ -138,8 +147,12 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
 
-        auto name = std::string(tag_name);
-        auto response = transport->restore_tag(name);
+        ::tateyama::proto::datastore::request::Request request{};
+        auto restore_tag = request.mutable_restore_tag();
+        restore_tag->set_name(tag_name);
+        auto response = transport->send<::tateyama::proto::datastore::response::RestoreTag>(request);
+        request.clear_restore_tag();
+
         if (response) {
             switch(response.value().result_case()) {
             case ::tateyama::proto::datastore::response::RestoreTag::kSuccess:

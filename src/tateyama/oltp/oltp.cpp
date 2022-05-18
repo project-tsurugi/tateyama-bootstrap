@@ -29,7 +29,7 @@
 
 #include "configuration.h"
 #include "proc_mutex.h"
-#include "backup.h"
+#include "oltp.h"
 
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
 
@@ -108,6 +108,8 @@ static int oltp_status(int argc, char* argv[]) {
 }
 
 int oltp_main(int argc, char* argv[]) {
+    google::InitGoogleLogging(argv[0]);
+
     if (strcmp(*(argv + 1), "start") == 0) {
         return oltp_start(argc - 1, argv + 1);
     }
@@ -145,12 +147,3 @@ int oltp_main(int argc, char* argv[]) {
 }
 
 }  // tateyama::bootstrap
-
-
-int main(int argc, char* argv[]) {
-    google::InitGoogleLogging(argv[0]);
-    if (argc > 1) {
-        return tateyama::bootstrap::oltp_main(argc, argv);
-    }
-    return -1;
-}

@@ -50,7 +50,9 @@ public:
         header_.set_service_id(tateyama::framework::service_id_datastore);
     }
 
-    std::optional<::tateyama::proto::datastore::response::BackupEstimate> backup_estimate() {
+
+    template <typename T>
+    std::optional<T> send(::tateyama::proto::datastore::request::Request& request) {
         auto box = wire_->get_response_box();
         if (box == nullptr) {
             return std::nullopt;
@@ -60,13 +62,10 @@ public:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
             return std::nullopt;
         }
-        ::tateyama::proto::datastore::request::Request request{};
         request.set_message_version(MESSAGE_VERSION);
-        request.mutable_backup_estimate();
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
             return std::nullopt;
         }
-        request.clear_backup_estimate();
         wire_->write(ss.str());
         wire_->flush();
 
@@ -80,84 +79,7 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        ::tateyama::proto::datastore::response::BackupEstimate response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
-            return std::nullopt;
-        }
-        return response;
-    }
-
-    std::optional<::tateyama::proto::datastore::response::RestoreBackup> restore_backup(std::string& path, bool keep_backup) {
-        auto box = wire_->get_response_box();
-        if (box == nullptr) {
-            return std::nullopt;
-        }
-
-        std::stringstream ss{};
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
-            return std::nullopt;
-        }
-        ::tateyama::proto::datastore::request::Request request{};
-        request.set_message_version(MESSAGE_VERSION);
-        auto restore_backup = request.mutable_restore_backup();
-        restore_backup->set_path(path);
-        restore_backup->set_keep_backup(keep_backup);
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
-            return std::nullopt;
-        }
-        request.clear_restore_backup();
-        wire_->write(ss.str());
-        wire_->flush();
-
-        auto res = box->recv();
-        ::tateyama::proto::framework::request::Header header{};
-        google::protobuf::io::ArrayInputStream in{res.first, static_cast<int>(res.second)};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
-            return std::nullopt;
-        }
-        std::string_view payload;
-        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-            return std::nullopt;
-        }
-        ::tateyama::proto::datastore::response::RestoreBackup response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
-            return std::nullopt;
-        }
-        return response;
-    }
-
-    std::optional<::tateyama::proto::datastore::response::RestoreTag> restore_tag(std::string name) {
-        auto box = wire_->get_response_box();
-        if (box == nullptr) {
-            return std::nullopt;
-        }
-
-        std::stringstream ss{};
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
-            return std::nullopt;
-        }
-        ::tateyama::proto::datastore::request::Request request{};
-        request.set_message_version(MESSAGE_VERSION);
-        auto restore_tag = request.mutable_restore_tag();
-        restore_tag->set_name(name);
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
-            return std::nullopt;
-        }
-        request.clear_restore_tag();
-        wire_->write(ss.str());
-        wire_->flush();
-
-        auto res = box->recv();
-        ::tateyama::proto::framework::response::Header header{};
-        google::protobuf::io::ArrayInputStream in{res.first, static_cast<int>(res.second)};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
-            return std::nullopt;
-        }
-        std::string_view payload{};
-        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-            return std::nullopt;
-        }
-        ::tateyama::proto::datastore::response::RestoreTag response{};
+        T response{};
         if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
             return std::nullopt;
         }
