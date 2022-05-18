@@ -17,6 +17,7 @@ set_target_properties(server
 
 target_include_directories(server
         PRIVATE .
+        PRIVATE ../include
         )
 
 target_link_libraries(server

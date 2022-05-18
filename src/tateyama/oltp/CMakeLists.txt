@@ -13,16 +13,17 @@ set_target_properties(oltp
 
 target_include_directories(oltp
         PRIVATE .
+        PRIVATE ../include
         )
 
 target_link_libraries(oltp
         PRIVATE api
         PRIVATE ${tateyama_engine}
         PRIVATE glog::glog
-        PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE pthread
         PRIVATE Boost::filesystem
+        PRIVATE protobuf::libprotobuf
         PRIVATE rt
         )
 

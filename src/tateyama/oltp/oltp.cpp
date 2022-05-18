@@ -25,11 +25,13 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 
-#include <tateyama/bootstrap/configuration.h>
-#include <tateyama/bootstrap/proc_mutex.h>
 #include <tateyama/logging.h>
 
-DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
+#include "configuration.h"
+#include "proc_mutex.h"
+#include "backup.h"
+
+DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
 
 namespace tateyama::bootstrap {
 
@@ -55,7 +57,7 @@ static int oltp_shutdown_kill(int argc, char* argv[], bool force) {
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
+    if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
         auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
         std::string str{};
         if (file_mutex->contents(str)) {
@@ -117,6 +119,26 @@ int oltp_main(int argc, char* argv[]) {
     }
     if (strcmp(*(argv + 1), "status") == 0) {
         return oltp_status(argc - 1, argv + 1);
+    }
+    if (strcmp(*(argv + 1), "backup") == 0) {
+        if (strcmp(*(argv + 2), "create") == 0) {
+            return backup::oltp_backup_create(argc - 2, argv + 2);
+        }
+        if (strcmp(*(argv + 2), "estimate") == 0) {
+            return backup::oltp_backup_estimate(argc - 2, argv + 2);
+        }
+        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+        return -1;
+    }
+    if (strcmp(*(argv + 1), "restore") == 0) {
+        if (strcmp(*(argv + 2), "backup") == 0) {
+            return backup::oltp_restore_backup(argc - 2, argv + 2);
+        }
+        if (strcmp(*(argv + 2), "tag") == 0) {
+            return backup::oltp_restore_tag(argc - 2, argv + 2);
+        }
+        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+        return -1;
     }
     LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
     return -1;
