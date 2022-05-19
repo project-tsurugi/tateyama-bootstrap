@@ -28,30 +28,30 @@ static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
 public:
-    bootstrap_configuration(std::string_view f) {
+    bootstrap_configuration(std::string_view d) {
         // tsurugi.ini
-        if (!f.empty()) {
-            file_ = boost::filesystem::path(std::string(f).c_str());
+        if (!d.empty()) {
+            directory_ = boost::filesystem::path(std::string(d).c_str());
         } else {
             if (auto env = getenv(ENV_ENTRY); env != nullptr) {
-                file_ = boost::filesystem::path(env) / CONF_FILE_NAME;
+                directory_ = boost::filesystem::path(env);
             } else {
-                file_ = std::string("");
-                property_file_absent_ = true;
+                directory_ = std::string("");
+                property_directory_absent_ = true;
             }
         }
     }
     std::shared_ptr<tateyama::api::configuration::whole> create_configuration() {
-        if (!property_file_absent_) {
-            return tateyama::api::configuration::create_configuration(file_.string());
+        if (!property_directory_absent_) {
+            return tateyama::api::configuration::create_configuration((directory_ / CONF_FILE_NAME).string());
         }
         return nullptr;
     }
 
 private:
-    boost::filesystem::path file_;
+    boost::filesystem::path directory_;
     std::shared_ptr<tateyama::api::configuration::whole> configuration_;
-    bool property_file_absent_{};
+    bool property_directory_absent_{};
 };
 
 } // namespace tateyama::bootstrap::utils
