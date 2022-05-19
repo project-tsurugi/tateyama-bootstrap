@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include <iostream>
-//#include <string>
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
@@ -40,17 +39,41 @@ using namespace tateyama::bootstrap::utils;
 const std::string server_name = "tateyama-server";
 const std::size_t shutdown_check_count = 50;
 
-int oltp_start([[maybe_unused]] int argc, char* argv[]) {
-    if (auto pid = fork(); pid == 0) {
-        argv[0] = const_cast<char *>(server_name.c_str());
-        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
-        execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
-        perror("execvp");
-    } else {
-        VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
+static bool status_check(proc_mutex::lock_state state, std::shared_ptr<tateyama::api::configuration::whole>& conf) {
+    auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
+    for (size_t i = 0; i < shutdown_check_count; i++) {
+        usleep(100 * 1000);
+        if (file_mutex->check() == state) {
+            return true;
+        }
     }
-    usleep(100 * 1000);
-    return 0;
+    return false;
+}
+
+
+int oltp_start([[maybe_unused]] int argc, char* argv[]) {
+    // command arguments
+    gflags::SetUsageMessage("tateyama database server");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
+        if (auto pid = fork(); pid == 0) {
+            argv[0] = const_cast<char *>(server_name.c_str());
+            auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
+            execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
+            perror("execvp");
+        } else {
+            VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
+        }
+        usleep(100 * 1000);
+        if (status_check(proc_mutex::lock_state::locked, conf)) {
+            return 0;
+        }
+        LOG(ERROR) << "cannot invoke a server process";
+        return 1;
+    }
+    LOG(ERROR) << "error in create_configuration";
+    return 3;
 }
 
 int oltp_shutdown_kill(int argc, char* argv[], bool force) {
@@ -71,12 +94,8 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force) {
             } else {
                 VLOG(log_trace) << "kill (SIGINT) to process " << str;
                 kill(stoi(str), SIGINT);
-                auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
-                for (size_t i = 0; i < shutdown_check_count; i++) {
-                    usleep(100 * 1000);
-                    if (file_mutex->check() != proc_mutex::lock_state::locked) {
-                        return 0;
-                    }
+                if (status_check(proc_mutex::lock_state::no_file, conf)) {
+                    return 0;
                 }
                 LOG(ERROR) << "failed to shutdown, the server may still be alive";
                 return 1;
@@ -85,10 +104,9 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force) {
             LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
             return 2;
         }
-    } else {
-        LOG(ERROR) << "error in create_configuration";
-        return 3;
     }
+    LOG(ERROR) << "error in create_configuration";
+    return 3;
 }
 
 int oltp_status(int argc, char* argv[]) {
