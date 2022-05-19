@@ -17,7 +17,9 @@
 
 namespace tateyama::bootstrap {
 
-    int oltp_main(int argc,  char* argv[]);
+    int oltp_start(int argc, char* argv[]);
+    int oltp_status(int argc, char* argv[]);
+    int oltp_shutdown_kill(int argc, char* argv[], bool force);
 
 } //  tateyama::bootstrap
 

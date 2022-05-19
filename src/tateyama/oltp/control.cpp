@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <iostream>
-#include <string>
+//#include <string>
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
@@ -38,8 +38,9 @@ namespace tateyama::bootstrap {
 using namespace tateyama::bootstrap::utils;
 
 const std::string server_name = "tateyama-server";
+const std::size_t shutdown_check_count = 50;
 
-static int oltp_start([[maybe_unused]] int argc, char* argv[]) {
+int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     if (auto pid = fork(); pid == 0) {
         argv[0] = const_cast<char *>(server_name.c_str());
         auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
@@ -52,7 +53,7 @@ static int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     return 0;
 }
 
-static int oltp_shutdown_kill(int argc, char* argv[], bool force) {
+int oltp_shutdown_kill(int argc, char* argv[], bool force) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -65,23 +66,32 @@ static int oltp_shutdown_kill(int argc, char* argv[], bool force) {
                 VLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
                 kill(stoi(str), SIGKILL);
                 unlink(file_mutex->name().c_str());
+                usleep(100 * 1000);
+                return 0;
             } else {
                 VLOG(log_trace) << "kill (SIGINT) to process " << str;
                 kill(stoi(str), SIGINT);
+                auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
+                for (size_t i = 0; i < shutdown_check_count; i++) {
+                    usleep(100 * 1000);
+                    if (file_mutex->check() != proc_mutex::lock_state::locked) {
+                        return 0;
+                    }
+                }
+                LOG(ERROR) << "failed to shutdown, the server may still be alive";
+                return 1;
             }
-            usleep(100 * 1000);
-            return 0;
         } else {
             LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-            return 1;
+            return 2;
         }
     } else {
         LOG(ERROR) << "error in create_configuration";
-        return 2;
+        return 3;
     }
 }
 
-static int oltp_status(int argc, char* argv[]) {
+int oltp_status(int argc, char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -105,45 +115,6 @@ static int oltp_status(int argc, char* argv[]) {
         }
     }
     return 0;
-}
-
-int oltp_main(int argc, char* argv[]) {
-    google::InitGoogleLogging(argv[0]);
-
-    if (strcmp(*(argv + 1), "start") == 0) {
-        return oltp_start(argc - 1, argv + 1);
-    }
-    if (strcmp(*(argv + 1), "shutdown") == 0) {
-        return oltp_shutdown_kill(argc - 1, argv + 1, false);
-    }
-    if (strcmp(*(argv + 1), "kill") == 0) {
-        return oltp_shutdown_kill(argc - 1, argv + 1, true);
-    }
-    if (strcmp(*(argv + 1), "status") == 0) {
-        return oltp_status(argc - 1, argv + 1);
-    }
-    if (strcmp(*(argv + 1), "backup") == 0) {
-        if (strcmp(*(argv + 2), "create") == 0) {
-            return backup::oltp_backup_create(argc - 2, argv + 2);
-        }
-        if (strcmp(*(argv + 2), "estimate") == 0) {
-            return backup::oltp_backup_estimate(argc - 2, argv + 2);
-        }
-        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
-        return -1;
-    }
-    if (strcmp(*(argv + 1), "restore") == 0) {
-        if (strcmp(*(argv + 2), "backup") == 0) {
-            return backup::oltp_restore_backup(argc - 2, argv + 2);
-        }
-        if (strcmp(*(argv + 2), "tag") == 0) {
-            return backup::oltp_restore_tag(argc - 2, argv + 2);
-        }
-        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
-        return -1;
-    }
-    LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
-    return -1;
 }
 
 }  // tateyama::bootstrap

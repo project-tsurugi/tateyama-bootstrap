@@ -18,6 +18,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
 #include "oltp.h"
@@ -71,7 +72,7 @@ int oltp_backup_estimate([[maybe_unused]] int argc, [[maybe_unused]] char* argv[
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         request.mutable_backup_estimate();
         auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
@@ -107,7 +108,7 @@ int oltp_restore_backup([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_backup = request.mutable_restore_backup();
@@ -145,7 +146,7 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name());
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_tag = request.mutable_restore_tag();

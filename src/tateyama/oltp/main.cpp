@@ -13,7 +13,56 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <oltp.h>
+#include <string>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+#include "oltp.h"
+
+namespace tateyama::bootstrap {
+
+int oltp_main(int argc, char* argv[]) {
+    google::InitGoogleLogging(argv[0]);
+
+    if (strcmp(*(argv + 1), "start") == 0) {
+        return oltp_start(argc - 1, argv + 1);
+    }
+    if (strcmp(*(argv + 1), "shutdown") == 0) {
+        return oltp_shutdown_kill(argc - 1, argv + 1, false);
+    }
+    if (strcmp(*(argv + 1), "kill") == 0) {
+        return oltp_shutdown_kill(argc - 1, argv + 1, true);
+    }
+    if (strcmp(*(argv + 1), "status") == 0) {
+        return oltp_status(argc - 1, argv + 1);
+    }
+    if (strcmp(*(argv + 1), "backup") == 0) {
+        if (strcmp(*(argv + 2), "create") == 0) {
+            return backup::oltp_backup_create(argc - 2, argv + 2);
+        }
+        if (strcmp(*(argv + 2), "estimate") == 0) {
+            return backup::oltp_backup_estimate(argc - 2, argv + 2);
+        }
+        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+        return -1;
+    }
+    if (strcmp(*(argv + 1), "restore") == 0) {
+        if (strcmp(*(argv + 2), "backup") == 0) {
+            return backup::oltp_restore_backup(argc - 2, argv + 2);
+        }
+        if (strcmp(*(argv + 2), "tag") == 0) {
+            return backup::oltp_restore_tag(argc - 2, argv + 2);
+        }
+        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+        return -1;
+    }
+    LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
+    return -1;
+}
+
+}  // tateyama::bootstrap
+
 
 int main(int argc, char* argv[]) {
     if (argc > 1) {

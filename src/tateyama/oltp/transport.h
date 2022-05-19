@@ -18,7 +18,6 @@
 #include <sstream>
 #include <optional>
 
-#include <tateyama/framework/component_ids.h>
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
 #include <tateyama/proto/framework/response.pb.h>
@@ -36,10 +35,10 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(std::string_view name) :
+    explicit transport(std::string_view name, tateyama::framework::component::id_type type) :
         wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(name).connect())) {
         header_.set_message_version(MESSAGE_VERSION);
-        header_.set_service_id(tateyama::framework::service_id_datastore);
+        header_.set_service_id(type);
     }
 
     template <typename T>
