@@ -52,19 +52,20 @@ static bool status_check(proc_mutex::lock_state state, std::shared_ptr<tateyama:
 
 
 int oltp_start([[maybe_unused]] int argc, char* argv[]) {
+    if (auto pid = fork(); pid == 0) {
+        argv[0] = const_cast<char *>(server_name.c_str());
+        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
+        execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
+        perror("execvp");
+    } else {
+        VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
+    }
+
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
-        if (auto pid = fork(); pid == 0) {
-            argv[0] = const_cast<char *>(server_name.c_str());
-            auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
-            execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
-            perror("execvp");
-        } else {
-            VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
-        }
         usleep(100 * 1000);
         if (status_check(proc_mutex::lock_state::locked, conf)) {
             return 0;
