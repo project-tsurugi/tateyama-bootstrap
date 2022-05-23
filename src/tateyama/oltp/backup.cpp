@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 #include <exception>
 
 #include <gflags/gflags.h>
@@ -68,10 +69,10 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
         break;
     case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-        std::cout << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
+        LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
         return 2;
     default:
-        std::cout << "BackupBegin result_case() error: " << std::endl;
+        LOG(ERROR) << "BackupBegin result_case() error: " << std::endl;
         return 3;
     }
 
@@ -87,7 +88,7 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     requestBegin.clear_backup_end();
 
     if (!responseEnd) {
-        std::cout << "BackupEnd response error: " << std::endl;
+        LOG(ERROR) << "BackupEnd response error: " << std::endl;
         return 1;
     }
     auto re = responseEnd.value();
@@ -95,10 +96,10 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
         break;
     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-        std::cout << "BackupEnd error: " << re.unknown_error().message() << std::endl;
+        LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message() << std::endl;
         return 2;
     default:
-        std::cout << "BackupEnd result_case() error: " << std::endl;
+        LOG(ERROR) << "BackupEnd result_case() error: " << std::endl;
         return 3;
     }
     return 0;
