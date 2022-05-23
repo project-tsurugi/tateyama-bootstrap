@@ -83,9 +83,9 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     }
 
     ::tateyama::proto::datastore::request::Request requestEnd{};
-    requestBegin.mutable_backup_end();
+    requestEnd.mutable_backup_end();
     auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
-    requestBegin.clear_backup_end();
+    requestEnd.clear_backup_end();
 
     if (!responseEnd) {
         LOG(ERROR) << "BackupEnd response error: ";
