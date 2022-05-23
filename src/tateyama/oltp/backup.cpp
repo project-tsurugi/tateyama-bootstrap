@@ -53,16 +53,54 @@ static std::string name() {
 }
 
 int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
-    const char* path_to_backup = *(argv + 1);
-    argc--;
-    argv++;
+    auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
+    ::tateyama::proto::datastore::request::Request requestBegin{};
+    requestBegin.mutable_backup_begin();
+    auto responseBegin = transport->send<::tateyama::proto::datastore::response::BackupBegin>(requestBegin);
+    requestBegin.clear_backup_begin();
 
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    if (!responseBegin) {
+        std::cout << "BackupBegin response error: " << std::endl;
+        return 1;
+    }
+    auto rb = responseBegin.value();
+    switch(rb.result_case()) {
+    case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
+        break;
+    case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
+        std::cout << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
+        return 2;
+    default:
+        std::cout << "BackupBegin result_case() error: " << std::endl;
+        return 3;
+    }
 
-    // do backup create, /path/to/backup is argv[1]
-    std::cout << path_to_backup << ":" << FLAGS_overwrite << std::endl;
+    // FIXME do copy when actual operation begin.
+    std::cout << "do backup create, overwrite = " << FLAGS_overwrite << " , files are " << std::endl;
+    for (auto&& e : rb.success().files()) {
+        std::cout << e << std::endl;
+    }
+
+    ::tateyama::proto::datastore::request::Request requestEnd{};
+    requestBegin.mutable_backup_end();
+    auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
+    requestBegin.clear_backup_end();
+
+    if (!responseEnd) {
+        std::cout << "BackupEnd response error: " << std::endl;
+        return 1;
+    }
+    auto re = responseEnd.value();
+    switch(re.result_case()) {
+    case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
+        break;
+    case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
+        std::cout << "BackupEnd error: " << re.unknown_error().message() << std::endl;
+        return 2;
+    default:
+        std::cout << "BackupEnd result_case() error: " << std::endl;
+        return 3;
+    }
     return 0;
 }
 
