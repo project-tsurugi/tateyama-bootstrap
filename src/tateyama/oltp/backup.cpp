@@ -64,6 +64,7 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         LOG(ERROR) << "BackupBegin response error: ";
         return 1;
     }
+
     auto rb = responseBegin.value();
     switch(rb.result_case()) {
     case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
@@ -76,6 +77,7 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         return 3;
     }
 
+    std::int64_t backup_id = rb.success().id();
     // FIXME do copy when actual operation begin.
     std::cout << "do backup create, overwrite = " << FLAGS_overwrite << " , files are " << std::endl;
     for (auto&& e : rb.success().files()) {
@@ -83,7 +85,8 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     }
 
     ::tateyama::proto::datastore::request::Request requestEnd{};
-    requestEnd.mutable_backup_end();
+    auto backup_end = requestEnd.mutable_backup_end();
+    backup_end->set_id(backup_id);
     auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
     requestEnd.clear_backup_end();
 
