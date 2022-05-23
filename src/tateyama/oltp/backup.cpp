@@ -61,7 +61,7 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     requestBegin.clear_backup_begin();
 
     if (!responseBegin) {
-        std::cout << "BackupBegin response error: " << std::endl;
+        LOG(ERROR) << "BackupBegin response error: ";
         return 1;
     }
     auto rb = responseBegin.value();
@@ -69,10 +69,10 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
         break;
     case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-        LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
+        LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message();
         return 2;
     default:
-        LOG(ERROR) << "BackupBegin result_case() error: " << std::endl;
+        LOG(ERROR) << "BackupBegin result_case() error: ";
         return 3;
     }
 
@@ -88,7 +88,7 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     requestBegin.clear_backup_end();
 
     if (!responseEnd) {
-        LOG(ERROR) << "BackupEnd response error: " << std::endl;
+        LOG(ERROR) << "BackupEnd response error: ";
         return 1;
     }
     auto re = responseEnd.value();
@@ -96,10 +96,10 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
         break;
     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-        LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message() << std::endl;
+        LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message();
         return 2;
     default:
-        LOG(ERROR) << "BackupEnd result_case() error: " << std::endl;
+        LOG(ERROR) << "BackupEnd result_case() error: ";
         return 3;
     }
     return 0;
