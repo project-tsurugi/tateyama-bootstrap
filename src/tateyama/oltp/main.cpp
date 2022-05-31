@@ -57,6 +57,10 @@ int oltp_main(int argc, char* argv[]) {
         LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
         return -1;
     }
+    if (strcmp(*(argv + 1), "quiesce") == 0) {
+        argv[1] = const_cast<char*>("--quiesce");
+        return oltp_start(argc, argv);
+    }
     LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
     return -1;
 }

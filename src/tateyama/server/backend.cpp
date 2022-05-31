@@ -50,6 +50,8 @@ DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOL
 DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  // NOLINT
 DEFINE_bool(keep_backup, false, "back up file should be kept or not");  // NOLINT
 DEFINE_string(restore_tag, "", "tag name specifying restore");  // NOLINT
+DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
+DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT
 
 namespace tateyama::bootstrap {
 
@@ -90,7 +92,14 @@ int backend_main(int argc, char **argv) {
         tpcc_mode = false;
     }
 
-    framework::boot_mode mode = (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) ? framework::boot_mode::maintenance_standalone : framework::boot_mode::database_server;
+    framework::boot_mode mode;
+    if (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) {
+        mode = framework::boot_mode::maintenance_standalone;
+    } else if (FLAGS_quiesce) {
+        mode = framework::boot_mode::quiescent_server;
+    } else {
+        mode = framework::boot_mode::database_server;
+    }
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
     sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());

@@ -31,6 +31,8 @@
 #include "oltp.h"
 
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
+DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
+DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT
 
 namespace tateyama::bootstrap {
 
