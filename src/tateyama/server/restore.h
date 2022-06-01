@@ -37,7 +37,7 @@ void restore_backup([[maybe_unused]] framework::server& sv, std::string_view nam
         LOG(ERROR) << "datastore resource not found";
         return;
     }
-//    ds->restore_backup(name, keep);
+    ds->restore_backup(name, keep);
 }
 
 void restore_tag([[maybe_unused]] framework::server& sv, std::string_view tag) {

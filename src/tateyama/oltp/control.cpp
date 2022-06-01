@@ -33,7 +33,7 @@
 
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
-DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT
+DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT for quiesce
 
 namespace tateyama::bootstrap {
 
@@ -54,7 +54,7 @@ static bool status_check(proc_mutex::lock_state state, std::shared_ptr<tateyama:
 }
 
 
-int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0) {
+int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
     if (auto pid = fork(); pid == 0) {
         boost::filesystem::path path_for_this{};
         if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
@@ -66,6 +66,9 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0) {
         if (boost::filesystem::exists(path_for_this)) {
             argv[0] = const_cast<char *>(server_name.c_str());
             auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+//            close(0);  // FIXME activate this line when it completes
+//            close(1);  // FIXME activate this line when it completes
+//            close(2);  // FIXME activate this line when it completes
             execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
             perror("execvp");
         }
@@ -74,20 +77,24 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0) {
         VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
     }
 
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    if (need_check) {
+        // command arguments
+        gflags::SetUsageMessage("tateyama database server CLI");
+        gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
-        usleep(100 * 1000);
-        if (status_check(proc_mutex::lock_state::locked, conf)) {
-            return 0;
+        if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
+            usleep(100 * 1000);
+            if (status_check(proc_mutex::lock_state::locked, conf)) {
+                return 0;
+            }
+            LOG(ERROR) << "cannot invoke a server process";
+            return 1;
         }
-        LOG(ERROR) << "cannot invoke a server process";
-        return 1;
+        LOG(ERROR) << "error in create_configuration";
+        return 3;
     }
-    LOG(ERROR) << "error in create_configuration";
-    return 3;
+
+    return 0;
 }
 
 int oltp_shutdown_kill(int argc, char* argv[], bool force) {
