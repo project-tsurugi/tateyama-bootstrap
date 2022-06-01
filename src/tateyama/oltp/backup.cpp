@@ -19,6 +19,9 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
+
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
@@ -55,6 +58,14 @@ static std::string name() {
 }
 
 int oltp_backup_create(int argc, char* argv[]) {
+    if (argc <= 1) {
+        LOG(ERROR) << "need to specify path/to/backup";
+        return 4;
+    }
+    char *path_to_backup = argv[1];
+    argv++;
+    argc--;
+    
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -84,10 +95,11 @@ int oltp_backup_create(int argc, char* argv[]) {
     }
 
     std::int64_t backup_id = rb.success().id();
-    // FIXME do copy when actual operation begin.
-    std::cout << "do backup create, overwrite = " << FLAGS_overwrite << " , files are " << std::endl;
+
+    auto location = boost::filesystem::path(path_to_backup);
     for (auto&& e : rb.success().files()) {
-        std::cout << e << std::endl;
+        auto src = boost::filesystem::path(e);
+        boost::filesystem::copy_file(src, location / src.filename());
     }
 
     ::tateyama::proto::datastore::request::Request requestEnd{};
