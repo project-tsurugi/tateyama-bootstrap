@@ -64,7 +64,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[]) {
     }
 
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
@@ -81,7 +81,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[]) {
 
 int oltp_shutdown_kill(int argc, char* argv[], bool force) {
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
@@ -114,7 +114,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force) {
 
 int oltp_status(int argc, char* argv[]) {
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
