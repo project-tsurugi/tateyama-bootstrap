@@ -50,11 +50,11 @@ int oltp_main(int argc, char* argv[]) {
     if (strcmp(*(argv + 1), "restore") == 0) {
         if (strcmp(*(argv + 2), "backup") == 0) {
             argv[2] = const_cast<char*>("--restore_backup");
-            return oltp_start(argc - 1, argv +1, false);
+            return oltp_start(argc - 1, argv +1, argv[0], false);
         }
         if (strcmp(*(argv + 2), "tag") == 0) {
             argv[2] = const_cast<char*>("--restore_tag");
-            return oltp_start(argc - 1, argv +1, false);
+            return oltp_start(argc - 1, argv +1, argv[0], false);
         }
         LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
         return -1;

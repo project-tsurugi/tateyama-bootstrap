@@ -65,7 +65,7 @@ int oltp_backup_create(int argc, char* argv[]) {
     char *path_to_backup = argv[1];
     argv++;
     argc--;
-    
+
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
