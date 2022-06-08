@@ -24,6 +24,7 @@
 
 #include "oltp.h"
 #include "configuration.h"
+#include "authentication.h"
 #include "transport.h"
 
 DEFINE_bool(overwrite, false, "backup files will be over written");  // NOLINT
@@ -53,7 +54,12 @@ static std::string name() {
     }
 }
 
-int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+int oltp_backup_create(int argc, char* argv[]) {
+    // command arguments
+    gflags::SetUsageMessage("tateyama database server CLI");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    auth_options();
+
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
     requestBegin.mutable_backup_begin();
@@ -108,10 +114,11 @@ int oltp_backup_create([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     return 0;
 }
 
-int oltp_backup_estimate([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+int oltp_backup_estimate(int argc, char* argv[]) {
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
@@ -146,8 +153,9 @@ int oltp_restore_backup([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]
     argv++;
 
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
@@ -184,8 +192,9 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     argv++;
 
     // command arguments
-    gflags::SetUsageMessage("tateyama database server");
+    gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);

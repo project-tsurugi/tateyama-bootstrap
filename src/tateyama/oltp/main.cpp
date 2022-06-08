@@ -26,7 +26,7 @@ int oltp_main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
 
     if (strcmp(*(argv + 1), "start") == 0) {
-        return oltp_start(argc - 1, argv + 1);
+        return oltp_start(argc - 1, argv + 1, argv[0]);
     }
     if (strcmp(*(argv + 1), "shutdown") == 0) {
         return oltp_shutdown_kill(argc - 1, argv + 1, false);
@@ -59,7 +59,7 @@ int oltp_main(int argc, char* argv[]) {
     }
     if (strcmp(*(argv + 1), "quiesce") == 0) {
         argv[1] = const_cast<char*>("--quiesce");
-        return oltp_start(argc, argv);
+        return oltp_start(argc, argv, argv[0]);
     }
     LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
     return -1;

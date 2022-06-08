@@ -13,21 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
 namespace tateyama::bootstrap {
 
-    int oltp_start(int argc, char* argv[], char *argv0);
-    int oltp_status(int argc, char* argv[]);
-    int oltp_shutdown_kill(int argc, char* argv[], bool force);
+void auth_options();
 
-} //  tateyama::bootstrap
-
-namespace tateyama::bootstrap::backup {
-
-    int oltp_backup_create(int argc,  char* argv[]);
-    int oltp_backup_estimate(int argc,  char* argv[]);
-    int oltp_restore_backup(int argc,  char* argv[]);
-    int oltp_restore_tag(int argc,  char* argv[]);
-
-} //  tateyama::bootstrap::backup
+}  // tateyama::bootstrap
