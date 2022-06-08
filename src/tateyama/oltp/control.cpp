@@ -23,6 +23,7 @@
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/process/search_path.hpp>
 
 #include <tateyama/logging.h>
 
@@ -53,12 +54,22 @@ static bool status_check(proc_mutex::lock_state state, std::shared_ptr<tateyama:
 }
 
 
-int oltp_start([[maybe_unused]] int argc, char* argv[]) {
+int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0) {
     if (auto pid = fork(); pid == 0) {
-        argv[0] = const_cast<char *>(server_name.c_str());
-        auto base = boost::filesystem::canonical(boost::filesystem::path(getenv("_"))).parent_path().parent_path();
-        execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
-        perror("execvp");
+        boost::filesystem::path path_for_this{};
+        if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
+            path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
+        } else{
+            path_for_this = boost::filesystem::canonical(a0f);
+        }
+
+        if (boost::filesystem::exists(path_for_this)) {
+            argv[0] = const_cast<char *>(server_name.c_str());
+            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+            execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
+            perror("execvp");
+        }
+        LOG(ERROR) << "cannot find the location of " << argv0;
     } else {
         VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
     }
