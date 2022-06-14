@@ -4,9 +4,3 @@
 [submodule "third_party/ogawayama"]
 	path = third_party/ogawayama
 	url = git@github.com:project-tsurugi/ogawayama.git
-[submodule ".github/actions/tsurugi-slack-action"]
-	path = .github/actions/tsurugi-slack-action
-	url = git@github.com:project-tsurugi/tsurugi-slack-action.git
-[submodule ".github/actions/tsurugi-annotations-action"]
-	path = .github/actions/tsurugi-annotations-action
-	url = git@github.com:project-tsurugi/tsurugi-annotations-action.git
