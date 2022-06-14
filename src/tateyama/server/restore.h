@@ -37,11 +37,7 @@ void restore_backup([[maybe_unused]] framework::server& sv, std::string_view nam
         LOG(ERROR) << "datastore resource not found";
         return;
     }
-    auto* core = ds->core_object();
-
-    // TODO manipulate service and resource core to do restore
-    (void) svc;
-    (void) core;
+    ds->restore_backup(name, keep);
 }
 
 void restore_tag([[maybe_unused]] framework::server& sv, std::string_view tag) {
@@ -58,11 +54,7 @@ void restore_tag([[maybe_unused]] framework::server& sv, std::string_view tag) {
         LOG(ERROR) << "datastore resource not found";
         return;
     }
-    auto* core = ds->core_object();
-
-    // TODO manipulate service and resource core to do restore
-    (void) svc;
-    (void) core;
+    // FIXME use bridge to process restore_tag
 }
 
 }  // tateyama::bootstrap {

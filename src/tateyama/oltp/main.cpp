@@ -26,7 +26,7 @@ int oltp_main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
 
     if (strcmp(*(argv + 1), "start") == 0) {
-        return oltp_start(argc - 1, argv + 1, argv[0]);
+        return oltp_start(argc - 1, argv + 1, argv[0], true);
     }
     if (strcmp(*(argv + 1), "shutdown") == 0) {
         return oltp_shutdown_kill(argc - 1, argv + 1, false);
@@ -49,17 +49,19 @@ int oltp_main(int argc, char* argv[]) {
     }
     if (strcmp(*(argv + 1), "restore") == 0) {
         if (strcmp(*(argv + 2), "backup") == 0) {
-            return backup::oltp_restore_backup(argc - 2, argv + 2);
+            argv[2] = const_cast<char*>("--restore_backup");
+            return oltp_start(argc - 1, argv +1, argv[0], false);
         }
         if (strcmp(*(argv + 2), "tag") == 0) {
-            return backup::oltp_restore_tag(argc - 2, argv + 2);
+            argv[2] = const_cast<char*>("--restore_tag");
+            return oltp_start(argc - 1, argv +1, argv[0], false);
         }
         LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
         return -1;
     }
     if (strcmp(*(argv + 1), "quiesce") == 0) {
         argv[1] = const_cast<char*>("--quiesce");
-        return oltp_start(argc, argv, argv[0]);
+        return oltp_start(argc, argv, argv[0], true);
     }
     LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
     return -1;
