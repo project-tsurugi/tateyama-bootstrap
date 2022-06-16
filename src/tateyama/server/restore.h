@@ -24,7 +24,7 @@
 namespace tateyama::bootstrap {
 
 void restore_backup([[maybe_unused]] framework::server& sv, std::string_view name, bool keep) {
-    std::cout << __func__ << ": name = " << name << ", keep = " << (keep ? "true" : "false") << std::endl;  // for test
+    VLOG(log_trace) << "name = " << name << ", keep = " << (keep ? "true" : "false");
 
     auto svc = sv.find_service<tateyama::datastore::service::bridge>();
     if(! svc) {
