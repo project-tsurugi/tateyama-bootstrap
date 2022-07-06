@@ -31,9 +31,10 @@
 #include "proc_mutex.h"
 #include "oltp.h"
 
-DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
+DECLARE_string(conf);
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
 DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT for quiesce
+DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
 
 namespace tateyama::bootstrap {
 
@@ -156,6 +157,19 @@ int oltp_status(int argc, char* argv[]) {
         }
     }
     return 0;
+}
+
+int start_maintenance_server(int argc, char* argv[], char *argv0) {
+    char *argvss[argc + 2];  // for "--maintenance_server" and nullptr
+
+    std::size_t index = 0;
+    argvss[index++] = const_cast<char*>("--maintenance_server");
+    for(int i = 0; i < argc; i++) {
+        argvss[index++] = argv[i];
+    }
+    argvss[index] = nullptr;
+
+    return oltp_start(index, argvss, argv0, true);
 }
 
 }  // tateyama::bootstrap

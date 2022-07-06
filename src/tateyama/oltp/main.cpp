@@ -20,6 +20,8 @@
 
 #include "oltp.h"
 
+DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
+
 namespace tateyama::bootstrap {
 
 int oltp_main(int argc, char* argv[]) {
@@ -48,16 +50,20 @@ int oltp_main(int argc, char* argv[]) {
         return -1;
     }
     if (strcmp(*(argv + 1), "restore") == 0) {
+        start_maintenance_server(argc - 4, argv + 4, argv[0]);
+
+        int rv{};
         if (strcmp(*(argv + 2), "backup") == 0) {
-            argv[2] = const_cast<char*>("--restore_backup");
-            return oltp_start(argc - 1, argv +1, argv[0], false);
+            rv = backup::oltp_restore_backup(argc - 3, argv + 3);
+        } else if (strcmp(*(argv + 2), "tag") == 0) {
+            rv = backup::oltp_restore_tag(argc - 3, argv + 3);
+        } else {
+            LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+            rv = -1;
         }
-        if (strcmp(*(argv + 2), "tag") == 0) {
-            argv[2] = const_cast<char*>("--restore_tag");
-            return oltp_start(argc - 1, argv +1, argv[0], false);
-        }
-        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
-        return -1;
+
+        oltp_shutdown_kill(argc - 4, argv + 4, false);
+        return rv;
     }
     if (strcmp(*(argv + 1), "quiesce") == 0) {
         argv[1] = const_cast<char*>("--quiesce");

@@ -35,7 +35,7 @@ public:
     bootstrap_configuration(std::string_view f) {
         // tsurugi.ini
         if (!f.empty()) {
-            conf_file_ = boost::filesystem::path(std::string(f).c_str());
+            conf_file_ = boost::filesystem::path(std::string(f));
         } else {
             if (auto env = getenv(ENV_ENTRY); env != nullptr) {
                 conf_file_ = boost::filesystem::path(env) / CONF_FILE_NAME;

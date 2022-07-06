@@ -39,7 +39,6 @@
 
 #include "server.h"
 #include "utils.h"
-#include "restore.h"
 #include "proc_mutex.h"
 #include "configuration.h"
 
@@ -47,11 +46,14 @@ DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
-DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  // NOLINT
-DEFINE_bool(keep_backup, false, "back up file should be kept or not");  // NOLINT
-DEFINE_string(restore_tag, "", "tag name specifying restore");  // NOLINT
+// DEFINE_string(restore_backup, "", "path to back up directory where files used in the restore are located");  // NOLINT
+// DEFINE_string(restore_tag, "", "tag name specifying restore");  // NOLINT
+DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT
+DEFINE_bool(maintenance_standalone, false, "invoke in maintenance_standalone mode");  // NOLINT
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
 DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT
+DEFINE_bool(force, false, "no confirmation step");  // NOLINT
+DEFINE_bool(keep_backup, false, "back up file should be kept or not");  // NOLINT
 
 namespace tateyama::bootstrap {
 
@@ -94,10 +96,12 @@ int backend_main(int argc, char **argv) {
     }
 
     framework::boot_mode mode;
-    if (!FLAGS_restore_backup.empty() || !FLAGS_restore_tag.empty()) {
-        mode = framework::boot_mode::maintenance_standalone;
+    if (FLAGS_maintenance_server) {
+        mode = framework::boot_mode::maintenance_server;
+        FLAGS_load = false;
     } else if (FLAGS_quiesce) {
         mode = framework::boot_mode::quiescent_server;
+        FLAGS_load = false;
     } else {
         mode = framework::boot_mode::database_server;
     }
@@ -123,19 +127,6 @@ int backend_main(int argc, char **argv) {
     }
 
     sv.start();
-
-    // maintenance_standalone mode
-    if (mode == framework::boot_mode::maintenance_standalone) {
-        // backup, recovery
-        if (!FLAGS_restore_backup.empty()) {
-            tateyama::bootstrap::restore_backup(sv, FLAGS_restore_backup, FLAGS_keep_backup);
-        }
-        if (!FLAGS_restore_tag.empty()) {
-            tateyama::bootstrap::restore_tag(sv, FLAGS_restore_tag);
-        }
-        sv.shutdown();
-        return 0;
-    }
 
     LOG(INFO) << "database started";
 

@@ -30,9 +30,9 @@
 #include "authentication.h"
 #include "transport.h"
 
-DEFINE_bool(overwrite, false, "backup files will be over written");  // NOLINT
-DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
 DECLARE_string(conf);  // NOLINT
+DEFINE_bool(force, false, "no confirmation step");  // NOLINT
+DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
 
 namespace tateyama::bootstrap::backup {
 
@@ -159,8 +159,8 @@ int oltp_backup_estimate(int argc, char* argv[]) {
     return -1;
 }
 
-int oltp_restore_backup([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
-    const char* path_to_backup = *(argv + 1);
+int oltp_restore_backup(int argc, char* argv[]) {
+    const char* path_to_backup = *argv;
     argc--;
     argv++;
 
@@ -171,7 +171,6 @@ int oltp_restore_backup([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
-
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_backup = request.mutable_restore_backup();
         restore_backup->set_path(path_to_backup);
