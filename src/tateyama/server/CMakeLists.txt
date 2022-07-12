@@ -32,6 +32,7 @@ target_link_libraries(server
         PRIVATE gflags::gflags
         PRIVATE pthread
         PRIVATE Boost::filesystem
+        PRIVATE crypto
         PRIVATE rt
         )
 

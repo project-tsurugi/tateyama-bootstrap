@@ -24,6 +24,7 @@ target_link_libraries(oltp
         PRIVATE pthread
         PRIVATE Boost::filesystem
         PRIVATE protobuf::libprotobuf
+        PRIVATE crypto
         PRIVATE rt
         )
 

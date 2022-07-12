@@ -42,8 +42,8 @@ using namespace tateyama::bootstrap::utils;
 const std::string server_name = "tateyama-server";
 const std::size_t shutdown_check_count = 50;
 
-static bool status_check(proc_mutex::lock_state state, std::shared_ptr<tateyama::api::configuration::whole>& conf) {
-    auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
+static bool status_check(proc_mutex::lock_state state, boost::filesystem::path lock_file) {
+    auto file_mutex = std::make_unique<proc_mutex>(lock_file, false);
     for (size_t i = 0; i < shutdown_check_count; i++) {
         usleep(100 * 1000);
         if (file_mutex->check() == state) {
@@ -82,9 +82,10 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
         gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-        if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
+        auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
             usleep(100 * 1000);
-            if (status_check(proc_mutex::lock_state::locked, conf)) {
+            if (status_check(proc_mutex::lock_state::locked, bst_conf.lock_file())) {
                 return 0;
             }
             LOG(ERROR) << "cannot invoke a server process";
@@ -102,8 +103,9 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force) {
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (auto conf = utils::bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(conf->get_directory(), false);
+    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
         std::string str{};
         if (file_mutex->contents(str)) {
             if (force) {
@@ -115,7 +117,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force) {
             } else {
                 VLOG(log_trace) << "kill (SIGINT) to process " << str;
                 kill(stoi(str), SIGINT);
-                if (status_check(proc_mutex::lock_state::no_file, conf)) {
+                if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
                     return 0;
                 }
                 LOG(ERROR) << "failed to shutdown, the server may still be alive";
@@ -135,19 +137,19 @@ int oltp_status(int argc, char* argv[]) {
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
-        auto directory = conf->get_directory();
-        auto file_mutex = std::make_unique<proc_mutex>(directory, false);
+    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
         using state = proc_mutex::lock_state;
         switch (file_mutex->check()) {
         case state::no_file:
-            std::cout << "no " << server_name << " is running on " << directory.string() << std::endl;
+            std::cout << "no " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         case state::not_locked:
             std::cout << "not_locked, may be  intermediate state (in the middle of running or stopping)" << std::endl;
             break;
         case state::locked:
-            std::cout << "a " << server_name << " is running on " << directory.string() << std::endl;
+            std::cout << "a " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         default:
             std::cout << "error occured" << std::endl;

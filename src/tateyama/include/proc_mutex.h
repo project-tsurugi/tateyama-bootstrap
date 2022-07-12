@@ -25,8 +25,6 @@
 
 namespace tateyama::bootstrap::utils {
 
-static const boost::filesystem::path LOCK_FILE_NAME = boost::filesystem::path("tsurugi.pid");
-
 class proc_mutex {
   public:
     enum class lock_state : std::int32_t {
@@ -36,12 +34,12 @@ class proc_mutex {
         error,
     };
     
-    proc_mutex(boost::filesystem::path directory, bool create_file = true)
-        : file_name_(directory / LOCK_FILE_NAME), create_file_(create_file) {}
+    proc_mutex(boost::filesystem::path lock_file, bool create_file = true)
+        : lock_file_(lock_file), create_file_(create_file) {}
     ~proc_mutex() {
         close(fd_);
         if (create_file_) {
-            unlink(file_name_.generic_string().c_str());
+            unlink(lock_file_.generic_string().c_str());
         }
     }
 
@@ -52,7 +50,7 @@ class proc_mutex {
 
     [[nodiscard]] bool lock() {
         if (create_file_) {
-            if ((fd_ = open(file_name_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
+            if ((fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
                 perror("open");
                 exit(-1);
             }
@@ -75,28 +73,28 @@ class proc_mutex {
         flock(fd_, LOCK_UN);
     }
     [[nodiscard]] inline std::string name() const {
-        return file_name_.generic_string();
+        return lock_file_.generic_string();
     }
     [[nodiscard]] bool contents(std::string& str) {
         if (check() != lock_state::locked) {
             return false;
         }
-        std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(file_name_));
+        std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
         str.resize(sz, '\0');
-        boost::filesystem::ifstream file(file_name_);
+        boost::filesystem::ifstream file(lock_file_);
         file.read(&str[0], sz);
         return true;
     }
     [[nodiscard]] lock_state check() {
         boost::system::error_code error;
-        const bool result = boost::filesystem::exists(file_name_, error);
+        const bool result = boost::filesystem::exists(lock_file_, error);
         if (!result || error) {
             return lock_state::no_file;
         }
-        if (!boost::filesystem::is_regular_file(file_name_)) {
+        if (!boost::filesystem::is_regular_file(lock_file_)) {
             return lock_state::error;            
         }
-        if (fd_ = open(file_name_.generic_string().c_str(), O_WRONLY); fd_ < 0) {
+        if (fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY); fd_ < 0) {
             return lock_state::error;
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {
@@ -118,7 +116,7 @@ class proc_mutex {
     }
     
 private:
-    boost::filesystem::path file_name_;
+    boost::filesystem::path lock_file_;
     int fd_{};
     bool create_file_;
 };
