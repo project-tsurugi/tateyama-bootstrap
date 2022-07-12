@@ -43,7 +43,7 @@
 #include "proc_mutex.h"
 #include "configuration.h"
 
-DEFINE_string(conf, "", "the directory where the configuration file is");  // NOLINT
+DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
@@ -71,7 +71,8 @@ int backend_main(int argc, char **argv) {
 
     // configuration
     auto env = std::make_shared<tateyama::api::environment>();
-    auto conf = bootstrap_configuration(FLAGS_conf).create_configuration();
+    auto bst_conf = bootstrap_configuration(FLAGS_conf);
+    auto conf = bst_conf.create_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
@@ -79,9 +80,9 @@ int backend_main(int argc, char **argv) {
     env->configuration(conf);
 
     // mutex
-    auto mutex = std::make_unique<proc_mutex>(conf->get_directory());
+    auto mutex = std::make_unique<proc_mutex>(bst_conf.lock_file());
     if (!mutex->lock()) {
-        LOG(ERROR) << "another tateyama-server is running on " << conf->get_directory().string();
+        LOG(ERROR) << "another tateyama-server is running on " << bst_conf.lock_file().string();
         exit(1);
     }
 
