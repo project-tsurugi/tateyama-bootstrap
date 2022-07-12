@@ -33,7 +33,7 @@
 #include <jogasaki/api/resource/bridge.h>
 
 #ifdef OGAWAYAMA
-#include <ogawayama/bridge/provider.h>
+#include <ogawayama/bridge/service.h>
 #endif
 #include <jogasaki/api.h>
 
@@ -106,6 +106,13 @@ int backend_main(int argc, char **argv) {
     sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
     sv.add_service(sqlsvc);
+
+#ifdef OGAWAYAMA
+    // ogawayama bridge
+    sv.add_service(std::make_shared<ogawayama::bridge::service>());
+    LOG(INFO) << "ogawayama bridge created";
+#endif
+
     sv.setup();
     auto* db = sqlsvc->database();
     if (tpcc_mode) {
@@ -114,6 +121,7 @@ int backend_main(int argc, char **argv) {
     if (tpch_mode) {
         db->config()->prepare_analytics_benchmark_tables(true);
     }
+
     sv.start();
 
     // maintenance_standalone mode
@@ -131,17 +139,6 @@ int backend_main(int argc, char **argv) {
 
     LOG(INFO) << "database started";
 
-#ifdef OGAWAYAMA
-    // ogawayama bridge
-    ogawayama::bridge::api::prepare();
-    auto bridge = tateyama::api::registry<ogawayama::bridge::api::provider>::create("ogawayama");
-    if (bridge) {
-        if (auto rc = bridge->initialize(*env, db, nullptr); rc != status::ok) {
-            std::abort();
-        }
-        LOG(INFO) << "ogawayama bridge created";
-    }
-#endif
     if (FLAGS_load) {
         if (tpcc_mode) {
             // load tpc-c tables
@@ -167,15 +164,6 @@ int backend_main(int argc, char **argv) {
         }
     }
 
-#ifdef OGAWAYAMA
-    if (bridge) {
-        if (auto rc = bridge->start(); rc != status::ok) {
-            std::abort();
-        }
-        LOG(INFO) << "ogawayama bridge listener started";
-    }
-#endif
-
     // wait for signal to terminate this
     int signo;
     sigset_t ss;
@@ -191,12 +179,6 @@ int backend_main(int argc, char **argv) {
             switch(signo) {
             case SIGINT:
                 // termination process
-#ifdef OGAWAYAMA
-                if (bridge) {
-                    LOG(INFO) << "bridge->shutdown()";
-                    bridge->shutdown();
-                }
-#endif
                 LOG(INFO) << "exiting";
                 sv.shutdown();
                 return 0;
