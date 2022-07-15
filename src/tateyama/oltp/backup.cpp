@@ -33,6 +33,7 @@
 DECLARE_string(conf);  // NOLINT
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
 DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
+DEFINE_string(label, "", "label for this operation");  // NOLINT
 
 namespace tateyama::bootstrap::backup {
 
@@ -73,7 +74,10 @@ int oltp_backup_create(int argc, char* argv[]) {
 
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
-    requestBegin.mutable_backup_begin();
+    auto backup_begin = requestBegin.mutable_backup_begin();
+    if (!FLAGS_label.empty()) {
+        backup_begin->set_label(FLAGS_label);
+    }
     auto responseBegin = transport->send<::tateyama::proto::datastore::response::BackupBegin>(requestBegin);
     requestBegin.clear_backup_begin();
 
@@ -175,6 +179,9 @@ int oltp_restore_backup(int argc, char* argv[]) {
         auto restore_backup = request.mutable_restore_backup();
         restore_backup->set_path(path_to_backup);
         restore_backup->set_keep_backup(FLAGS_keep_backup);
+        if (!FLAGS_label.empty()) {
+            restore_backup->set_label(FLAGS_label);
+        }
         auto response = transport->send<::tateyama::proto::datastore::response::RestoreBackup>(request);
         request.clear_restore_backup();
 
