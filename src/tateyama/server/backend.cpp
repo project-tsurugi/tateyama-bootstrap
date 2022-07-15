@@ -27,7 +27,6 @@
 #include <tateyama/api/server/service.h>
 #include <tateyama/api/endpoint/service.h>
 #include <tateyama/api/endpoint/provider.h>
-#include <tateyama/api/registry.h>
 
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
