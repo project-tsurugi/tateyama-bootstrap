@@ -203,6 +203,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
+          export PATH=$PATH:${GITHUB_WORKSPACE}/.local/bin
           ctest --verbose -j 100
 
       - id: Clang-Tidy
