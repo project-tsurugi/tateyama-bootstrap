@@ -29,15 +29,19 @@
 #include "configuration.h"
 #include "authentication.h"
 #include "transport.h"
+#include "monitor.h"
 
 DECLARE_string(conf);  // NOLINT
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
 DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
 DEFINE_string(label, "", "label for this operation");  // NOLINT
+DECLARE_string(monitor);  // NOLINT
 
 namespace tateyama::bootstrap::backup {
 
 using namespace tateyama::bootstrap::utils;
+
+std::unique_ptr<utils::monitor> monitor_output{};
 
 static std::string name() {
     if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
@@ -59,10 +63,6 @@ static std::string name() {
 }
 
 int oltp_backup_create(int argc, char* argv[]) {
-    if (argc <= 1) {
-        LOG(ERROR) << "need to specify path/to/backup";
-        return 4;
-    }
     char *path_to_backup = argv[1];
     argv++;
     argc--;
@@ -70,8 +70,14 @@ int oltp_backup_create(int argc, char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-    auth_options();
 
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
+    auth_options();
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
     auto backup_begin = requestBegin.mutable_backup_begin();
@@ -83,57 +89,82 @@ int oltp_backup_create(int argc, char* argv[]) {
 
     if (!responseBegin) {
         LOG(ERROR) << "BackupBegin response error: ";
-        return 1;
+        rc = 1;
+        goto err_return;
     }
 
-    auto rb = responseBegin.value();
-    switch(rb.result_case()) {
-    case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
-        break;
-    case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-        LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message();
-        return 2;
-    default:
-        LOG(ERROR) << "BackupBegin result_case() error: ";
-        return 3;
+    {
+        auto rb = responseBegin.value();
+        switch(rb.result_case()) {
+        case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
+            break;
+        case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
+            LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message();
+            rc = 2;
+            goto err_return;
+        default:
+            LOG(ERROR) << "BackupBegin result_case() error: ";
+            rc = 3;
+            goto err_return;
+        }
+
+        {
+            std::int64_t backup_id = rb.success().id();
+
+            auto location = boost::filesystem::path(path_to_backup);
+            for (auto&& e : rb.success().files()) {
+                auto src = boost::filesystem::path(e);
+                boost::filesystem::copy_file(src, location / src.filename());
+            }
+
+            ::tateyama::proto::datastore::request::Request requestEnd{};
+            auto backup_end = requestEnd.mutable_backup_end();
+            backup_end->set_id(backup_id);
+            auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
+            requestEnd.clear_backup_end();
+
+            if (!responseEnd) {
+                LOG(ERROR) << "BackupEnd response error: ";
+                rc = 1;
+                goto err_return;
+            }
+            auto re = responseEnd.value();
+            switch(re.result_case()) {
+            case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
+                break;
+            case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
+                LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message();
+                rc = 2;
+                goto err_return;
+            default:
+                LOG(ERROR) << "BackupEnd result_case() error: ";
+                rc = 3;
+                goto err_return;
+            }
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return rc;
+        }
     }
 
-    std::int64_t backup_id = rb.success().id();
-
-    auto location = boost::filesystem::path(path_to_backup);
-    for (auto&& e : rb.success().files()) {
-        auto src = boost::filesystem::path(e);
-        boost::filesystem::copy_file(src, location / src.filename());
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
     }
-
-    ::tateyama::proto::datastore::request::Request requestEnd{};
-    auto backup_end = requestEnd.mutable_backup_end();
-    backup_end->set_id(backup_id);
-    auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
-    requestEnd.clear_backup_end();
-
-    if (!responseEnd) {
-        LOG(ERROR) << "BackupEnd response error: ";
-        return 1;
-    }
-    auto re = responseEnd.value();
-    switch(re.result_case()) {
-    case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
-        break;
-    case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-        LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message();
-        return 2;
-    default:
-        LOG(ERROR) << "BackupEnd result_case() error: ";
-        return 3;
-    }
-    return 0;
+    return rc;
 }
 
 int oltp_backup_estimate(int argc, char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
     auth_options();
 
     try {
@@ -149,18 +180,29 @@ int oltp_backup_estimate(int argc, char* argv[]) {
                 auto success = response.value().success();
                 std::cout << "number_of_files = " << success.number_of_files()
                           << ", number_of_bytes = " << success.number_of_bytes() << std::endl;
-                return 0;
+                break;
             }
             case ::tateyama::proto::datastore::response::BackupEstimate::kUnknownError:
             case ::tateyama::proto::datastore::response::BackupEstimate::RESULT_NOT_SET:
                 LOG(ERROR) << __func__ << " ends up with " << response.value().result_case();
-                return 1;
+                rc = 1;
+                goto err_return;
             }
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return rc;
         }
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << name();
     }
-    return -1;
+    rc = -1;
+
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
 }
 
 int oltp_restore_backup(int argc, char* argv[]) {
@@ -171,6 +213,13 @@ int oltp_restore_backup(int argc, char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    std::cout << "---- " << FLAGS_monitor << " ----" << std::endl;
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
     auth_options();
 
     try {
@@ -188,20 +237,31 @@ int oltp_restore_backup(int argc, char* argv[]) {
         if (response) {
             switch(response.value().result_case()) {
             case ::tateyama::proto::datastore::response::RestoreBackup::kSuccess:
-                return 0;
+                break;
             case ::tateyama::proto::datastore::response::RestoreBackup::kNotFound:
             case ::tateyama::proto::datastore::response::RestoreBackup::kPermissionError:
             case ::tateyama::proto::datastore::response::RestoreBackup::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBackup::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBackup::RESULT_NOT_SET:
                 LOG(ERROR) << __func__ << " ends up with " << response.value().result_case();
-                return 1;
+                rc = 1;
+                goto err_return;
             }
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return rc;
         }
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << name();
     }
-    return -1;
+    rc = -1;
+
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
 }
 
 int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
@@ -212,6 +272,12 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
     auth_options();
 
     try {
@@ -226,18 +292,29 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
         if (response) {
             switch(response.value().result_case()) {
             case ::tateyama::proto::datastore::response::RestoreTag::kSuccess:
-                return 0;
+                break;
             case ::tateyama::proto::datastore::response::RestoreTag::kNotFound:
             case ::tateyama::proto::datastore::response::RestoreTag::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreTag::RESULT_NOT_SET:
                 LOG(ERROR) << __func__ << " ends up with " << response.value().result_case();
-                return 1;
+                rc = 1;
+                goto err_return;
             }
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return rc;
         }
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << name();
     }
-    return -1;
+    rc = -1;
+
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
 }
 
 } //  tateyama::bootstrap::backup

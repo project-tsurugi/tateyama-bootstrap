@@ -21,6 +21,7 @@
 #include "oltp.h"
 
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
+DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
 
 namespace tateyama::bootstrap {
 
@@ -41,6 +42,10 @@ int oltp_main(int argc, char* argv[]) {
     }
     if (strcmp(*(argv + 1), "backup") == 0) {
         if (strcmp(*(argv + 2), "create") == 0) {
+            if ((argc - 2) <= 1) {
+                LOG(ERROR) << "need to specify path/to/backup";
+                return 4;
+            }
             return backup::oltp_backup_create(argc - 2, argv + 2);
         }
         if (strcmp(*(argv + 2), "estimate") == 0) {
@@ -62,7 +67,7 @@ int oltp_main(int argc, char* argv[]) {
             rv = -1;
         }
 
-        oltp_shutdown_kill(argc - 4, argv + 4, false);
+        oltp_shutdown_kill(argc - 4, argv + 4, false, false);
         return rv;
     }
     if (strcmp(*(argv + 1), "quiesce") == 0) {

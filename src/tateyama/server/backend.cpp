@@ -40,6 +40,7 @@
 #include "utils.h"
 #include "proc_mutex.h"
 #include "configuration.h"
+#include "monitor.h"
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -48,14 +49,16 @@ DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOL
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT
 DEFINE_bool(maintenance_standalone, false, "invoke in maintenance_standalone mode");  // NOLINT
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
-DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT
+DEFINE_string(label, "", "message used in quiesce mode");  // NOLINT
+DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
 DEFINE_bool(force, false, "an option for oltp, do not use here");  // NOLINT
 DEFINE_bool(keep_backup, false, "an option for oltp, do not use here");  // NOLINT
-DEFINE_string(label, "", "an option for oltp, do not use here");  // NOLINT
 
 namespace tateyama::bootstrap {
 
 using namespace tateyama::bootstrap::utils;
+
+std::unique_ptr<utils::monitor> monitor_output{};
 
 // should be in sync one in ipc_provider/steram_provider
 struct endpoint_context {
@@ -69,12 +72,19 @@ int backend_main(int argc, char **argv) {
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    if(!FLAGS_monitor.empty() && !FLAGS_maintenance_server) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
     // configuration
     auto env = std::make_shared<tateyama::api::environment>();
     auto bst_conf = bootstrap_configuration(FLAGS_conf);
     auto conf = bst_conf.create_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
+        if (monitor_output) {
+            monitor_output->finish(false);
+        }
         exit(1);
     }
     env->configuration(conf);
@@ -83,6 +93,9 @@ int backend_main(int argc, char **argv) {
     auto mutex = std::make_unique<proc_mutex>(bst_conf.lock_file());
     if (!mutex->lock()) {
         LOG(ERROR) << "another tateyama-server is running on " << bst_conf.lock_file().string();
+        if (monitor_output) {
+            monitor_output->finish(false);
+        }
         exit(1);
     }
 
@@ -136,6 +149,9 @@ int backend_main(int argc, char **argv) {
                 jogasaki::common_cli::load(*db, FLAGS_location);
             } catch (std::exception& e) {
                 LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
+                if (monitor_output) {
+                    monitor_output->finish(false);
+                }
                 std::abort();
             }
             LOG(INFO) << "TPC-C data load end";
@@ -147,10 +163,17 @@ int backend_main(int argc, char **argv) {
                 jogasaki::common_cli::load_tpch(*db, FLAGS_location);
             } catch (std::exception& e) {
                 LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
+                if (monitor_output) {
+                    monitor_output->finish(false);
+                }
                 std::abort();
             }
             LOG(INFO) << "TPC-H data load end";
         }
+    }
+
+    if (monitor_output) {
+        monitor_output->finish(true);
     }
 
     // wait for signal to terminate this

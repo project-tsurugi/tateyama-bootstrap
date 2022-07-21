@@ -1,4 +1,45 @@
-add_executable(server_test server_test.cpp) 
+set(test_target tateyama-bootstrap-test)
+
+add_executable(${test_target}
+        main.cpp
+)
+
+target_compile_options(${test_target}
+        PRIVATE -DDIRECTORY=\"${CMAKE_CURRENT_SOURCE_DIR}\"
+)
+
+target_include_directories(${test_target}
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/tateyama
+)
+
+target_link_libraries(${test_target}
+        PUBLIC gtest
+        PRIVATE glog::glog
+        PRIVATE gflags::gflags
+        )
+
+function (add_test_executable source_file)
+    get_filename_component(test_name "${source_file}" NAME_WE)
+    target_sources(${test_target}
+            PRIVATE ${source_file}
+    )
+    add_test(
+            NAME ${test_name}
+            COMMAND ${test_target} --gtest_filter=${test_name}.* --gtest_output=xml:${test_name}_gtest_result.xml
+    )
+endfunction (add_test_executable)
+
+file(GLOB SRCS
+        "tateyama/monitor/*.cpp"
+)
+
+foreach(file ${SRCS})
+    add_test_executable(${file})
+endforeach()
+  
+
+# add_executable(server_test server_test.cpp) 
 
 # add_test(
 #         NAME restore_backup
