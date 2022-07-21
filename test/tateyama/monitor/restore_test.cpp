@@ -21,13 +21,13 @@ namespace tateyama::testing {
 class restore_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        set_up();
+        helper_ = std::make_unique<directory_helper>("restore_test", 20002);
+        helper_->set_up();
 
         std::string command;
     
         command = "oltp start --conf ";
-        command += DIRECTORY;
-        command += "/tateyama/configuration/tsurugi.ini";
+        command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp start" << std::endl;
@@ -35,10 +35,9 @@ public:
         }
 
         command = "oltp backup create ";
-        command += dir_name("backup");
+        command += helper_->abs_path("backup");
         command += " --conf ";
-        command += DIRECTORY;
-        command += "/tateyama/configuration/tsurugi.ini ";
+        command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp backup" << std::endl;
@@ -46,8 +45,7 @@ public:
         }
 
         command = "oltp shutdown --conf ";
-        command += DIRECTORY;
-        command += "/tateyama/configuration/tsurugi.ini";
+        command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp shutdown" << std::endl;
@@ -56,14 +54,11 @@ public:
     }
 
     virtual void TearDown() {
-        tear_down();
+        helper_->tear_down();
     }
-    const char* file_name(const char* name) {
-        name_ = location;
-        name_ += "/";
-        name_ += name;
-        return name_.c_str();
-    }
+
+protected:
+    std::unique_ptr<directory_helper> helper_{};
 
 private:
     std::string name_{};
@@ -73,11 +68,11 @@ TEST_F(restore_test, begin) {
     std::string command;
     
     command = "oltp restore backup ";
-    command += dir_name("backup");
+    command += helper_->abs_path("backup");
     command += " --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini --monitor ";
-    command += file_name("restore.log");
+    command += helper_->conf_file_path();
+    command += " --monitor ";
+    command += helper_->abs_path("test/restore.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp backup" << std::endl;
@@ -86,7 +81,7 @@ TEST_F(restore_test, begin) {
     
     FILE *fp;
     command = "wc -l ";
-    command += file_name("restore.log");
+    command += helper_->abs_path("test/restore.log");
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
         std::cerr << "cannot wc" << std::endl;

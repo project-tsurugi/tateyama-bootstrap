@@ -21,17 +21,16 @@ namespace tateyama::testing {
 class start_stop_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        set_up();
+        helper_ = std::make_unique<directory_helper>("start_stop_test", 20003);
+        helper_->set_up();
     }
 
     virtual void TearDown() {
-        tear_down();
+        helper_->tear_down();
     }
-    const char* log_file(const char* name) {
-        name_ = dir_name("log/");
-        name_ += name;
-        return name_.c_str();
-    }
+
+protected:
+    std::unique_ptr<directory_helper> helper_{};
 
 private:
     std::string name_{};
@@ -41,9 +40,9 @@ TEST_F(start_stop_test, success) {
     std::string command;
     
     command = "oltp start --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini --monitor ";
-    command += log_file("start.log");
+    command += helper_->conf_file_path();
+    command += " --monitor ";
+    command += helper_->abs_path("test/start.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp start" << std::endl;
@@ -52,7 +51,7 @@ TEST_F(start_stop_test, success) {
     
     FILE *fp;
     command = "wc -l ";
-    command += log_file("start.log");
+    command += helper_->abs_path("test/start.log");
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
         std::cerr << "cannot wc" << std::endl;
@@ -64,9 +63,9 @@ TEST_F(start_stop_test, success) {
     EXPECT_EQ(rv, 1);
 
     command = "oltp shutdown --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini --monitor ";
-    command += log_file("shutdown.log");
+    command += helper_->conf_file_path();
+    command += " --monitor ";
+    command += helper_->abs_path("test/shutdown.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp shutdown" << std::endl;
@@ -74,7 +73,7 @@ TEST_F(start_stop_test, success) {
     }
 
     command = "wc -l ";
-    command += log_file("shutdown.log");
+    command += helper_->abs_path("test/shutdown.log");
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
         std::cerr << "cannot wc" << std::endl;
@@ -85,8 +84,8 @@ TEST_F(start_stop_test, fail) {
     std::string command;
     
     command = "oltp start --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini";
+    command += helper_->conf_file_path();
+    command += "";
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp start" << std::endl;
@@ -94,9 +93,9 @@ TEST_F(start_stop_test, fail) {
     }
 
     command = "oltp start --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini --monitor ";
-    command += log_file("start.log");
+    command += helper_->conf_file_path();
+    command += " --monitor ";
+    command += helper_->abs_path("test/start_fail.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp start" << std::endl;
@@ -105,7 +104,7 @@ TEST_F(start_stop_test, fail) {
     
     FILE *fp;
     command = "grep fail ";
-    command += log_file("start.log");
+    command += helper_->abs_path("test/start_fail.log");
     command += " | wc -l";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
@@ -118,8 +117,7 @@ TEST_F(start_stop_test, fail) {
     EXPECT_EQ(rv, 1);
 
     command = "oltp shutdown --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini";
+    command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp shutdown" << std::endl;

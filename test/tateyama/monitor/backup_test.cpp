@@ -21,13 +21,12 @@ namespace tateyama::testing {
 class backup_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        set_up();
-
+        helper_ = std::make_unique<directory_helper>("backup_test", 20001);
+        helper_->set_up();
         std::string command;
     
         command = "oltp start --conf ";
-        command += DIRECTORY;
-        command += "/tateyama/configuration/tsurugi.ini";
+        command += helper_->conf_file_path();
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp start" << std::endl;
             FAIL();
@@ -35,26 +34,22 @@ public:
     }
 
     virtual void TearDown() {
-        tear_down();
-
         std::string command;
 
         command = "oltp shutdown --conf ";
-        command += DIRECTORY;
-        command += "/tateyama/configuration/tsurugi.ini";
+        command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp shutdown" << std::endl;
             FAIL();
         }
-    }
-    const char* tmp_file(const char* name) {
-        name_ = location;
-        name_ += "/";
-        name_ += name;
-        return name_.c_str();
+
+        helper_->tear_down();
     }
 
+protected:
+    std::unique_ptr<directory_helper> helper_{};
+    
 private:
     std::string name_{};
 };
@@ -63,11 +58,11 @@ TEST_F(backup_test, begin) {
     std::string command;
     
     command = "oltp backup create ";
-    command += location;
+    command += helper_->abs_path("backup");
     command += " --conf ";
-    command += DIRECTORY;
-    command += "/tateyama/configuration/tsurugi.ini --monitor ";
-    command += tmp_file("backup_create.log");
+    command += helper_->conf_file_path();
+    command += " --monitor ";
+    command += helper_->abs_path("test/backup_create.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp backup" << std::endl;
@@ -76,7 +71,7 @@ TEST_F(backup_test, begin) {
     
     FILE *fp;
     command = "wc -l ";
-    command += tmp_file("backup_create.log");
+    command += helper_->abs_path("test/backup_create.log");
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
         std::cerr << "cannot wc" << std::endl;

@@ -16,46 +16,91 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
-constexpr const char* location = "/tmp/tsurugi/";
+#include <string_view>
+#include <iostream>
+#include <fstream>
 
-static std::string name;
+class directory_helper {
+    constexpr static std::string_view base = "/tmp/";  // NOLINT
 
-static const char* dir_name(const char* child) {
-        name = location;
-        name += child;
-        return name.c_str();
-}
+  public:
+    directory_helper(std::string prefix, std::uint32_t port) : prefix_(prefix), port_(port) {
+        location_ = std::string(base);
+        location_ += prefix;
+        location_ += "/";
 
-static void set_up() {
-    if (system("rm -rf /tmp/tsurugi") != 0) {
-        std::cerr << "cannot remove directory" << std::endl;
-        FAIL();
+        conf_ = abs_path("conf/tsurugi.conf");
     }
 
-    std::string command;
+    std::string& abs_path(const char* child) {
+        name_ = location_;
+        name_ += child;
+        return name_;
+    }
 
-    command = "mkdir -p ";
-    command += dir_name("test");
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot make directory" << std::endl;
-        FAIL();
-    }
-    command = "mkdir -p ";
-    command += dir_name("log");
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot make directory" << std::endl;
-        FAIL();
-    }
-    command = "mkdir -p ";
-    command += dir_name("backup");
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot make directory" << std::endl;
-        FAIL();
-    }
-}
+    void set_up() {
+        std::string command;
 
-static void tear_down() {
-    if (system("rm -rf /tmp/tsurugi") != 0) {
-        std::cerr << "cannot remove directory" << std::endl;
+        command = "rm -rf ";
+        command += location_;
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot remove directory" << std::endl;
+            FAIL();
+        }
+
+        command = "mkdir -p ";
+        command += abs_path("test");
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot make directory" << std::endl;
+            FAIL();
+        }
+        command = "mkdir -p ";
+        command += abs_path("log");
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot make directory" << std::endl;
+            FAIL();
+        }
+        command = "mkdir -p ";
+        command += abs_path("backup");
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot make directory" << std::endl;
+            FAIL();
+        }
+        command = "mkdir -p ";
+        command += abs_path("conf");
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot make directory" << std::endl;
+            FAIL();
+        }
+
+        strm_.open(conf_, std::ios_base::out | std::ios_base::trunc);
+        strm_ << "[ipc_endpoint]\ndatabase_name=" << prefix_ << "\n\n";
+        strm_ << "[stream_endpoint]\nport=" << port_ << "\n\n";
+        strm_ << "[datastore]\nlog_location=" << abs_path("log")  << "\n";
+        strm_.close();
     }
-}
+
+    void tear_down() {
+        std::string command;
+
+        command = "rm -rf ";
+        command += location_;
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot remove directory" << std::endl;
+            FAIL();
+        }
+    }
+
+    std::string& conf_file_path() {
+        return conf_;
+    }
+
+  private:
+    std::string prefix_;
+    std::uint32_t port_;
+    std::string location_{};
+    std::string conf_{};
+    std::string name_{};
+
+    std::ofstream strm_;
+};
