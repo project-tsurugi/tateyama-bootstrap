@@ -69,7 +69,9 @@ find_package(Boost
         )
 find_package(Protobuf REQUIRED)
 
-add_subdirectory(third_party) # should be before enable_testing()
+if (BUILD_TESTS)
+  add_subdirectory(third_party) # should be before enable_testing()
+endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
