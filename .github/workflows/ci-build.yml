@@ -204,6 +204,7 @@ jobs:
         run: |
           cd build
           export PATH=$PATH:${GITHUB_WORKSPACE}/.local/bin
+          killall tateyama-server
           ctest --verbose -j 100
 
       - id: Clang-Tidy
