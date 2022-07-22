@@ -202,7 +202,7 @@ int oltp_status(int argc, char* argv[]) {
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return 1;
+    return rc;
 }
 
 int start_maintenance_server(int argc, char* argv[], char *argv0) {
