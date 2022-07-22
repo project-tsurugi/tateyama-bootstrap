@@ -18,6 +18,7 @@
 #include <sys/file.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdexcept> // std::runtime_error
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -34,8 +35,12 @@ class proc_mutex {
         error,
     };
     
-    proc_mutex(boost::filesystem::path lock_file, bool create_file = true)
-        : lock_file_(lock_file), create_file_(create_file) {}
+    proc_mutex(boost::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
+        : lock_file_(lock_file), create_file_(create_file) {
+        if (!create_file && throw_exception && !boost::filesystem::exists(lock_file)) {
+            throw std::runtime_error("the lock file does not exist");
+        }
+    }
     ~proc_mutex() {
         close(fd_);
         if (create_file_) {

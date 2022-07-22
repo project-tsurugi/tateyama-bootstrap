@@ -17,6 +17,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
+#include <stdexcept> // std::runtime_error
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -91,14 +92,16 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
         auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
         if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
             usleep(100 * 1000);
-            if (status_check(proc_mutex::lock_state::locked, bst_conf.lock_file())) {
-                if (monitor_output) {
-                    monitor_output->finish(true);
+            try {
+                if (status_check(proc_mutex::lock_state::locked, bst_conf.lock_file())) {
+                    return 0;
                 }
-                return 0;
+                LOG(ERROR) << "cannot invoke a server process";
+                return 1;
+            } catch (std::runtime_error &e) {
+                LOG(ERROR) << e.what();
+                return 2;
             }
-            LOG(ERROR) << "cannot invoke a server process";
-            return 1;
         }
         LOG(ERROR) << "error in create_configuration";
         return 3;
@@ -119,33 +122,39 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     int rc = 0;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-        std::string str{};
-        if (file_mutex->contents(str)) {
-            if (force) {
-                DVLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
-                kill(stoi(str), SIGKILL);
-                unlink(file_mutex->name().c_str());
-                usleep(100 * 1000);
-                goto normal_return;
-            } else {
-                DVLOG(log_trace) << "kill (SIGINT) to process " << str;
-                kill(stoi(str), SIGINT);
-                if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
+        try {
+            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+            std::string str{};
+            if (file_mutex->contents(str)) {
+                if (force) {
+                    DVLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
+                    kill(stoi(str), SIGKILL);
+                    unlink(file_mutex->name().c_str());
+                    usleep(100 * 1000);
                     goto normal_return;
+                } else {
+                    DVLOG(log_trace) << "kill (SIGINT) to process " << str;
+                    kill(stoi(str), SIGINT);
+                    if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
+                        goto normal_return;
+                    }
+                    LOG(ERROR) << "failed to shutdown, the server may still be alive";
+                    rc = 1;
+                    goto err_return;
                 }
-                LOG(ERROR) << "failed to shutdown, the server may still be alive";
-                rc = 1;
+            } else {
+                LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+                rc = 2;
                 goto err_return;
             }
-        } else {
-            LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-            rc = 2;
+        } catch (std::runtime_error &e) {
+            LOG(ERROR) << e.what();
+            rc = 3;
             goto err_return;
         }
     }
     LOG(ERROR) << "error in create_configuration";
-    rc = 3;
+    rc = 4;
 
   err_return:
     if (monitor_output) {
@@ -173,7 +182,7 @@ int oltp_status(int argc, char* argv[]) {
     int rc = 0;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
         using state = proc_mutex::lock_state;
         switch (file_mutex->check()) {
         case state::no_file:
