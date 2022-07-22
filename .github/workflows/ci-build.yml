@@ -204,7 +204,7 @@ jobs:
         run: |
           cd build
           export PATH=$PATH:${GITHUB_WORKSPACE}/.local/bin
-          killall tateyama-server
+          for pid in `ps -ef | grep tateyama-server | grep -v grep | awk '{print $2}'`; do kill $pid; done
           ctest --verbose -j 100
 
       - id: Clang-Tidy
