@@ -4,3 +4,6 @@
 [submodule "third_party/ogawayama"]
 	path = third_party/ogawayama
 	url = git@github.com:project-tsurugi/ogawayama.git
+[submodule "third_party/googletest"]
+	path = third_party/googletest
+	url = https://github.com/google/googletest.git

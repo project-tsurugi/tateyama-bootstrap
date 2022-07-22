@@ -37,24 +37,24 @@ static auto pre_defined_auth_file = boost::filesystem::path("/tmp/auth");  // FI
 
 void auth_options() {
     if (!FLAGS_auth) {
-        VLOG(log_trace) << "no-auth";
+        DVLOG(log_trace) << "no-auth";
         return;
     }
     if (!FLAGS_user.empty()) {
-        VLOG(log_trace) << "auth user:= " << FLAGS_user;
+        DVLOG(log_trace) << "auth user:= " << FLAGS_user;
         return;
     }
     if (!FLAGS_auth_token.empty()) {
-        VLOG(log_trace) << "auth token: " << FLAGS_auth_token;
+        DVLOG(log_trace) << "auth token: " << FLAGS_auth_token;
         return;
     }
     if (!FLAGS_credentials.empty()) {
-        VLOG(log_trace) << "auth credentials: " << FLAGS_credentials;
+        DVLOG(log_trace) << "auth credentials: " << FLAGS_credentials;
         return;
     }
 
     if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
-        VLOG(log_trace) << "auth token fron TSURUGI_AUTH_TOKEN: " << token;
+        DVLOG(log_trace) << "auth token fron TSURUGI_AUTH_TOKEN: " << token;
         return;
     }
     if (boost::filesystem::exists(pre_defined_auth_file)) {
@@ -70,7 +70,7 @@ void auth_options() {
         istrm.read(contents.data(), contents.length());
         istrm.close();
 
-        VLOG(log_trace) << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents;        
+        DVLOG(log_trace) << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents;        
     }
 }
 

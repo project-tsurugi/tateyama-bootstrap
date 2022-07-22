@@ -17,6 +17,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
+#include <stdexcept> // std::runtime_error
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -27,21 +28,25 @@
 
 #include <tateyama/logging.h>
 
+#include "oltp.h"
 #include "configuration.h"
 #include "proc_mutex.h"
-#include "oltp.h"
+#include "monitor.h"
 
 DECLARE_string(conf);
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
-DEFINE_string(message, "", "message used in quiesce mode");  // NOLINT for quiesce
+DECLARE_string(label);
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
+DECLARE_string(monitor);  // NOLINT
 
 namespace tateyama::bootstrap {
 
-using namespace tateyama::bootstrap::utils;
-
 const std::string server_name = "tateyama-server";
 const std::size_t shutdown_check_count = 50;
+
+using namespace tateyama::bootstrap::utils;
+
+std::unique_ptr<utils::monitor> monitor_output{};
 
 static bool status_check(proc_mutex::lock_state state, boost::filesystem::path lock_file) {
     auto file_mutex = std::make_unique<proc_mutex>(lock_file, false);
@@ -74,8 +79,9 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
             perror("execvp");
         }
         LOG(ERROR) << "cannot find the location of " << argv0;
-    } else {
-        VLOG(log_trace) << "start " << server_name << ", pid = " << pid;
+        exit(1);
+    } else {  // to output pid to DVLOG(log_trace)
+        DVLOG(log_trace) << "start " << server_name << ", pid = " << pid;
     }
 
     if (need_check) {
@@ -86,51 +92,81 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
         auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
         if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
             usleep(100 * 1000);
-            if (status_check(proc_mutex::lock_state::locked, bst_conf.lock_file())) {
-                return 0;
+            try {
+                if (status_check(proc_mutex::lock_state::locked, bst_conf.lock_file())) {
+                    return 0;
+                }
+                LOG(ERROR) << "cannot invoke a server process";
+                return 1;
+            } catch (std::runtime_error &e) {
+                LOG(ERROR) << e.what();
+                return 2;
             }
-            LOG(ERROR) << "cannot invoke a server process";
-            return 1;
         }
         LOG(ERROR) << "error in create_configuration";
         return 3;
     }
-
     return 0;
 }
 
-int oltp_shutdown_kill(int argc, char* argv[], bool force) {
+int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    if(!FLAGS_monitor.empty() && status_output) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-        std::string str{};
-        if (file_mutex->contents(str)) {
-            if (force) {
-                VLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
-                kill(stoi(str), SIGKILL);
-                unlink(file_mutex->name().c_str());
-                usleep(100 * 1000);
-                return 0;
-            } else {
-                VLOG(log_trace) << "kill (SIGINT) to process " << str;
-                kill(stoi(str), SIGINT);
-                if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
-                    return 0;
+        try {
+            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+            std::string str{};
+            if (file_mutex->contents(str)) {
+                if (force) {
+                    DVLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
+                    kill(stoi(str), SIGKILL);
+                    unlink(file_mutex->name().c_str());
+                    usleep(100 * 1000);
+                    goto normal_return;
+                } else {
+                    DVLOG(log_trace) << "kill (SIGINT) to process " << str;
+                    kill(stoi(str), SIGINT);
+                    if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
+                        goto normal_return;
+                    }
+                    LOG(ERROR) << "failed to shutdown, the server may still be alive";
+                    rc = 1;
+                    goto err_return;
                 }
-                LOG(ERROR) << "failed to shutdown, the server may still be alive";
-                return 1;
+            } else {
+                LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+                rc = 2;
+                goto err_return;
             }
-        } else {
-            LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-            return 2;
+        } catch (std::runtime_error &e) {
+            LOG(ERROR) << e.what();
+            rc = 3;
+            goto err_return;
         }
     }
     LOG(ERROR) << "error in create_configuration";
-    return 3;
+    rc = 4;
+
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
+
+  normal_return:
+    if (monitor_output) {
+        monitor_output->finish(true);
+    }
+    return rc;
 }
 
 int oltp_status(int argc, char* argv[]) {
@@ -138,9 +174,15 @@ int oltp_status(int argc, char* argv[]) {
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    int rc = 0;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
         using state = proc_mutex::lock_state;
         switch (file_mutex->check()) {
         case state::no_file:
@@ -153,10 +195,23 @@ int oltp_status(int argc, char* argv[]) {
             std::cout << "a " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         default:
-            std::cout << "error occured" << std::endl;
+            LOG(ERROR) << "error in proc_mutex check";
+            rc = 1;
+            goto err_return;
         }
+        if (monitor_output) {
+            monitor_output->finish(true);
+        }
+        return rc;
     }
-    return 0;
+    LOG(ERROR) << "error in create_configuration";
+    rc = 2;
+
+  err_return:
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
 }
 
 int start_maintenance_server(int argc, char* argv[], char *argv0) {
