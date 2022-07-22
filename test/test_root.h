@@ -76,6 +76,7 @@ class directory_helper {
         strm_.open(conf_, std::ios_base::out | std::ios_base::trunc);
         strm_ << "[ipc_endpoint]\ndatabase_name=" << prefix_ << "\n\n";
         strm_ << "[stream_endpoint]\nport=" << port_ << "\n\n";
+        strm_ << "[fdw]\nname=" << prefix_ << "\n\n";
         strm_ << "[datastore]\nlog_location=" << abs_path("log")  << "\n";
         strm_.close();
     }
