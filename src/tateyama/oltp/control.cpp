@@ -186,14 +186,23 @@ int oltp_status(int argc, char* argv[]) {
             std::cout << "a " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         default:
-            std::cout << "error occured" << std::endl;
+            LOG(ERROR) << "error in proc_mutex check";
+            rc = 1;
+            goto err_return;
         }
+        if (monitor_output) {
+            monitor_output->finish(true);
+        }
+        return rc;
     }
+    LOG(ERROR) << "error in create_configuration";
+    rc = 2;
 
+  err_return:
     if (monitor_output) {
-        monitor_output->finish(true);
+        monitor_output->finish(false);
     }
-    return rc;
+    return 1;
 }
 
 int start_maintenance_server(int argc, char* argv[], char *argv0) {
