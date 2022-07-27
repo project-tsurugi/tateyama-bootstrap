@@ -13,6 +13,7 @@
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
+  * mpdecimal (see [jogasaki](https://github.com/project-tsurugi/jogasaki#install-steps-for-mpdecimal) for installation instruction.
 * and see *Dockerfile* section
 
 ```sh
