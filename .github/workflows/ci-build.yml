@@ -205,7 +205,7 @@ jobs:
           cd build
           export PATH=$PATH:${GITHUB_WORKSPACE}/.local/bin
           for pid in `ps -ef | grep tateyama-server | grep -v grep | awk '{print $2}'`; do kill $pid; done
-          ctest --verbose -j 100
+          ctest --verbose
 
       - id: Clang-Tidy
         name: Clang-Tidy
