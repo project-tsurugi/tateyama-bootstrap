@@ -13,7 +13,6 @@
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
-  * fpdecimal
 * and see *Dockerfile* section
 
 ```sh

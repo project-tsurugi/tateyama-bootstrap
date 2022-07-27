@@ -58,7 +58,6 @@ find_package(limestone REQUIRED)
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(sharksfin REQUIRED)
-find_package(fpdecimal REQUIRED)
 find_package(Doxygen)
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
@@ -68,6 +67,7 @@ find_package(Boost
         REQUIRED
         )
 find_package(Protobuf REQUIRED)
+find_package(mpdecpp REQUIRED)
 
 if (BUILD_TESTS)
   add_subdirectory(third_party) # should be before enable_testing()
