@@ -78,6 +78,7 @@ TEST_F(restore_test, begin) {
         std::cerr << "cannot oltp backup" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/restore.log")));
     
     FILE *fp;
     command = "wc -l ";

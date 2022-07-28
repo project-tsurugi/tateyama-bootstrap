@@ -48,6 +48,7 @@ TEST_F(start_stop_test, success) {
         std::cerr << "cannot oltp start" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/start.log")));
     
     FILE *fp;
     command = "wc -l ";
@@ -71,6 +72,7 @@ TEST_F(start_stop_test, success) {
         std::cerr << "cannot oltp shutdown" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/shutdown.log")));
 
     command = "wc -l ";
     command += helper_->abs_path("test/shutdown.log");
@@ -101,6 +103,7 @@ TEST_F(start_stop_test, fail) {
         std::cerr << "cannot oltp start" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/start_fail.log")));
     
     FILE *fp;
     command = "grep fail ";

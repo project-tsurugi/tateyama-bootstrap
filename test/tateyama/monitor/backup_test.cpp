@@ -71,6 +71,7 @@ TEST_F(backup_test, begin) {
         std::cerr << "cannot oltp backup" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/backup_create.log")));
     
     command = "grep start ";
     command += helper_->abs_path("test/backup_create.log");

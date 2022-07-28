@@ -42,18 +42,18 @@ public:
     monitor& operator=(monitor&& other) noexcept = delete;
 
     void start() {
-        strm_ << "[ " << TIME_STAMP << time(nullptr)
-              << ", " << KIND_START << " ]" << std::endl;
+        strm_ << "{ " << TIME_STAMP << time(nullptr)
+              << ", " << KIND_START << " }" << std::endl;
         strm_.flush();
     }
     void finish(bool status) {
-        strm_ << "[ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << (status ? "\"success\"" : "\"failure\"" ) << " ]" << std::endl;
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_FINISH << ", " << STATUS << (status ? "\"success\"" : "\"failure\"" ) << " }" << std::endl;
         strm_.flush();
     }
     void progress(float r) {
-        strm_ << "[ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_PROGRESS << ", " << PROGRESS << r << " ]" << std::endl;
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_PROGRESS << ", " << PROGRESS << r << " }" << std::endl;
         strm_.flush();
     }
 
