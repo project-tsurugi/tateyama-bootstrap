@@ -56,6 +56,9 @@ private:
 
 TEST_F(backup_test, begin) {
     std::string command;
+    FILE *fp;
+    int l;
+    int rv;
     
     command = "oltp backup create ";
     command += helper_->abs_path("backup");
@@ -68,18 +71,44 @@ TEST_F(backup_test, begin) {
         std::cerr << "cannot oltp backup" << std::endl;
         FAIL();
     }
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/backup_create.log")));
     
-    FILE *fp;
-    command = "wc -l ";
+    command = "grep start ";
     command += helper_->abs_path("test/backup_create.log");
+    command += " | wc -l ";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
         std::cerr << "cannot wc" << std::endl;
     }
 
-    int l;
-    auto rv = fscanf(fp, "%d", &l);
-    EXPECT_EQ(l, 2);
+    rv = fscanf(fp, "%d", &l);
+    EXPECT_EQ(l, 1);
+    EXPECT_EQ(rv, 1);
+
+
+    command = "grep finish ";
+    command += helper_->abs_path("test/backup_create.log");
+    command += " | wc -l ";
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot wc" << std::endl;
+    }
+
+    rv = fscanf(fp, "%d", &l);
+    EXPECT_EQ(l, 1);
+    EXPECT_EQ(rv, 1);
+
+
+    command = "grep progress ";
+    command += helper_->abs_path("test/backup_create.log");
+    command += " | wc -l ";
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot wc" << std::endl;
+    }
+
+    rv = fscanf(fp, "%d", &l);
+    EXPECT_TRUE(l >= 1);
     EXPECT_EQ(rv, 1);
 }
 

@@ -112,9 +112,23 @@ int oltp_backup_create(int argc, char* argv[]) {
             std::int64_t backup_id = rb.success().id();
 
             auto location = boost::filesystem::path(path_to_backup);
+
+            std::size_t total_bytes = 0;
+            if(!FLAGS_monitor.empty()) {
+                for (auto&& e : rb.success().files()) {
+                    auto src = boost::filesystem::path(e);
+                    total_bytes += boost::filesystem::file_size(src);
+                }
+            }
+
+            std::size_t completed_bytes = 0;
             for (auto&& e : rb.success().files()) {
                 auto src = boost::filesystem::path(e);
                 boost::filesystem::copy_file(src, location / src.filename());
+                if(!FLAGS_monitor.empty()) {
+                    completed_bytes += boost::filesystem::file_size(src);
+                    monitor_output->progress((float) completed_bytes / (float) total_bytes);
+                }
             }
 
             ::tateyama::proto::datastore::request::Request requestEnd{};

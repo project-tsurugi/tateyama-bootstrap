@@ -19,6 +19,13 @@
 #include <string_view>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 class directory_helper {
     constexpr static std::string_view base = "/tmp/";  // NOLINT
@@ -105,3 +112,28 @@ class directory_helper {
 
     std::ofstream strm_;
 };
+
+static bool validate_json(boost::filesystem::path file)
+{
+    bool result = true;
+    boost::filesystem::ifstream strm;
+    std::stringstream ss;
+    std::string line;
+
+    strm.open(file, std::ios_base::in);
+    while (getline(strm, line)){
+        ss << line;
+        std::cout << ss.str() << std::endl;
+        try {
+            boost::property_tree::ptree pt;
+            boost::property_tree::read_json(ss, pt);
+        } catch (boost::property_tree::json_parser_error) {
+            result = false;
+        }
+        ss.str("");
+        ss.clear(std::stringstream::goodbit);
+    }
+    strm.close();
+
+    return result;
+}

@@ -25,7 +25,9 @@ class monitor {
     constexpr static std::string_view TIME_STAMP = "\"timestamp\": ";  // NOLINT
     constexpr static std::string_view KIND_START = "\"kind\": \"start\"";  // NOLINT
     constexpr static std::string_view KIND_FINISH = "\"kind\": \"finish\"";  // NOLINT
+    constexpr static std::string_view KIND_PROGRESS = "\"kind\": \"progress\"";  // NOLINT
     constexpr static std::string_view STATUS = "\"status\": ";  // NOLINT
+    constexpr static std::string_view PROGRESS = "\"progress\": ";  // NOLINT
 public:
     explicit monitor(std::string& file_name) {
         strm_.open(file_name, std::ios_base::out | std::ios_base::trunc);
@@ -40,13 +42,18 @@ public:
     monitor& operator=(monitor&& other) noexcept = delete;
 
     void start() {
-        strm_ << "[ " << TIME_STAMP << time(nullptr)
-              << ", " << KIND_START << " ]" << std::endl;
+        strm_ << "{ " << TIME_STAMP << time(nullptr)
+              << ", " << KIND_START << " }" << std::endl;
         strm_.flush();
     }
     void finish(bool status) {
-        strm_ << "[ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << (status ? "\"success\"" : "\"failure\"" ) << " ]" << std::endl;
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_FINISH << ", " << STATUS << (status ? "\"success\"" : "\"failure\"" ) << " }" << std::endl;
+        strm_.flush();
+    }
+    void progress(float r) {
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_PROGRESS << ", " << PROGRESS << r << " }" << std::endl;
         strm_.flush();
     }
 
