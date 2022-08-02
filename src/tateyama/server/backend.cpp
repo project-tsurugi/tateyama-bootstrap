@@ -18,7 +18,7 @@
 #include <exception>
 #include <iostream>
 #include <chrono>
-#include <signal.h>
+#include <csignal>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -177,19 +177,18 @@ int backend_main(int argc, char **argv) {
     }
 
     // wait for signal to terminate this
-    int signo;
+    int signo{};
     sigset_t ss;
     sigemptyset(&ss);
     do {
         if (auto ret = sigaddset(&ss, SIGINT); ret != 0) {
             LOG(ERROR) << "fail to sigaddset";
         }
-        if (auto ret = sigprocmask(SIG_BLOCK, &ss, NULL); ret != 0) {
+        if (auto ret = sigprocmask(SIG_BLOCK, &ss, nullptr); ret != 0) {
             LOG(ERROR) << "fail to pthread_sigmask";
         }
         if (auto ret = sigwait(&ss, &signo); ret == 0) { // シグナルを待つ
-            switch(signo) {
-            case SIGINT:
+            if (signo == SIGINT) {
                 // termination process
                 LOG(INFO) << "exiting";
                 sv.shutdown();
