@@ -58,14 +58,14 @@ namespace tateyama::bootstrap {
 
 using namespace tateyama::bootstrap::utils;
 
-std::unique_ptr<utils::monitor> monitor_output{};
-
 // should be in sync one in ipc_provider/steram_provider
 struct endpoint_context {
     std::unordered_map<std::string, std::string> options_{};
 };
 
 int backend_main(int argc, char **argv) {
+    std::unique_ptr<utils::monitor> monitor_output{};
+
     google::InitGoogleLogging("tateyama_database_server");
 
     // command arguments

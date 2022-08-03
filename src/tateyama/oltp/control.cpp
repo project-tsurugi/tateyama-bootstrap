@@ -46,8 +46,6 @@ const std::size_t shutdown_check_count = 50;
 
 using namespace tateyama::bootstrap::utils;
 
-std::unique_ptr<utils::monitor> monitor_output{};
-
 static bool status_check(proc_mutex::lock_state state, const boost::filesystem::path& lock_file) {
     auto file_mutex = std::make_unique<proc_mutex>(lock_file, false);
     for (size_t i = 0; i < shutdown_check_count; i++) {
@@ -111,6 +109,8 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
 }
 
 int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
+    std::unique_ptr<utils::monitor> monitor_output{};
+
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -167,6 +167,8 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
 }
 
 int oltp_status(int argc, char* argv[]) {
+    std::unique_ptr<utils::monitor> monitor_output{};
+
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -183,12 +185,24 @@ int oltp_status(int argc, char* argv[]) {
         using state = proc_mutex::lock_state;
         switch (file_mutex->check()) {
         case state::no_file:
+            if (monitor_output) {
+                monitor_output->status(tateyama::bootstrap::utils::status::stop);
+                break;
+            }
             std::cout << "no " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         case state::not_locked:
+            if (monitor_output) {
+                monitor_output->status(tateyama::bootstrap::utils::status::disconnected);
+                break;
+            }
             std::cout << "not_locked, may be  intermediate state (in the middle of running or stopping)" << std::endl;
             break;
         case state::locked:
+            if (monitor_output) {
+                monitor_output->status(tateyama::bootstrap::utils::status::running);
+                break;
+            }
             std::cout << "a " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         default:
