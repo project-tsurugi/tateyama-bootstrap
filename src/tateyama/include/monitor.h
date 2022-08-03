@@ -21,13 +21,41 @@
 
 namespace tateyama::bootstrap::utils {
 
+enum class status : std::int64_t {
+    stop = 0,
+    starting = 1,
+    running = 2,
+    shutdown = 3,
+
+    disconnected = -1,
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(status value) noexcept {
+    using namespace std::string_view_literals;
+    switch (value) {
+        case status::stop: return "stop"sv;
+        case status::starting: return "starting"sv;
+        case status::running: return "running"sv;
+        case status::shutdown: return "shutdown"sv;
+        case status::disconnected: return "disconnected"sv;
+    }
+    std::abort();
+}
+
 class monitor {
-    constexpr static std::string_view TIME_STAMP = "\"timestamp\": ";  // NOLINT
-    constexpr static std::string_view KIND_START = "\"kind\": \"start\"";  // NOLINT
-    constexpr static std::string_view KIND_FINISH = "\"kind\": \"finish\"";  // NOLINT
-    constexpr static std::string_view KIND_PROGRESS = "\"kind\": \"progress\"";  // NOLINT
-    constexpr static std::string_view STATUS = "\"status\": ";  // NOLINT
-    constexpr static std::string_view PROGRESS = "\"progress\": ";  // NOLINT
+    constexpr static std::string_view TIME_STAMP = "\"timestamp\": ";
+    constexpr static std::string_view KIND_START = "\"kind\": \"start\"";
+    constexpr static std::string_view KIND_FINISH = "\"kind\": \"finish\"";
+    constexpr static std::string_view KIND_PROGRESS = "\"kind\": \"progress\"";
+    constexpr static std::string_view KIND_DATA = "\"kind\": \"data\"";
+    constexpr static std::string_view PROGRESS = "\"progress\": ";
+    constexpr static std::string_view FORMAT_STATUS = "\"format\" : \"status\"";
+    constexpr static std::string_view STATUS = "\"status\": \"";
 public:
     explicit monitor(std::string& file_name) {
         strm_.open(file_name, std::ios_base::out | std::ios_base::trunc);
@@ -48,12 +76,17 @@ public:
     }
     void finish(bool status) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << (status ? "\"success\"" : "\"failure\"" ) << " }" << std::endl;
+              << KIND_FINISH << ", " << STATUS << (status ? "success" : "failure" ) << "\" }" << std::endl;
         strm_.flush();
     }
     void progress(float r) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
               << KIND_PROGRESS << ", " << PROGRESS << r << " }" << std::endl;
+        strm_.flush();
+    }
+    void status(status s) {
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(s) << "\" }" << std::endl;
         strm_.flush();
     }
 
