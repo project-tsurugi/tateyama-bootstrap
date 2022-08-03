@@ -33,7 +33,7 @@ DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
 
 namespace tateyama::bootstrap {
 
-static auto pre_defined_auth_file = boost::filesystem::path("/tmp/auth");  // FIXME specify concrete file
+constexpr std::string_view pre_defined_auth_file_name = "/tmp/auth";  // FIXME specify concrete file
 
 void auth_options() {
     if (!FLAGS_auth) {
@@ -57,6 +57,7 @@ void auth_options() {
         DVLOG(log_trace) << "auth token fron TSURUGI_AUTH_TOKEN: " << token;
         return;
     }
+    const auto pre_defined_auth_file = boost::filesystem::path(std::string(pre_defined_auth_file_name));
     if (boost::filesystem::exists(pre_defined_auth_file)) {
         boost::filesystem::ifstream istrm{};
         istrm.open(pre_defined_auth_file, std::ios_base::in);

@@ -41,14 +41,14 @@ DECLARE_string(monitor);  // NOLINT
 
 namespace tateyama::bootstrap {
 
-const std::string server_name = "tateyama-server";
+constexpr std::string_view server_name_string = "tateyama-server";
 const std::size_t shutdown_check_count = 50;
 
 using namespace tateyama::bootstrap::utils;
 
 std::unique_ptr<utils::monitor> monitor_output{};
 
-static bool status_check(proc_mutex::lock_state state, boost::filesystem::path lock_file) {
+static bool status_check(proc_mutex::lock_state state, const boost::filesystem::path& lock_file) {
     auto file_mutex = std::make_unique<proc_mutex>(lock_file, false);
     for (size_t i = 0; i < shutdown_check_count; i++) {
         usleep(100 * 1000);
@@ -61,6 +61,7 @@ static bool status_check(proc_mutex::lock_state state, boost::filesystem::path l
 
 
 int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
+    std::string server_name(server_name_string);
     if (auto pid = fork(); pid == 0) {
         boost::filesystem::path path_for_this{};
         if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
@@ -131,40 +132,36 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
                     kill(stoi(str), SIGKILL);
                     unlink(file_mutex->name().c_str());
                     usleep(100 * 1000);
-                    goto normal_return;
-                } else {
-                    DVLOG(log_trace) << "kill (SIGINT) to process " << str;
-                    kill(stoi(str), SIGINT);
-                    if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
-                        goto normal_return;
+                    if (monitor_output) {
+                        monitor_output->finish(true);
                     }
-                    LOG(ERROR) << "failed to shutdown, the server may still be alive";
-                    rc = 1;
-                    goto err_return;
+                    return rc;
                 }
+                DVLOG(log_trace) << "kill (SIGINT) to process " << str;
+                kill(stoi(str), SIGINT);
+                if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
+                    if (monitor_output) {
+                        monitor_output->finish(true);
+                    }
+                    return rc;
+                }
+                LOG(ERROR) << "failed to shutdown, the server may still be alive";
+                rc = 1;
             } else {
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
                 rc = 2;
-                goto err_return;
             }
         } catch (std::runtime_error &e) {
             LOG(ERROR) << e.what();
             rc = 3;
-            goto err_return;
         }
+    } else {
+        LOG(ERROR) << "error in create_configuration";
+        rc = 4;
     }
-    LOG(ERROR) << "error in create_configuration";
-    rc = 4;
 
-  err_return:
     if (monitor_output) {
         monitor_output->finish(false);
-    }
-    return rc;
-
-  normal_return:
-    if (monitor_output) {
-        monitor_output->finish(true);
     }
     return rc;
 }
@@ -186,28 +183,29 @@ int oltp_status(int argc, char* argv[]) {
         using state = proc_mutex::lock_state;
         switch (file_mutex->check()) {
         case state::no_file:
-            std::cout << "no " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
+            std::cout << "no " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         case state::not_locked:
             std::cout << "not_locked, may be  intermediate state (in the middle of running or stopping)" << std::endl;
             break;
         case state::locked:
-            std::cout << "a " << server_name << " is running on " << bst_conf.lock_file().string() << std::endl;
+            std::cout << "a " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
             break;
         default:
             LOG(ERROR) << "error in proc_mutex check";
             rc = 1;
-            goto err_return;
         }
-        if (monitor_output) {
-            monitor_output->finish(true);
+        if (rc == 0) {
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return 0;
         }
-        return rc;
+    } else {
+        LOG(ERROR) << "error in create_configuration";
+        rc = 2;
     }
-    LOG(ERROR) << "error in create_configuration";
-    rc = 2;
 
-  err_return:
     if (monitor_output) {
         monitor_output->finish(false);
     }
