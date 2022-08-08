@@ -42,6 +42,7 @@ DECLARE_string(monitor);  // NOLINT
 namespace tateyama::bootstrap {
 
 constexpr std::string_view server_name_string = "tateyama-server";
+constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
 const std::size_t shutdown_check_count = 50;
 
 using namespace tateyama::bootstrap::utils;
@@ -125,31 +126,37 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         try {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-            std::string str{};
-            if (file_mutex->contents(str)) {
-                if (force) {
-                    DVLOG(log_trace) << "kill (SIGKILL) to process " << str << " and remove " << file_mutex->name();
-                    kill(stoi(str), SIGKILL);
-                    unlink(file_mutex->name().c_str());
+            if (force) {
+                auto pid = file_mutex->pid(false);
+                unlink(file_mutex->name().c_str());
+                if (pid != 0) {
+                    DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name();
+                    kill(pid, SIGKILL);
                     usleep(100 * 1000);
                     if (monitor_output) {
                         monitor_output->finish(true);
                     }
                     return rc;
                 }
-                DVLOG(log_trace) << "kill (SIGINT) to process " << str;
-                kill(stoi(str), SIGINT);
-                if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
-                    if (monitor_output) {
-                        monitor_output->finish(true);
-                    }
-                    return rc;
-                }
-                LOG(ERROR) << "failed to shutdown, the server may still be alive";
-                rc = 1;
-            } else {
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
                 rc = 2;
+            } else {
+                auto pid = file_mutex->pid(true);
+                if (pid != 0) {
+                    DVLOG(log_trace) << "kill (SIGINT) to process " << pid;
+                    kill(pid, SIGINT);
+                    if (status_check(proc_mutex::lock_state::no_file, bst_conf.lock_file())) {
+                        if (monitor_output) {
+                            monitor_output->finish(true);
+                        }
+                        return rc;
+                    }
+                    LOG(ERROR) << "failed to shutdown, the server may still be alive";
+                    rc = 1;
+                } else {
+                    LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+                    rc = 2;
+                }
             }
         } catch (std::runtime_error &e) {
             LOG(ERROR) << e.what();
@@ -189,22 +196,39 @@ int oltp_status(int argc, char* argv[]) {
                 monitor_output->status(tateyama::bootstrap::utils::status::stop);
                 break;
             }
-            std::cout << "no " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
-            break;
-        case state::not_locked:
-            if (monitor_output) {
-                monitor_output->status(tateyama::bootstrap::utils::status::disconnected);
-                break;
-            }
-            std::cout << "not_locked, may be  intermediate state (in the middle of running or stopping)" << std::endl;
+            std::cout << server_name_string_for_status << " is inactive" << std::endl;
             break;
         case state::locked:
             if (monitor_output) {
                 monitor_output->status(tateyama::bootstrap::utils::status::running);
                 break;
             }
-            std::cout << "a " << server_name_string << " is running on " << bst_conf.lock_file().string() << std::endl;
+            std::cout << server_name_string_for_status << " is running" << std::endl;
             break;
+        case state::not_locked:  // this is an error that makes it difficult to understand the situation.
+        {
+            if (monitor_output) {
+                monitor_output->status(tateyama::bootstrap::utils::status::disconnected);
+                break;
+            }
+            std::stringstream ss;
+            FILE *fp;
+            ss << "ps -ef | grep " << server_name_string << " | grep " << file_mutex->pid(false) << " | grep -v grep | wc -l";
+            if(fp = popen(ss.str().c_str(), "r"); fp == nullptr){
+                std::cout << "the service is unknown" << std::endl;
+                rc = 3;
+            } else {
+                int l;
+                if (fscanf(fp, "%d", &l) != 1) {
+                    std::cout << "the service is unknown" << std::endl;
+                    rc = 4;
+                } else {
+                    std::cout << server_name_string_for_status <<
+                        ((l == 0) ? " is booting up" : " is shutting down") << std::endl;
+                }
+            }
+            break;
+        }
         default:
             LOG(ERROR) << "error in proc_mutex check";
             rc = 1;

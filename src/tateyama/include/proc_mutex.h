@@ -35,9 +35,9 @@ class proc_mutex {
         error,
     };
     
-    proc_mutex(boost::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
+    proc_mutex(const boost::filesystem::path& lock_file, bool create_file = true, bool throw_exception = true)
         : lock_file_(lock_file), create_file_(create_file) {
-        if (!create_file && throw_exception && !boost::filesystem::exists(lock_file)) {
+        if (!create_file_ && throw_exception && !boost::filesystem::exists(lock_file_)) {
             throw std::runtime_error("the lock file does not exist");
         }
     }
@@ -80,16 +80,6 @@ class proc_mutex {
     [[nodiscard]] inline std::string name() const {
         return lock_file_.generic_string();
     }
-    [[nodiscard]] bool contents(std::string& str) {
-        if (check() != lock_state::locked) {
-            return false;
-        }
-        std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
-        str.resize(sz, '\0');
-        boost::filesystem::ifstream file(lock_file_);
-        file.read(&str[0], sz);
-        return true;
-    }
     [[nodiscard]] lock_state check() {
         boost::system::error_code error;
         const bool result = boost::filesystem::exists(lock_file_, error);
@@ -108,6 +98,13 @@ class proc_mutex {
         }
         return lock_state::locked;
     }
+    [[nodiscard]] int pid(bool do_check = true) {
+        std::string s;
+        if (contents(s, do_check)) {
+            return stoi(s);
+        }
+        return 0;
+    }
     [[nodiscard]] inline constexpr std::string_view to_string_view(lock_state value) noexcept {
         using namespace std::string_view_literals;
         using state = lock_state;
@@ -121,9 +118,20 @@ class proc_mutex {
     }
     
 private:
-    boost::filesystem::path lock_file_;
+    const boost::filesystem::path lock_file_;
     int fd_{};
-    bool create_file_;
+    const bool create_file_;
+
+    [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
+        if (do_check && check() != lock_state::locked) {
+            return false;
+        }
+        std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
+        str.resize(sz, '\0');
+        boost::filesystem::ifstream file(lock_file_);
+        file.read(&str[0], sz);
+        return true;
+    }
 };
 
 }  // tateyama::bootstrap::utils;
