@@ -17,12 +17,21 @@
 
 namespace tateyama::bootstrap {
 
+/**
+ * @brief return code
+ */
+enum return_code {
+    ok = 0,
+    err = 1,
+};
+
     int oltp_start(int argc, char* argv[], char *argv0, bool need_check);
     int oltp_status(int argc, char* argv[]);
     int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output = true);
     int start_maintenance_server(int argc, char* argv[], char *argv0);
 
 } //  tateyama::bootstrap
+
 
 namespace tateyama::bootstrap::backup {
 

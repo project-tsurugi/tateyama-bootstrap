@@ -121,7 +121,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
         monitor_output->start();
     }
 
-    int rc = 0;
+    int rc = tateyama::bootstrap::return_code::ok;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         try {
@@ -139,7 +139,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
                     return rc;
                 }
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-                rc = 2;
+                rc = tateyama::bootstrap::return_code::err;
             } else {
                 auto pid = file_mutex->pid(true);
                 if (pid != 0) {
@@ -152,19 +152,19 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
                         return rc;
                     }
                     LOG(ERROR) << "failed to shutdown, the server may still be alive";
-                    rc = 1;
+                    rc = tateyama::bootstrap::return_code::err;
                 } else {
                     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-                    rc = 2;
+                    rc = tateyama::bootstrap::return_code::err;
                 }
             }
         } catch (std::runtime_error &e) {
             LOG(ERROR) << e.what();
-            rc = 3;
+            rc = tateyama::bootstrap::return_code::err;
         }
     } else {
         LOG(ERROR) << "error in create_configuration";
-        rc = 4;
+        rc = tateyama::bootstrap::return_code::err;
     }
 
     if (monitor_output) {
@@ -185,7 +185,7 @@ int oltp_status(int argc, char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = 0;
+    int rc = tateyama::bootstrap::return_code::ok;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
@@ -216,12 +216,12 @@ int oltp_status(int argc, char* argv[]) {
             ss << "ps -ef | grep " << server_name_string << " | grep " << file_mutex->pid(false) << " | grep -v grep | wc -l";
             if(fp = popen(ss.str().c_str(), "r"); fp == nullptr){
                 std::cout << "the service is unknown" << std::endl;
-                rc = 3;
+                rc = tateyama::bootstrap::return_code::err;
             } else {
                 int l;
                 if (fscanf(fp, "%d", &l) != 1) {
                     std::cout << "the service is unknown" << std::endl;
-                    rc = 4;
+                    rc = tateyama::bootstrap::return_code::err;
                 } else {
                     std::cout << server_name_string_for_status <<
                         ((l == 0) ? " is booting up" : " is shutting down") << std::endl;
@@ -231,17 +231,17 @@ int oltp_status(int argc, char* argv[]) {
         }
         default:
             LOG(ERROR) << "error in proc_mutex check";
-            rc = 1;
+            rc = tateyama::bootstrap::return_code::err;
         }
-        if (rc == 0) {
+        if (rc == tateyama::bootstrap::return_code::ok) {
             if (monitor_output) {
                 monitor_output->finish(true);
             }
-            return 0;
+            return rc;
         }
     } else {
         LOG(ERROR) << "error in create_configuration";
-        rc = 2;
+        rc = tateyama::bootstrap::return_code::err;
     }
 
     if (monitor_output) {
