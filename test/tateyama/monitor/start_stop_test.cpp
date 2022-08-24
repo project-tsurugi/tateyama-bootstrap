@@ -99,10 +99,7 @@ TEST_F(start_stop_test, fail) {
     command += " --monitor ";
     command += helper_->abs_path("test/start_fail.log");
     std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
-        FAIL();
-    }
+    EXPECT_NE(system(command.c_str()), 0);
     EXPECT_TRUE(validate_json(helper_->abs_path("test/start_fail.log")));
     
     FILE *fp;
