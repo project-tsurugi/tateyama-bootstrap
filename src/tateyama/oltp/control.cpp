@@ -150,6 +150,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                 }
 
                 // wait for pid set
+                bool checked = false;
                 for (size_t i = n; i < check_count; i++) {
                     auto pid = status_info->pid();
                     if (pid == 0) {
@@ -164,9 +165,12 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                     }
                     LOG(ERROR) << "another " << server_name_string_for_status << " is running";
                     rc = tateyama::bootstrap::return_code::err;
+                    checked = true;
                 }
-                LOG(ERROR) << "cannot confirm the server process within the specified time";
-                rc = tateyama::bootstrap::return_code::err;
+                if (!checked) {
+                    LOG(ERROR) << "cannot confirm the server process within the specified time";
+                    rc = tateyama::bootstrap::return_code::err;
+                }
             } else {
                 if (check_result == init) {
                     LOG(ERROR) << "cannot invoke a server process";
