@@ -27,7 +27,7 @@ namespace tateyama::bootstrap::utils {
 
 static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");
 static const boost::filesystem::path PID_DIR = boost::filesystem::path("/tmp");
-static const std::string_view  PID_FILE_NAME = "tsurugi";  // NOLINT
+static const std::string_view  PID_FILE_NAME = "tsurugi";
 static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
@@ -45,7 +45,8 @@ public:
             }
         }
         std::string pid_file_name(PID_FILE_NAME);
-        pid_file_name += suffix(boost::filesystem::canonical(conf_file_).string());
+        pid_file_name += "-";
+        pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
         pid_file_name += ".pid";
         lock_file_ = PID_DIR / boost::filesystem::path(pid_file_name);
     }
@@ -58,6 +59,9 @@ public:
     boost::filesystem::path lock_file() {
         return lock_file_;
     }
+    std::string digest() {
+        return digest(boost::filesystem::canonical(conf_file_).string());
+    }
 
 private:
     boost::filesystem::path conf_file_;
@@ -65,27 +69,27 @@ private:
     std::shared_ptr<tateyama::api::configuration::whole> configuration_;
     bool property_file_absent_{};
 
-    std::string suffix(const std::string& path_string) {
+    std::string digest(const std::string& path_string) {
         MD5_CTX mdContext;
         unsigned int len = path_string.length();
-        std::uint8_t digest[MD5_DIGEST_LENGTH];
+        std::array<unsigned char, MD5_DIGEST_LENGTH> digest{};
 
-        char s[len + 1];
-        path_string.copy(s, len + 1);
-        s[len] = '\0';
+        std::string s{};
+        s.resize(len + 1);
+        path_string.copy(s.data(), len + 1);
+        s.at(len) = '\0';
         MD5_Init(&mdContext);
-        MD5_Update (&mdContext, reinterpret_cast<unsigned char*>(s), len);
-        MD5_Final(digest, &mdContext);
+        MD5_Update (&mdContext, s.data(), len);
+        MD5_Final(digest.data(), &mdContext);
 
         std::string digest_string{};
-        digest_string.resize((MD5_DIGEST_LENGTH * 2) + 1);
+        digest_string.resize(MD5_DIGEST_LENGTH * 2);
         auto it = digest_string.begin();
-        *(it++) = '-';
-        std::cout << std::hex;
-        for(std::size_t i = 0; i < MD5_DIGEST_LENGTH; i++) {
-            std::uint32_t n = (digest[i] >> 8) & 0xf;
+        for(unsigned char c : digest) {
+            std::uint32_t n = c & 0xf0U;
+            n >>= 8U;
             *(it++) = (n < 0xa) ? ('0' + n) : ('a' + (n - 0xa));
-            n = digest[i] & 0xf;
+            n = c & 0xfU;
             *(it++) = (n < 0xa) ? ('0' + n) : ('a' + (n - 0xa));
         }
         return digest_string;

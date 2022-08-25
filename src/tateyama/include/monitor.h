@@ -23,11 +23,12 @@ namespace tateyama::bootstrap::utils {
 
 enum class status : std::int64_t {
     stop = 0,
-    starting = 1,
-    running = 2,
-    shutdown = 3,
+    ready = 1,
+    activated = 2,
+    deactivating = 3,
+    deactivated = 4,
 
-    disconnected = -1,
+    unknown = -1,
 };
 
 /**
@@ -38,11 +39,12 @@ enum class status : std::int64_t {
 [[nodiscard]] constexpr inline std::string_view to_string_view(status value) noexcept {
     using namespace std::string_view_literals;
     switch (value) {
-        case status::stop: return "stop"sv;
-        case status::starting: return "starting"sv;
-        case status::running: return "running"sv;
-        case status::shutdown: return "shutdown"sv;
-        case status::disconnected: return "disconnected"sv;
+    case status::stop:return "stop"sv;
+    case status::ready: return "starting"sv;
+    case status::activated: return "running"sv;
+    case status::deactivating: return "shutdown"sv;
+    case status::deactivated: return "stop"sv;  // tateyama-server will exit as soon as status is set to deactivated.
+    case status::unknown: return "unknown"sv;
     }
     std::abort();
 }

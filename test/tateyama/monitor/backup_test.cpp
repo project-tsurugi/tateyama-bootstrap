@@ -27,10 +27,12 @@ public:
     
         command = "oltp start --conf ";
         command += helper_->conf_file_path();
+        std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
             std::cerr << "cannot oltp start" << std::endl;
             FAIL();
         }
+        usleep(100 * 1000);
     }
 
     virtual void TearDown() {

@@ -123,7 +123,6 @@ static bool validate_json(boost::filesystem::path file)
     strm.open(file, std::ios_base::in);
     while (getline(strm, line)){
         ss << line;
-        std::cout << ss.str() << std::endl;
         try {
             boost::property_tree::ptree pt;
             boost::property_tree::read_json(ss, pt);
