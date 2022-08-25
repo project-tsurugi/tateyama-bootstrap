@@ -70,7 +70,7 @@ static bool status_check(proc_mutex::lock_state state, const boost::filesystem::
 
 int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
     std::string server_name(server_name_string);
-    pid_t child_pid;
+    pid_t child_pid = 0;
     if (child_pid = fork(); child_pid == 0) {
         boost::filesystem::path path_for_this{};
         if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
@@ -127,13 +127,13 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                     }
                 }
                 if (file_mutex->check() == proc_mutex::lock_state::locked) {
-                    if (auto pid = file_mutex->pid(); pid == 0) {
+                    auto pid = file_mutex->pid(); 
+                    if (pid == 0) {
                         continue;
-                    } else {
-                        check_result = (child_pid == pid) ? ok : another;
-                        n = i;
-                        break;
                     }
+                    check_result = (child_pid == pid) ? ok : another;
+                    n = i;
+                    break;
                 }
                 usleep(sleep_time_unit * 5 * 1000);
             }
@@ -151,20 +151,19 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
 
                 // wait for pid set
                 for (size_t i = n; i < check_count; i++) {
-                    if (pid_t pid = status_info->pid(); pid == 0) {
+                    auto pid = status_info->pid();
+                    if (pid == 0) {
                         usleep(sleep_time_unit * 1000);
                         continue;
-                    } else {
-                        if (child_pid == pid) {
-                            if (monitor_output) {
-                                monitor_output->finish(true);
-                            }
-                            return tateyama::bootstrap::return_code::ok;
-                        } else {
-                            LOG(ERROR) << "another " << server_name_string_for_status << " is running";
-                            rc = tateyama::bootstrap::return_code::err;
-                        }
                     }
+                    if (child_pid == pid) {
+                        if (monitor_output) {
+                            monitor_output->finish(true);
+                        }
+                        return tateyama::bootstrap::return_code::ok;
+                    }
+                    LOG(ERROR) << "another " << server_name_string_for_status << " is running";
+                    rc = tateyama::bootstrap::return_code::err;
                 }
                 LOG(ERROR) << "cannot confirm the server process within the specified time";
                 rc = tateyama::bootstrap::return_code::err;

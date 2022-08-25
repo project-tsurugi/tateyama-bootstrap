@@ -52,7 +52,7 @@ public:
             return false;
         }
         resource_status_memory_ = std::make_unique<tateyama::status_info::resource_status_memory>(*segment_, false);
-        return resource_status_memory_ != nullptr;
+        return resource_status_memory_.get() != nullptr;
     }
 
     [[nodiscard]] pid_t pid() const {
