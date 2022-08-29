@@ -43,8 +43,8 @@ enum class status : std::int64_t {
     case status::ready: return "starting"sv;
     case status::activated: return "running"sv;
     case status::deactivating: return "shutdown"sv;
-    case status::deactivated: return "stop"sv;  // tateyama-server will exit as soon as status is set to deactivated.
-    case status::unknown: return "unknown"sv;
+    case status::deactivated: return "shutdown"sv;
+    case status::unknown: return "disconnected"sv;
     }
     std::abort();
 }
