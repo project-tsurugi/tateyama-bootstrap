@@ -25,9 +25,6 @@
 
 #include <tateyama/framework/server.h>
 #include <tateyama/status/resource/bridge.h>
-#include <tateyama/api/server/service.h>
-#include <tateyama/api/endpoint/service.h>
-#include <tateyama/api/endpoint/provider.h>
 
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -72,14 +69,12 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     // configuration
-    auto env = std::make_shared<tateyama::api::environment>();
     auto bst_conf = bootstrap_configuration(FLAGS_conf);
     auto conf = bst_conf.create_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
-    env->configuration(conf);
 
     // mutex
     auto mutex = std::make_unique<proc_mutex>(bst_conf.lock_file());
