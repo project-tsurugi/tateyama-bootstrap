@@ -43,10 +43,7 @@ public:
 
     template <typename T>
     std::optional<T> send(::tateyama::proto::datastore::request::Request& request) {
-        auto box = wire_.get_response_box();
-        if (box == nullptr) {
-            return std::nullopt;
-        }
+        auto& response_wire = wire_.get_response_wire();
 
         std::stringstream ss{};
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
@@ -59,9 +56,12 @@ public:
         wire_.write(ss.str());
         wire_.flush();
 
-        auto res = box->recv();
+        response_wire.await();
+        std::string res_message{};
+        res_message.resize(response_wire.get_length());
+        response_wire.read(res_message.data());
         ::tateyama::proto::framework::response::Header header{};
-        google::protobuf::io::ArrayInputStream in{res.first, static_cast<int>(res.second)};
+        google::protobuf::io::ArrayInputStream in{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
             return std::nullopt;
         }
