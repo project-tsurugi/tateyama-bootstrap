@@ -38,18 +38,23 @@ public:
                 throw std::runtime_error(msg.c_str());
             }
         }
-        std::pair<char*, std::size_t> get_chunk() {
+        std::string_view get_chunk() {
+            if (wrap_around_.data()) {
+                auto rv = wrap_around_;
+                wrap_around_ = std::string_view(nullptr, 0);
+                return rv;
+            }
             if (current_wire_ == nullptr) {
                 current_wire_ = active_wire();
             }
             if (current_wire_ != nullptr) {
-                return current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_));
+                return current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), wrap_around_);
             }
-            return std::pair<char*, std::size_t>(nullptr, 0);
+            return std::string_view(nullptr, 0);
         }
-        void dispose(std::size_t length) {
+        void dispose() {
             if (current_wire_ != nullptr) {
-                current_wire_->dispose(length);
+                current_wire_->dispose(current_wire_->get_bip_address(managed_shm_ptr_));
                 current_wire_ = nullptr;
                 return;
             }
@@ -70,6 +75,7 @@ public:
         boost::interprocess::managed_shared_memory* managed_shm_ptr_;
         std::string rsw_name_;
         shm_resultset_wires* shm_resultset_wires_{};
+        std::string_view wrap_around_{};
         //   for client
         shm_resultset_wire* current_wire_{};
     };
@@ -95,9 +101,6 @@ public:
         void flush(message_header::index_type index) {
             wire_->flush(bip_buffer_, index);
         }
-        void read(char* to, std::size_t msg_len) {
-            wire_->read(to, bip_buffer_, msg_len);
-        }
         void disconnect() {
             wire_->brand_new();
             wire_->flush(bip_buffer_, message_header::not_use);
@@ -108,16 +111,44 @@ public:
         char* bip_buffer_{};
     };
 
+    class response_wire_container {
+    public:
+        response_wire_container() = default;
+        response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) : wire_(wire), bip_buffer_(bip_buffer) {};
+        response_header await() {
+            return wire_->await(bip_buffer_);
+        }
+        response_header::length_type get_length() const {
+            return wire_->get_length();
+        }
+        response_header::index_type get_idx() const {
+            return wire_->get_idx();
+        }
+        response_header::msg_type get_type() const {
+            return wire_->get_type();
+        }
+        void read(char* to) {
+            wire_->read(to, bip_buffer_);
+        }
+        void close() {
+            wire_->close();
+        }
+
+    private:
+        unidirectional_response_wire* wire_{};
+        char* bip_buffer_{};
+    };
+
     session_wire_container(std::string_view name) : db_name_(name) {
         try {
             managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, db_name_.c_str());
             auto req_wire = managed_shared_memory_->find<unidirectional_message_wire>(request_wire_name).first;
-            responses_ = managed_shared_memory_->find<response_box>(response_box_name).first;
-            if (req_wire == nullptr || responses_ == nullptr) {
+            auto res_wire = managed_shared_memory_->find<unidirectional_response_wire>(response_wire_name).first;
+            if (req_wire == nullptr || res_wire == nullptr) {
                 throw std::runtime_error("cannot find the session wire");
             }
-            responses_->connect(managed_shared_memory_.get());
             request_wire_ = wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
+            response_wire_ = response_wire_container(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
             throw std::runtime_error("cannot find a session with the specified name");
@@ -136,17 +167,6 @@ public:
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
 
-    response_box::response *get_response_box() {
-        for (std::size_t idx = 0 ; idx < responses_->size() ; idx++) {
-            response_box::response& r = responses_->at(idx);
-            if(!r.is_inuse()) {
-                r.set_inuse();
-                index_ = idx;
-                return &r;
-            }
-        }
-        return nullptr;
-    }
     void write(const int b) {
         if (!header_processed_) {
             request_wire_.brand_new();
@@ -166,6 +186,8 @@ public:
         index_ = -1;
         header_processed_ = false;
     }
+    response_wire_container& get_response_wire() { return response_wire_; }
+
     resultset_wires_container *create_resultset_wire() {
         return new resultset_wires_container(this);
     }
@@ -178,7 +200,7 @@ private:
     std::string db_name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     wire_container request_wire_{};
-    response_box* responses_;
+    response_wire_container response_wire_{};
     message_header::index_type index_{};
     bool header_processed_{};
 };
