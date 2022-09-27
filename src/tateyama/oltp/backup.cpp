@@ -33,7 +33,7 @@
 
 DECLARE_string(conf);  // NOLINT
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
-DEFINE_bool(keep_backup, false, "backup files will be kept");  // NOLINT
+DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
 DEFINE_string(label, "", "label for this operation");  // NOLINT
 DECLARE_string(monitor);  // NOLINT
 
