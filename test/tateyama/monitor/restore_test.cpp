@@ -74,6 +74,7 @@ TEST_F(restore_test, begin) {
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/restore.log");
+    command += " --force";
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp backup" << std::endl;
