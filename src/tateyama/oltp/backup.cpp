@@ -15,6 +15,10 @@
  */
 #include <iostream>
 #include <exception>
+#include <string_view>
+#include <cstring>
+#include <sys/ioctl.h>
+#include <termios.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -40,6 +44,45 @@ DECLARE_string(monitor);  // NOLINT
 namespace tateyama::bootstrap::backup {
 
 using namespace tateyama::bootstrap::utils;
+
+static bool prompt(std::string_view msg)
+{
+    struct termios io_conf{};
+
+    memset(&io_conf, 0x00, sizeof(struct termios));
+    tcgetattr(0, &io_conf);
+    io_conf.c_lflag &= ~(ECHO);  // disabled echo  // NOLINT
+    io_conf.c_lflag &= ~(ICANON);  // disabled canonical  // NOLINT
+    io_conf.c_cc[VMIN]  = 1;
+    io_conf.c_cc[VTIME] = 1;
+    tcsetattr( 0 , TCSAFLUSH , &io_conf );
+
+    std::cout << msg;
+    bool rv{};
+    while(true) {
+        int c = getc(stdin);
+        if ((c == 'y' ) || (c == 'Y' )) {
+            std::cout << "yes" << std::endl;
+            rv = true;
+            break;
+        }
+        if ((c == 'n' ) || (c == 'N' )) {
+            std::cout << "no" << std::endl;
+            rv = false;
+            break;
+        }
+    }
+
+    memset(&io_conf, 0x00, sizeof(struct termios));
+    tcgetattr(0, &io_conf);
+    io_conf.c_lflag |= ECHO;  // enable echo  // NOLINT
+    io_conf.c_lflag |= ICANON;  // enable canonical  // NOLINT
+    io_conf.c_cc[VMIN]  = 1;
+    io_conf.c_cc[VTIME] = 1;
+    tcsetattr( 0 , TCSAFLUSH , &io_conf );
+
+    return rv;
+}
 
 static std::string name() {
     if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
@@ -226,6 +269,15 @@ int oltp_restore_backup(int argc, char* argv[]) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    if(!FLAGS_force) {
+        if (!prompt("continue? (press y or n) : ")) {
+            std::cout << "restore backup has been canceled." << std::endl;
+            LOG(INFO) << "restore backup has been canceled.";
+            return tateyama::bootstrap::return_code::err;
+        }
+    }
+
     if(!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
