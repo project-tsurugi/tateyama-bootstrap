@@ -139,7 +139,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
             }
 
             if (check_result == ok) {
-                std::unique_ptr<status_info_brigde> status_info = std::make_unique<status_info_brigde>();
+                std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
                 // wait for creation of shared memory for status info
                 for (size_t i = n; i < check_count; i++) {
                     if (status_info->attach(bst_conf.digest())) {
@@ -211,6 +211,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
             if (force) {
                 auto pid = file_mutex->pid(false);
                 unlink(file_mutex->name().c_str());
+                status_info_bridge::force_delete(bst_conf.digest());
                 if (pid != 0) {
                     DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name();
                     kill(pid, SIGKILL);
@@ -223,7 +224,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
                 rc = tateyama::bootstrap::return_code::err;
             } else {
-                std::unique_ptr<status_info_brigde> status_info = std::make_unique<status_info_brigde>(bst_conf.digest());
+                std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
                 if (!status_info->shutdown()) {
                     auto pid = file_mutex->pid(true);
                     if (pid != 0) {
@@ -288,9 +289,9 @@ int oltp_status(int argc, char* argv[]) {
             break;
         case state::locked:
         {
-            std::unique_ptr<status_info_brigde> status_info{};
+            std::unique_ptr<status_info_bridge> status_info{};
             try {
-                status_info = std::make_unique<status_info_brigde>(bst_conf.digest());
+                status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
 
                 switch(status_info->whole()) {
                 case tateyama::status_info::state::initial:

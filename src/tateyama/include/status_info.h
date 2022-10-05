@@ -24,11 +24,11 @@
 
 namespace tateyama::bootstrap::utils {
 
-class status_info_brigde {
+class status_info_bridge {
 public:
-    status_info_brigde() = default;
+    status_info_bridge() = default;
 
-    explicit status_info_brigde(const std::string& digest) {
+    explicit status_info_bridge(const std::string& digest) {
         if (!attach(digest)) {
             throw std::runtime_error("can't find shared memory for status_info");
         }
@@ -36,12 +36,12 @@ public:
     /**
      * @brief destruct object
      */
-    ~status_info_brigde() = default;
+    ~status_info_bridge() = default;
 
-    status_info_brigde(status_info_brigde const& other) = delete;
-    status_info_brigde& operator=(status_info_brigde const& other) = delete;
-    status_info_brigde(status_info_brigde&& other) noexcept = delete;
-    status_info_brigde& operator=(status_info_brigde&& other) noexcept = delete;
+    status_info_bridge(status_info_bridge const& other) = delete;
+    status_info_bridge& operator=(status_info_bridge const& other) = delete;
+    status_info_bridge(status_info_bridge&& other) noexcept = delete;
+    status_info_bridge& operator=(status_info_bridge&& other) noexcept = delete;
 
     bool attach(const std::string& digest) {
         std::string status_file_name = digest;
@@ -63,6 +63,11 @@ public:
     }
     [[nodiscard]] bool shutdown() {
         return resource_status_memory_->shutdown();
+    }
+    static void force_delete(const std::string& digest) {
+        std::string status_file_name = digest;
+        status_file_name += ".stat";
+        boost::interprocess::shared_memory_object::remove(status_file_name.c_str());
     }
 
 private:
