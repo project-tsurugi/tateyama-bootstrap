@@ -166,6 +166,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                     LOG(ERROR) << "another " << server_name_string_for_status << " is running";
                     rc = tateyama::bootstrap::return_code::err;
                     checked = true;
+                    break;
                 }
                 if (!checked) {
                     LOG(ERROR) << "cannot confirm the server process within the specified time";
