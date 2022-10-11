@@ -29,8 +29,6 @@
 #include <tateyama/logging.h>
 
 #include "oltp.h"
-#include "configuration.h"
-#include "proc_mutex.h"
 #include "monitor.h"
 #include "status_info.h"
 
@@ -52,7 +50,7 @@ const int sleep_time_unit_kill = 100;
 
 using namespace tateyama::bootstrap::utils;
 
-int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
+return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
     std::string server_name(server_name_string);
     pid_t child_pid = 0;
     if (child_pid = fork(); child_pid == 0) {
@@ -78,7 +76,7 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
         DVLOG(log_trace) << "start " << server_name << ", pid = " << child_pid;
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     if (need_check) {
         std::unique_ptr<utils::monitor> monitor_output{};
 
@@ -197,7 +195,20 @@ static bool status_check(proc_mutex::lock_state state, const boost::filesystem::
     return false;
 }
 
-int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
+return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configuration& bst_conf) {
+    auto pid = file_mutex->pid(false);
+    unlink(file_mutex->name().c_str());
+    status_info_bridge::force_delete(bst_conf.digest());
+    if (pid != 0) {
+        DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name();
+        kill(pid, SIGKILL);
+        usleep(sleep_time_unit_kill * 1000);
+        return tateyama::bootstrap::return_code::ok;
+    }
+    return tateyama::bootstrap::return_code::err;
+}
+
+return_code oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     // command arguments
@@ -209,26 +220,20 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         try {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             if (force) {
-                auto pid = file_mutex->pid(false);
-                unlink(file_mutex->name().c_str());
-                status_info_bridge::force_delete(bst_conf.digest());
-                if (pid != 0) {
-                    DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name();
-                    kill(pid, SIGKILL);
-                    usleep(sleep_time_unit_kill * 1000);
+                rc = oltp_kill(file_mutex.get(), bst_conf);
+                if (rc == tateyama::bootstrap::return_code::ok) {
                     if (monitor_output) {
                         monitor_output->finish(true);
                     }
                     return rc;
                 }
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-                rc = tateyama::bootstrap::return_code::err;
             } else {
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
                 if (!status_info->shutdown()) {
@@ -268,7 +273,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     return rc;
 }
 
-int oltp_status(int argc, char* argv[]) {
+return_code oltp_status(int argc, char* argv[]) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     // command arguments
@@ -280,7 +285,7 @@ int oltp_status(int argc, char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
@@ -361,7 +366,7 @@ int oltp_status(int argc, char* argv[]) {
     return rc;
 }
 
-int start_maintenance_server(int argc, char* argv[], char *argv0) {
+return_code start_maintenance_server(int argc, char* argv[], char *argv0) {
     char *argvss[argc + 2];  // for "--maintenance_server" and nullptr
 
     std::size_t index = 0;

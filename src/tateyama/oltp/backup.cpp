@@ -102,7 +102,7 @@ static std::string name() {
     exit(2);
 }
 
-int oltp_backup_create(int argc, char* argv[]) {
+return_code oltp_backup_create(int argc, char* argv[]) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     char *path_to_backup = argv[1];
@@ -118,7 +118,7 @@ int oltp_backup_create(int argc, char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auth_options();
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
@@ -207,7 +207,7 @@ int oltp_backup_create(int argc, char* argv[]) {
     return rc;
 }
 
-int oltp_backup_estimate(int argc, char* argv[]) {
+return_code oltp_backup_estimate(int argc, char* argv[]) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     // command arguments
@@ -218,7 +218,7 @@ int oltp_backup_estimate(int argc, char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auth_options();
 
     try {
@@ -259,7 +259,7 @@ int oltp_backup_estimate(int argc, char* argv[]) {
     return rc;
 }
 
-int oltp_restore_backup(int argc, char* argv[]) {
+return_code oltp_restore_backup(int argc, char* argv[]) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     const char* path_to_backup = *argv;
@@ -283,7 +283,7 @@ int oltp_restore_backup(int argc, char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auth_options();
 
     try {
@@ -328,7 +328,7 @@ int oltp_restore_backup(int argc, char* argv[]) {
     return rc;
 }
 
-int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+return_code oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
     const char* tag_name = *(argv + 1);
@@ -343,7 +343,7 @@ int oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
         monitor_output->start();
     }
 
-    int rc = tateyama::bootstrap::return_code::ok;
+    auto rc = tateyama::bootstrap::return_code::ok;
     auth_options();
 
     try {
