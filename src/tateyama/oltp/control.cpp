@@ -44,29 +44,13 @@ namespace tateyama::bootstrap {
 
 constexpr std::string_view server_name_string = "tateyama-server";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
-const std::size_t check_count = 100;
-const int sleep_time_unit = 20;
+const std::size_t check_count_startup = 100;
+const int sleep_time_unit_startup = 20;
+const std::size_t check_count_shutdown = 300;
+const int sleep_time_unit_shutdown = 1000;
+const int sleep_time_unit_kill = 100;
 
 using namespace tateyama::bootstrap::utils;
-
-static bool status_check(proc_mutex::lock_state state, const boost::filesystem::path& lock_file) {
-    std::unique_ptr<proc_mutex> file_mutex{};
-    for (size_t i = 0; i < check_count; i++) {
-        if (!file_mutex) {
-            try {
-                file_mutex = std::make_unique<proc_mutex>(lock_file, false);
-            } catch (std::runtime_error &e) {
-                usleep(sleep_time_unit * 1000);
-                continue;
-            }
-        }
-        if (file_mutex->check() == state) {
-            return true;
-        }
-        usleep(sleep_time_unit * 5 * 1000);
-    }
-    return false;
-}
 
 int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
     std::string server_name(server_name_string);
@@ -117,12 +101,12 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                 ok,
                 another,
             } check_result = init;
-            for (size_t i = n; i < check_count; i++) {
+            for (size_t i = n; i < check_count_startup; i++) {
                 if (!file_mutex) {
                     try {
                         file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                     } catch (std::runtime_error &e) {
-                        usleep(sleep_time_unit * 1000);
+                        usleep(sleep_time_unit_startup * 1000);
                         continue;
                     }
                 }
@@ -135,26 +119,26 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
                     n = i;
                     break;
                 }
-                usleep(sleep_time_unit * 5 * 1000);
+                usleep(sleep_time_unit_startup * 5 * 1000);
             }
 
             if (check_result == ok) {
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
                 // wait for creation of shared memory for status info
-                for (size_t i = n; i < check_count; i++) {
+                for (size_t i = n; i < check_count_startup; i++) {
                     if (status_info->attach(bst_conf.digest())) {
                         n = i;
                         break;
                     }
-                    usleep(sleep_time_unit * 1000);
+                    usleep(sleep_time_unit_startup * 1000);
                 }
 
                 // wait for pid set
                 bool checked = false;
-                for (size_t i = n; i < check_count; i++) {
+                for (size_t i = n; i < check_count_startup; i++) {
                     auto pid = status_info->pid();
                     if (pid == 0) {
-                        usleep(sleep_time_unit * 1000);
+                        usleep(sleep_time_unit_startup * 1000);
                         continue;
                     }
                     if (child_pid == pid) {
@@ -192,6 +176,27 @@ int oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_c
     return tateyama::bootstrap::return_code::ok;  // when need_check is false, it should return ok
 }
 
+static bool status_check(proc_mutex::lock_state state, const boost::filesystem::path& lock_file) {
+    std::size_t check_count = check_count_shutdown;
+    int sleep_time_unit = sleep_time_unit_shutdown;
+    std::unique_ptr<proc_mutex> file_mutex{};
+    for (size_t i = 0; i < check_count; i++) {
+        if (!file_mutex) {
+            try {
+                file_mutex = std::make_unique<proc_mutex>(lock_file, false);
+            } catch (std::runtime_error &e) {
+                usleep(sleep_time_unit * 1000);
+                continue;
+            }
+        }
+        if (file_mutex->check() == state) {
+            return true;
+        }
+        usleep(sleep_time_unit * 5 * 1000);
+    }
+    return false;
+}
+
 int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
@@ -216,7 +221,7 @@ int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
                 if (pid != 0) {
                     DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name();
                     kill(pid, SIGKILL);
-                    usleep(sleep_time_unit * 5 * 1000);
+                    usleep(sleep_time_unit_kill * 1000);
                     if (monitor_output) {
                         monitor_output->finish(true);
                     }
