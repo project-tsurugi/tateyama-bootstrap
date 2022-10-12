@@ -45,12 +45,13 @@ DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT
-DEFINE_bool(maintenance_standalone, false, "invoke in maintenance_standalone mode");  // NOLINT
+DEFINE_bool(maintenance_standalone, false, "invoke in maintenance_standalone mode");  // NOLINT  not used here
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
-DEFINE_string(label, "", "message used in quiesce mode");  // NOLINT
-DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
-DEFINE_bool(force, false, "an option for oltp, do not use here");  // NOLINT
-DEFINE_bool(keep_backup, false, "an option for oltp, do not use here");  // NOLINT
+DEFINE_string(label, "", "message used in quiesce mode");  // NOLINT  dummy
+DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT  dummy
+DEFINE_bool(force, false, "an option for oltp, do not use here");  // NOLINT  dummy
+DEFINE_bool(keep_backup, false, "an option for oltp, do not use here");  // NOLINT  dummy
+DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT  dummy
 
 namespace tateyama::bootstrap {
 

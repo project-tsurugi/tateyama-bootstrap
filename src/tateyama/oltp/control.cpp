@@ -37,7 +37,7 @@ DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
 DECLARE_string(label);
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
 DECLARE_string(monitor);  // NOLINT
-DECLARE_bool(force);
+DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for oltp_start()
 
 namespace tateyama::bootstrap {
 
@@ -56,11 +56,16 @@ return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, boo
     gflags::SetUsageMessage("tateyama database server CLI");
     gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-    if (FLAGS_force) {
-        auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-        if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
-            return rc;
+    if (!FLAGS_start_mode.empty()) {
+        if (FLAGS_start_mode == "force") {
+            auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+            if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
+                return rc;
+            }
+        } else {
+            LOG(ERROR) << "only \"force\" can be specified for the start-mode";
+            return tateyama::bootstrap::return_code::err;
         }
     }
 
