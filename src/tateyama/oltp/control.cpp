@@ -37,6 +37,7 @@ DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
 DECLARE_string(label);
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
 DECLARE_string(monitor);  // NOLINT
+DECLARE_bool(force);
 
 namespace tateyama::bootstrap {
 
@@ -51,6 +52,18 @@ const int sleep_time_unit_kill = 100;
 using namespace tateyama::bootstrap::utils;
 
 return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
+    // command arguments
+    gflags::SetUsageMessage("tateyama database server CLI");
+    gflags::ParseCommandLineFlags(&argc, &argv, false);
+
+    if (FLAGS_force) {
+        auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+        if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
+            return rc;
+        }
+    }
+
     std::string server_name(server_name_string);
     pid_t child_pid = 0;
     if (child_pid = fork(); child_pid == 0) {
@@ -79,10 +92,6 @@ return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, boo
     auto rc = tateyama::bootstrap::return_code::ok;
     if (need_check) {
         std::unique_ptr<utils::monitor> monitor_output{};
-
-        // command arguments
-        gflags::SetUsageMessage("tateyama database server CLI");
-        gflags::ParseCommandLineFlags(&argc, &argv, true);
 
         if(!FLAGS_monitor.empty()) {
             monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
