@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include "configuration.h"
+#include "proc_mutex.h"
+
 namespace tateyama::bootstrap {
 
 /**
@@ -25,19 +28,20 @@ enum return_code {
     err = 1,
 };
 
-    int oltp_start(int argc, char* argv[], char *argv0, bool need_check);
-    int oltp_status(int argc, char* argv[]);
-    int oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output = true);
-    int start_maintenance_server(int argc, char* argv[], char *argv0);
+    return_code oltp_start(int argc, char* argv[], char *argv0, bool need_check);
+    return_code oltp_status(int argc, char* argv[]);
+    return_code oltp_kill(utils::proc_mutex*, utils::bootstrap_configuration&);
+    return_code oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output = true);
+    return_code start_maintenance_server(int argc, char* argv[], char *argv0);
 
 } //  tateyama::bootstrap
 
 
 namespace tateyama::bootstrap::backup {
 
-    int oltp_backup_create(int argc,  char* argv[]);
-    int oltp_backup_estimate(int argc,  char* argv[]);
-    int oltp_restore_backup(int argc,  char* argv[]);
-    int oltp_restore_tag(int argc,  char* argv[]);
+    return_code oltp_backup_create(int argc,  char* argv[]);
+    return_code oltp_backup_estimate(int argc,  char* argv[]);
+    return_code oltp_restore_backup(int argc,  char* argv[]);
+    return_code oltp_restore_tag(int argc,  char* argv[]);
 
 } //  tateyama::bootstrap::backup
