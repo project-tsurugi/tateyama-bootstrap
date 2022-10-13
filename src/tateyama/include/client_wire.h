@@ -26,7 +26,7 @@ class session_wire_container
 public:
     class resultset_wires_container {
     public:
-        resultset_wires_container(session_wire_container *envelope)
+        explicit resultset_wires_container(session_wire_container *envelope) noexcept
             : envelope_(envelope), managed_shm_ptr_(envelope_->managed_shared_memory_.get()) {
         }
         void connect(std::string_view name) {
@@ -60,11 +60,15 @@ public:
             }
             std::abort();  //  This must not happen.
         }
-        bool is_eor() {
+        bool is_eor() noexcept {
             return shm_resultset_wires_->is_eor();
         }
-        void set_closed() { shm_resultset_wires_->set_closed(); }
-        session_wire_container* get_envelope() { return envelope_; }
+        void set_closed() noexcept {
+            shm_resultset_wires_->set_closed();
+        }
+        session_wire_container* get_envelope() noexcept {
+            return envelope_;
+        }
 
     private:
         shm_resultset_wire* active_wire() {
@@ -83,7 +87,7 @@ public:
     class wire_container {
     public:
         wire_container() = default;
-        wire_container(unidirectional_message_wire* wire, char* bip_buffer) : wire_(wire), bip_buffer_(bip_buffer) {};
+        wire_container(unidirectional_message_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
         message_header peep(bool wait = false) {
             return wire_->peep(bip_buffer_, wait);
         }
@@ -93,12 +97,12 @@ public:
         void write(const int b) {
             wire_->write(bip_buffer_, b);
         }
-        void write(const std::string s) {
+        void write(const std::string& s) {
             for (const char & c : s) {
                 wire_->write(bip_buffer_, static_cast<int>(c));
             }
         }
-        void flush(message_header::index_type index) {
+        void flush(message_header::index_type index) noexcept {
             wire_->flush(bip_buffer_, index);
         }
         void disconnect() {
@@ -114,23 +118,23 @@ public:
     class response_wire_container {
     public:
         response_wire_container() = default;
-        response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) : wire_(wire), bip_buffer_(bip_buffer) {};
+        response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
         response_header await() {
             return wire_->await(bip_buffer_);
         }
-        response_header::length_type get_length() const {
+        [[nodiscard]] response_header::length_type get_length() const noexcept {
             return wire_->get_length();
         }
-        response_header::index_type get_idx() const {
+        [[nodiscard]] response_header::index_type get_idx() const noexcept {
             return wire_->get_idx();
         }
-        response_header::msg_type get_type() const {
+        [[nodiscard]] response_header::msg_type get_type() const noexcept {
             return wire_->get_type();
         }
-        void read(char* to) {
+        void read(char* to) noexcept {
             wire_->read(to, bip_buffer_);
         }
-        void close() {
+        void close() noexcept {
             wire_->close();
         }
 
@@ -139,7 +143,7 @@ public:
         char* bip_buffer_{};
     };
 
-    session_wire_container(std::string_view name) : db_name_(name) {
+    explicit session_wire_container(std::string_view name) : db_name_(name) {
         try {
             managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, db_name_.c_str());
             auto req_wire = managed_shared_memory_->find<unidirectional_message_wire>(request_wire_name).first;
@@ -155,10 +159,11 @@ public:
         }
     }
 
-    ~session_wire_container() {
+    void close() {
         request_wire_.disconnect();
     }
 
+#if 0
     /**
      * @brief Copy and move constructers are deleted.
      */
@@ -166,6 +171,7 @@ public:
     session_wire_container(session_wire_container&&) = delete;
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
+#endif
 
     void write(const int b) {
         if (!header_processed_) {
@@ -174,26 +180,28 @@ public:
         }
         request_wire_.write(b);
     }
-    void write(const std::string s) {
+    void write(const std::string& s) {
         if (!header_processed_) {
             request_wire_.brand_new();
             header_processed_ = true;
         }
         request_wire_.write(s);
     }
-    void flush() {
+    void flush() noexcept {
         request_wire_.flush(index_);
         index_ = -1;
         header_processed_ = false;
     }
-    response_wire_container& get_response_wire() { return response_wire_; }
-
-    resultset_wires_container *create_resultset_wire() {
-        return new resultset_wires_container(this);
+    response_wire_container& get_response_wire() noexcept {
+        return response_wire_;
     }
-    void dispose_resultset_wire(resultset_wires_container* container) {
+
+    std::unique_ptr<resultset_wires_container> create_resultset_wire() {
+        return std::make_unique<resultset_wires_container>(this);
+    }
+    void dispose_resultset_wire(std::unique_ptr<resultset_wires_container>& container) {
         container->set_closed();
-        delete container;
+        container = nullptr;
     }
 
 private:
@@ -207,10 +215,10 @@ private:
 
 class connection_container
 {
-    static constexpr std::size_t request_queue_size = (1<<12);  // 4K bytes (tentative)
+    static constexpr std::size_t request_queue_size = (1UL<<12U);  // 4K bytes (tentative)
 
 public:
-    connection_container(std::string_view db_name) : db_name_(db_name) {
+    explicit connection_container(std::string_view db_name) : db_name_(db_name) {
         try {
             managed_shared_memory_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, db_name_.c_str());
             connection_queue_ = managed_shared_memory_->find<connection_queue>(connection_queue::name).first;
@@ -222,15 +230,7 @@ public:
         }
     }
 
-    /**
-     * @brief Copy and move constructers are deleted.
-     */
-    connection_container(connection_container const&) = delete;
-    connection_container(connection_container&&) = delete;
-    connection_container& operator = (connection_container const&) = delete;
-    connection_container& operator = (connection_container&&) = delete;
-
-    connection_queue& get_connection_queue() {
+    connection_queue& get_connection_queue() noexcept {
         return *connection_queue_;
     }
 

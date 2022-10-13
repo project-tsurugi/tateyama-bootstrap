@@ -163,6 +163,7 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
             backup_end->set_id(backup_id);
             auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
             requestEnd.clear_backup_end();
+            transport->close();
 
             if (responseEnd) {
                 auto re = responseEnd.value();
@@ -216,6 +217,7 @@ return_code oltp_backup_estimate() {
         request.mutable_backup_estimate();
         auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
         request.clear_backup_estimate();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
@@ -278,6 +280,7 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
         }
         auto response = transport->send<::tateyama::proto::datastore::response::RestoreBackup>(request);
         request.clear_restore_backup();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
@@ -328,6 +331,7 @@ return_code oltp_restore_tag(const std::string& tag_name) {
         restore_tag->set_name(tag_name);
         auto response = transport->send<::tateyama::proto::datastore::response::RestoreTag>(request);
         request.clear_restore_tag();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {

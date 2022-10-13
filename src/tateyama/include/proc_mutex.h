@@ -35,8 +35,9 @@ class proc_mutex {
         error,
     };
     
-    proc_mutex(const boost::filesystem::path& lock_file, bool create_file = true, bool throw_exception = true)
-        : lock_file_(lock_file), create_file_(create_file) {
+    explicit proc_mutex(boost::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
+        : create_file_(create_file) {
+        lock_file_ = std::move(lock_file);
         if (!create_file_ && throw_exception && !boost::filesystem::exists(lock_file_)) {
             throw std::runtime_error("the lock file does not exist");
         }
@@ -55,12 +56,12 @@ class proc_mutex {
 
     [[nodiscard]] bool lock() {
         if (create_file_) {
-            if ((fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
+            if ((fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {  // NOLINT
                 perror("open");
                 exit(-1);
             }
         }
-        if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {
+        if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             if (ftruncate(fd_, 0) < 0) {
                 perror("ftruncate");
                 exit(-1);
@@ -74,7 +75,7 @@ class proc_mutex {
         }
         return false;
     }
-    void unlock() {
+    void unlock() const {
         flock(fd_, LOCK_UN);
     }
     [[nodiscard]] inline std::string name() const {
@@ -89,10 +90,10 @@ class proc_mutex {
         if (!boost::filesystem::is_regular_file(lock_file_)) {
             return lock_state::error;            
         }
-        if (fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY); fd_ < 0) {
+        if (fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY); fd_ < 0) {  // NOLINT
             return lock_state::error;
         }
-        if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {
+        if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             unlock();
             return lock_state::not_locked;
         }
@@ -118,7 +119,7 @@ class proc_mutex {
     }
     
 private:
-    const boost::filesystem::path lock_file_;
+    boost::filesystem::path lock_file_;
     int fd_{};
     const bool create_file_;
 
@@ -126,7 +127,7 @@ private:
         if (do_check && check() != lock_state::locked) {
             return false;
         }
-        std::size_t sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
+        auto sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
         str.resize(sz, '\0');
         boost::filesystem::ifstream file(lock_file_);
         file.read(&str[0], sz);
