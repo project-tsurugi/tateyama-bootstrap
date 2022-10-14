@@ -159,11 +159,12 @@ public:
         }
     }
 
+    ~session_wire_container() = default;
+    
     void close() {
         request_wire_.disconnect();
     }
 
-#if 0
     /**
      * @brief Copy and move constructers are deleted.
      */
@@ -171,7 +172,6 @@ public:
     session_wire_container(session_wire_container&&) = delete;
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
-#endif
 
     void write(const int b) {
         if (!header_processed_) {
