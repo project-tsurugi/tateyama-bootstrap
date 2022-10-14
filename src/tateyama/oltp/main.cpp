@@ -20,61 +20,75 @@
 
 #include "oltp.h"
 
+// common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
 DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
+DEFINE_string(label, "", "label for this operation");  // NOLINT
+
+// for control
+DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
+DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
+DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for oltp_start()
+
+// for backup
+DEFINE_bool(force, false, "no confirmation step");  // NOLINT
+DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
+
+// for tateyama-server
+DEFINE_string(location, "./db", "database location on file system");  // NOLINT
+DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
+DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
+
 
 namespace tateyama::bootstrap {
 
-int oltp_main(int argc, char* argv[]) {
-    google::InitGoogleLogging(argv[0]);
-
-    if (strcmp(*(argv + 1), "start") == 0) {
-        return oltp_start(argc - 1, argv + 1, argv[0], true);
+int oltp_main(const std::vector<std::string>& args) {
+    if (args.at(1) == "start") {
+        return oltp_start(args.at(0), true);
     }
-    if (strcmp(*(argv + 1), "shutdown") == 0) {
-        return oltp_shutdown_kill(argc - 1, argv + 1, false);
+    if (args.at(1) == "shutdown") {
+        return oltp_shutdown_kill(false);
     }
-    if (strcmp(*(argv + 1), "kill") == 0) {
-        return oltp_shutdown_kill(argc - 1, argv + 1, true);
+    if (args.at(1) == "kill") {
+        return oltp_shutdown_kill(true);
     }
-    if (strcmp(*(argv + 1), "status") == 0) {
-        return oltp_status(argc - 1, argv + 1);
+    if (args.at(1) == "status") {
+        return oltp_status();
     }
-    if (strcmp(*(argv + 1), "backup") == 0) {
-        if (strcmp(*(argv + 2), "create") == 0) {
-            if ((argc - 2) <= 1) {
+    if (args.at(1) == "backup") {
+        if (args.at(2) == "create") {
+            if (args.size() < 4) {
                 LOG(ERROR) << "need to specify path/to/backup";
                 return 4;
             }
-            return backup::oltp_backup_create(argc - 2, argv + 2);
+            return backup::oltp_backup_create(args.at(3));
         }
-        if (strcmp(*(argv + 2), "estimate") == 0) {
-            return backup::oltp_backup_estimate(argc - 2, argv + 2);
+        if (args.at(2) == "estimate") {
+            return backup::oltp_backup_estimate();
         }
-        LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+        LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
         return -1;
     }
-    if (strcmp(*(argv + 1), "restore") == 0) {
-        start_maintenance_server(argc - 4, argv + 4, argv[0]);
+    if (args.at(1) == "restore") {
+        oltp_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
 
         int rv{};
-        if (strcmp(*(argv + 2), "backup") == 0) {
-            rv = backup::oltp_restore_backup(argc - 3, argv + 3);
-        } else if (strcmp(*(argv + 2), "tag") == 0) {
-            rv = backup::oltp_restore_tag(argc - 3, argv + 3);
+        if (args.at(2) == "backup") {
+            rv = backup::oltp_restore_backup(args.at(3));
+        } else if (args.at(2) == "tag") {
+            rv = backup::oltp_restore_tag(args.at(3));
         } else {
-            LOG(ERROR) << "unknown backup subcommand '" << *(argv + 2) << "'";
+            LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
             rv = -1;
         }
 
-        oltp_shutdown_kill(argc - 4, argv + 4, false, false);
+        oltp_shutdown_kill(false, false);
         return rv;
     }
-    if (strcmp(*(argv + 1), "quiesce") == 0) {
-        argv[1] = const_cast<char*>("--quiesce");
-        return oltp_start(argc, argv, argv[0], true);
+    if (args.at(1) == "quiesce") {
+        return oltp_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
     }
-    LOG(ERROR) << "unknown command '" << *(argv + 1) << "'";
+    LOG(ERROR) << "unknown command '" << args.at(1) << "'";
     return -1;
 }
 
@@ -83,7 +97,18 @@ int oltp_main(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
     if (argc > 1) {
-        return tateyama::bootstrap::oltp_main(argc, argv);
+        // logging
+        google::InitGoogleLogging(argv[0]);  // NOLINT
+
+        // copy argv to args
+        std::vector<std::string> args(argv, argv + argc);
+
+        // command arguments (must conduct after the argment copy)
+        gflags::SetUsageMessage("tateyama database server CLI");
+        gflags::ParseCommandLineFlags(&argc, &argv, false);
+
+        return static_cast<int>(tateyama::bootstrap::oltp_main(args));
     }
+    LOG(ERROR) << "no arguments";
     return -1;
 }

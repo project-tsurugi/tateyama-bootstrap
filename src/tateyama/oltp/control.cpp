@@ -24,7 +24,7 @@
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/process/search_path.hpp>
+#include <boost/process.hpp>
 
 #include <tateyama/logging.h>
 
@@ -32,12 +32,16 @@
 #include "monitor.h"
 #include "status_info.h"
 
-DECLARE_string(conf);
-DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
-DECLARE_string(label);
-DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
+DECLARE_string(conf);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
-DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for oltp_start()
+DECLARE_string(label);  // NOLINT
+DECLARE_bool(quiesce);  // NOLINT
+DECLARE_bool(maintenance_server);  // NOLINT
+DECLARE_string(start_mode);  // NOLINT
+
+DECLARE_string(location);  // NOLINT
+DECLARE_bool(load);  // NOLINT
+DECLARE_bool(tpch);  // NOLINT
 
 namespace tateyama::bootstrap {
 
@@ -51,11 +55,48 @@ const int sleep_time_unit_kill = 100;
 
 using namespace tateyama::bootstrap::utils;
 
-return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, bool need_check) {
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, false);
+void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
+    switch (mode) {
+    case tateyama::framework::boot_mode::database_server:
+        break;
+    case tateyama::framework::boot_mode::maintenance_server:
+        args.emplace_back("--maintenance_server");
+        break;
+    case tateyama::framework::boot_mode::quiescent_server:
+        args.emplace_back("--quiesce");
+        break;
+    default:
+        LOG(ERROR) << "illegal framework boot-up mode: " << tateyama::framework::to_string_view(mode);
+        break;
+    }
+    if (!FLAGS_conf.empty()) {
+        args.emplace_back("--conf");
+        args.emplace_back(FLAGS_conf);
+    }
+    if (!FLAGS_label.empty()) {
+        args.emplace_back("--label");
+        args.emplace_back(FLAGS_label);
+    }
+    if (FLAGS_location != "./db") {
+        args.emplace_back("--location");
+        args.emplace_back(FLAGS_location);
+    }
+    if (FLAGS_load) {
+        args.emplace_back("--load");
+    }
+    if (FLAGS_tpch) {
+        args.emplace_back("--tpch");
+    }
+    if (FLAGS_v != 0) {
+        args.emplace_back("--v");
+        args.emplace_back(std::to_string(FLAGS_v));
+    }
+    if (FLAGS_logtostderr) {
+        args.emplace_back("--logtostderr");
+    }
+}
 
+return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     if (!FLAGS_start_mode.empty()) {
         if (FLAGS_start_mode == "force") {
             auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
@@ -70,29 +111,24 @@ return_code oltp_start([[maybe_unused]] int argc, char* argv[], char *argv0, boo
     }
 
     std::string server_name(server_name_string);
-    pid_t child_pid = 0;
-    if (child_pid = fork(); child_pid == 0) {
-        boost::filesystem::path path_for_this{};
-        if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
-            path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
-        } else{
-            path_for_this = boost::filesystem::canonical(a0f);
-        }
-
-        if (boost::filesystem::exists(path_for_this)) {
-            argv[0] = const_cast<char *>(server_name.c_str());
-            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-//            close(0);  // FIXME activate this line when it completes
-//            close(1);  // FIXME activate this line when it completes
-//            close(2);  // FIXME activate this line when it completes
-            execv((base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name)).generic_string().c_str(), argv);
-            perror("execvp");
-        }
-        LOG(ERROR) << "cannot find the location of " << argv0;
-        exit(1);
-    } else {  // to output pid to DVLOG(log_trace)
-        DVLOG(log_trace) << "start " << server_name << ", pid = " << child_pid;
+    boost::filesystem::path path_for_this{};
+    if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
+        path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
+    } else{
+        path_for_this = boost::filesystem::canonical(a0f);
     }
+    if (!boost::filesystem::exists(path_for_this)) {
+        LOG(ERROR) << "cannot find " << server_name_string;
+        return tateyama::bootstrap::return_code::err;
+    }
+
+    auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+    auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+    std::vector<std::string> args{};
+    build_args(args, mode);
+    boost::process::child c(exec, boost::process::args (args));
+    pid_t child_pid = c.id();
+    c.detach();
 
     auto rc = tateyama::bootstrap::return_code::ok;
     if (need_check) {
@@ -222,12 +258,8 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
     return tateyama::bootstrap::return_code::err;
 }
 
-return_code oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output) {
+return_code oltp_shutdown_kill(bool force, bool status_output) {
     std::unique_ptr<utils::monitor> monitor_output{};
-
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if(!FLAGS_monitor.empty() && status_output) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
@@ -287,12 +319,8 @@ return_code oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_o
     return rc;
 }
 
-return_code oltp_status(int argc, char* argv[]) {
+return_code oltp_status() {
     std::unique_ptr<utils::monitor> monitor_output{};
-
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if(!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
@@ -378,19 +406,6 @@ return_code oltp_status(int argc, char* argv[]) {
         monitor_output->finish(false);
     }
     return rc;
-}
-
-return_code start_maintenance_server(int argc, char* argv[], char *argv0) {
-    char *argvss[argc + 2];  // for "--maintenance_server" and nullptr
-
-    std::size_t index = 0;
-    argvss[index++] = const_cast<char*>("--maintenance_server");
-    for(int i = 0; i < argc; i++) {
-        argvss[index++] = argv[i];
-    }
-    argvss[index] = nullptr;
-
-    return oltp_start(index, argvss, argv0, true);
 }
 
 }  // tateyama::bootstrap

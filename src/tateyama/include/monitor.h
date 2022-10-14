@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <time.h>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 
@@ -50,14 +50,14 @@ enum class status : std::int64_t {
 }
 
 class monitor {
-    constexpr static std::string_view TIME_STAMP = "\"timestamp\": ";
-    constexpr static std::string_view KIND_START = "\"kind\": \"start\"";
-    constexpr static std::string_view KIND_FINISH = "\"kind\": \"finish\"";
-    constexpr static std::string_view KIND_PROGRESS = "\"kind\": \"progress\"";
-    constexpr static std::string_view KIND_DATA = "\"kind\": \"data\"";
-    constexpr static std::string_view PROGRESS = "\"progress\": ";
-    constexpr static std::string_view FORMAT_STATUS = "\"format\" : \"status\"";
-    constexpr static std::string_view STATUS = "\"status\": \"";
+    constexpr static std::string_view TIME_STAMP = R"("timestamp": )";
+    constexpr static std::string_view KIND_START = R"("kind": "start")";
+    constexpr static std::string_view KIND_FINISH = R"("kind": "finish")";
+    constexpr static std::string_view KIND_PROGRESS = R"("kind": "progress")";
+    constexpr static std::string_view KIND_DATA = R"("kind": "data")";
+    constexpr static std::string_view PROGRESS = R"("progress": )";
+    constexpr static std::string_view FORMAT_STATUS = R"("format" : "status")";
+    constexpr static std::string_view STATUS = R"("status": ")";
 public:
     explicit monitor(std::string& file_name) {
         strm_.open(file_name, std::ios_base::out | std::ios_base::trunc);
@@ -77,8 +77,13 @@ public:
         strm_.flush();
     }
     void finish(bool status) {
-        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << (status ? "success" : "failure" ) << "\" }" << std::endl;
+        if (status) {
+            strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+                  << KIND_FINISH << ", " << STATUS << "success\" }" << std::endl;
+        } else {
+            strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+                  << KIND_FINISH << ", " << STATUS << "failure\" }" << std::endl;
+        }
         strm_.flush();
     }
     void progress(float r) {

@@ -75,6 +75,9 @@ public:
         }
         return response;
     }
+    void close() {
+        wire_.close();
+    }
 
 private:
     tateyama::common::wire::session_wire_container wire_;

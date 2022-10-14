@@ -36,9 +36,9 @@
 #include "monitor.h"
 
 DECLARE_string(conf);  // NOLINT
-DEFINE_bool(force, false, "no confirmation step");  // NOLINT
-DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
-DEFINE_string(label, "", "label for this operation");  // NOLINT
+DECLARE_bool(force);  // NOLINT
+DECLARE_bool(keep_backup);  // NOLINT
+DECLARE_string(label);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
 
 namespace tateyama::bootstrap::backup {
@@ -102,16 +102,8 @@ static std::string name() {
     exit(2);
 }
 
-return_code oltp_backup_create(int argc, char* argv[]) {
+return_code oltp_backup_create(const std::string& path_to_backup) {
     std::unique_ptr<utils::monitor> monitor_output{};
-
-    char *path_to_backup = argv[1];
-    argv++;
-    argc--;
-
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if(!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
@@ -171,6 +163,7 @@ return_code oltp_backup_create(int argc, char* argv[]) {
             backup_end->set_id(backup_id);
             auto responseEnd = transport->send<::tateyama::proto::datastore::response::BackupEnd>(requestEnd);
             requestEnd.clear_backup_end();
+            transport->close();
 
             if (responseEnd) {
                 auto re = responseEnd.value();
@@ -207,12 +200,9 @@ return_code oltp_backup_create(int argc, char* argv[]) {
     return rc;
 }
 
-return_code oltp_backup_estimate(int argc, char* argv[]) {
+return_code oltp_backup_estimate() {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
     if(!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
@@ -227,6 +217,7 @@ return_code oltp_backup_estimate(int argc, char* argv[]) {
         request.mutable_backup_estimate();
         auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
         request.clear_backup_estimate();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
@@ -259,16 +250,8 @@ return_code oltp_backup_estimate(int argc, char* argv[]) {
     return rc;
 }
 
-return_code oltp_restore_backup(int argc, char* argv[]) {
+return_code oltp_restore_backup(const std::string& path_to_backup) {
     std::unique_ptr<utils::monitor> monitor_output{};
-
-    const char* path_to_backup = *argv;
-    argc--;
-    argv++;
-
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if(!FLAGS_force) {
         if (!prompt("continue? (press y or n) : ")) {
@@ -297,6 +280,7 @@ return_code oltp_restore_backup(int argc, char* argv[]) {
         }
         auto response = transport->send<::tateyama::proto::datastore::response::RestoreBackup>(request);
         request.clear_restore_backup();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
@@ -328,16 +312,9 @@ return_code oltp_restore_backup(int argc, char* argv[]) {
     return rc;
 }
 
-return_code oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+return_code oltp_restore_tag(const std::string& tag_name) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    const char* tag_name = *(argv + 1);
-    argc--;
-    argv++;
-
-    // command arguments
-    gflags::SetUsageMessage("tateyama database server CLI");
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
     if(!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
@@ -354,6 +331,7 @@ return_code oltp_restore_tag([[maybe_unused]] int argc, [[maybe_unused]] char* a
         restore_tag->set_name(tag_name);
         auto response = transport->send<::tateyama::proto::datastore::response::RestoreTag>(request);
         request.clear_restore_tag();
+        transport->close();
 
         if (response) {
             switch(response.value().result_case()) {

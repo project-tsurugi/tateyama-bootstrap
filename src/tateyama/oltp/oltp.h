@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <tateyama/framework/boot_mode.h>
+
 #include "configuration.h"
 #include "proc_mutex.h"
 
@@ -23,25 +25,24 @@ namespace tateyama::bootstrap {
 /**
  * @brief return code
  */
-enum return_code {
-    ok = 0,
-    err = 1,
-};
+    enum return_code {
+        ok = 0,
+        err = 1,
+    };
 
-    return_code oltp_start(int argc, char* argv[], char *argv0, bool need_check);
-    return_code oltp_status(int argc, char* argv[]);
+    return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode = tateyama::framework::boot_mode::database_server);
+    return_code oltp_status();
     return_code oltp_kill(utils::proc_mutex*, utils::bootstrap_configuration&);
-    return_code oltp_shutdown_kill(int argc, char* argv[], bool force, bool status_output = true);
-    return_code start_maintenance_server(int argc, char* argv[], char *argv0);
+    return_code oltp_shutdown_kill(bool force, bool status_output = true);
 
 } //  tateyama::bootstrap
 
 
 namespace tateyama::bootstrap::backup {
 
-    return_code oltp_backup_create(int argc,  char* argv[]);
-    return_code oltp_backup_estimate(int argc,  char* argv[]);
-    return_code oltp_restore_backup(int argc,  char* argv[]);
-    return_code oltp_restore_tag(int argc,  char* argv[]);
+    return_code oltp_backup_create(const std::string& path_to_backup);
+    return_code oltp_backup_estimate();
+    return_code oltp_restore_backup(const std::string& path_to_backup);
+    return_code oltp_restore_tag(const std::string& tag_name);
 
 } //  tateyama::bootstrap::backup

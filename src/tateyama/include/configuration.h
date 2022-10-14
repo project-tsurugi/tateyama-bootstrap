@@ -25,14 +25,14 @@
 
 namespace tateyama::bootstrap::utils {
 
-static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");
-static const boost::filesystem::path PID_DIR = boost::filesystem::path("/tmp");
+static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");  // NOLINT
+static const boost::filesystem::path PID_DIR = boost::filesystem::path("/tmp");  // NOLINT
 static const std::string_view  PID_FILE_NAME = "tsurugi";
 static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
 public:
-    bootstrap_configuration(std::string_view f) {
+    explicit bootstrap_configuration(std::string_view f) {
         // tsurugi.ini
         if (!f.empty()) {
             conf_file_ = boost::filesystem::path(std::string(f));
