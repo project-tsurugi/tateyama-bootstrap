@@ -154,31 +154,14 @@ int backend_main(int argc, char **argv) {
         }
     }
 
-    // wait for signal to terminate this
-    int signo{};
-    sigset_t ss;
-    sigemptyset(&ss);
-    do {
-        if (auto ret = sigaddset(&ss, SIGINT); ret != 0) {
-            LOG(ERROR) << "fail to sigaddset";
-        }
-        if (auto ret = sigprocmask(SIG_BLOCK, &ss, nullptr); ret != 0) {
-            LOG(ERROR) << "fail to pthread_sigmask";
-        }
-        if (auto ret = sigwait(&ss, &signo); ret == 0) { // シグナルを待つ
-            if (signo == SIGINT) {
-                // termination process
-                LOG(INFO) << "exiting";
-                status_info->whole(tateyama::status_info::state::deactivating);
-                sv.shutdown();
-                status_info->whole(tateyama::status_info::state::deactivated);
-                return 0;
-            }
-        } else {
-            LOG(ERROR) << "fail to sigwait";
-            return -1;
-        }
-    } while(true);
+    // wait for a shutdown request
+    status_info->wait_for_shutdown();
+    // termination process
+    LOG(INFO) << "exiting";
+    status_info->whole(tateyama::status_info::state::deactivating);
+    sv.shutdown();
+    status_info->whole(tateyama::status_info::state::deactivated);
+    return 0;
 }
 
 }  // tateyama::bootstrap

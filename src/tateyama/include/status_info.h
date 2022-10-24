@@ -61,8 +61,11 @@ public:
     [[nodiscard]] tateyama::status_info::state whole() const {
         return resource_status_memory_->whole();
     }
-    [[nodiscard]] bool shutdown() {
+    [[nodiscard]] bool is_shutdown_requested() {
         return resource_status_memory_->shutdown();
+    }
+    [[nodiscard]] bool request_shutdown() {
+        return resource_status_memory_->request_shutdown();
     }
     static void force_delete(const std::string& digest) {
         std::string status_file_name = digest;

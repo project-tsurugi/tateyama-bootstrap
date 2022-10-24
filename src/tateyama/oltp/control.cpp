@@ -238,39 +238,33 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
     return tateyama::bootstrap::return_code::err;
 }
 
-return_code oltp_shutdown(utils::proc_mutex* file_mutex) {
+return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* status_info) {
     auto rc = tateyama::bootstrap::return_code::ok;
     bool dot = false;
 
-    auto pid = file_mutex->pid(true);
-    if (pid != 0) {
-        DVLOG(log_trace) << "kill (SIGINT) to process " << pid;
-        kill(pid, SIGINT);
-        usleep(sleep_time_unit_mutex * 1000);
-
-        std::size_t check_count = check_count_shutdown;
-        int sleep_time_unit = sleep_time_unit_shutdown;
-        for (size_t i = 0; i < check_count; i++) {
-            if (file_mutex->check() == proc_mutex::lock_state::no_file) {
-                if (dot) {
-                    std::cout << std::endl;
-                }
-                return rc;
-            }
-            usleep(sleep_time_unit * 1000);
-            std::cout << "."  << std::flush;
-            dot = true;
-        }
-        if (dot) {
-            std::cout << std::endl;
-        }
-        LOG(ERROR) << "shutdown operation is still in progress, check it after some time";
-        rc = tateyama::bootstrap::return_code::err;
-    } else {
-        LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-        rc = tateyama::bootstrap::return_code::err;
+    if (!status_info->request_shutdown()) {
+        return  tateyama::bootstrap::return_code::err;
     }
-    return rc;
+    usleep(sleep_time_unit_mutex * 1000);
+
+    std::size_t check_count = check_count_shutdown;
+    int sleep_time_unit = sleep_time_unit_shutdown;
+    for (size_t i = 0; i < check_count; i++) {
+        if (file_mutex->check() == proc_mutex::lock_state::no_file) {
+            if (dot) {
+                std::cout << std::endl;
+            }
+            return rc;
+        }
+        usleep(sleep_time_unit * 1000);
+        std::cout << "."  << std::flush;
+        dot = true;
+    }
+    if (dot) {
+        std::cout << std::endl;
+    }
+    LOG(ERROR) << "shutdown operation is still in progress, check it after some time";
+    return tateyama::bootstrap::return_code::err;
 }
 
 return_code oltp_shutdown_kill(bool force, bool status_output) {
@@ -297,8 +291,8 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
                 LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
             } else {
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
-                if (!status_info->shutdown()) {
-                    rc = oltp_shutdown(file_mutex.get());
+                if (!status_info->is_shutdown_requested()) {
+                    rc = oltp_shutdown(file_mutex.get(), status_info.get());
                     if (rc == tateyama::bootstrap::return_code::ok) {
                         if (monitor_output) {
                             monitor_output->finish(true);
