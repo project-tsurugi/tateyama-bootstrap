@@ -312,7 +312,6 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
                     }
                     return rc;
                 }
-                LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
             } else {
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
                 if (!status_info->is_shutdown_requested()) {
