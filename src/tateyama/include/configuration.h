@@ -33,8 +33,7 @@ static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
 public:
-    bootstrap_configuration() {
-    }
+    bootstrap_configuration() = default;
     static bool create_bootstrap_configuration(std::string_view file, bootstrap_configuration& target) {
         try {
             target = bootstrap_configuration(file);
