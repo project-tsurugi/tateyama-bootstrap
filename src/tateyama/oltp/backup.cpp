@@ -85,7 +85,7 @@ static bool prompt(std::string_view msg)
 }
 
 static std::string name() {
-    if (auto conf = bootstrap_configuration(FLAGS_conf).create_configuration(); conf != nullptr) {
+    if (auto conf = bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         auto endpoint_config = conf->get_section("ipc_endpoint");
         if (endpoint_config == nullptr) {
             LOG(ERROR) << "cannot find ipc_endpoint section in the configuration";

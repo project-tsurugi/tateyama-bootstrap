@@ -51,6 +51,8 @@ const std::size_t check_count_startup = 100;
 const int sleep_time_unit_startup = 20;
 const std::size_t check_count_shutdown = 300;
 const int sleep_time_unit_shutdown = 1000;
+const std::size_t check_count_kill = 100;
+const int sleep_time_unit_kill = 20;
 const int sleep_time_unit_mutex = 50;
 
 using namespace tateyama::bootstrap::utils;
@@ -99,7 +101,10 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
 return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     if (!FLAGS_start_mode.empty()) {
         if (FLAGS_start_mode == "force") {
-            auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+            utils::bootstrap_configuration bst_conf;
+            if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+                return tateyama::bootstrap::return_code::err;
+            }
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
                 return rc;
@@ -139,7 +144,10 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             monitor_output->start();
         }
 
-        auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+        utils::bootstrap_configuration bst_conf;
+        if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+            return tateyama::bootstrap::return_code::err;
+        }
         if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
             std::size_t n = 0;
 
@@ -225,14 +233,27 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
 }
 
 return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configuration& bst_conf) {
+    auto rc = tateyama::bootstrap::return_code::ok;
     auto pid = file_mutex->pid(false);
     if (pid != 0) {
         DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
+        std::size_t check_count = check_count_kill;
+        int sleep_time_unit = sleep_time_unit_kill;
+        for (size_t i = 0; i < check_count; i++) {
+            if (auto rv = kill(pid, 0); rv != 0) {
+                if (errno != ESRCH) {
+                    LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
+                    rc = tateyama::bootstrap::return_code::err;
+                }
+                break;
+            }
+            usleep(sleep_time_unit * 1000);
+        }
         unlink(file_mutex->name().c_str());
         status_info_bridge::force_delete(bst_conf.digest());
         usleep(sleep_time_unit_mutex * 1000);
-        return tateyama::bootstrap::return_code::ok;
+        return rc;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
     return tateyama::bootstrap::return_code::err;
@@ -276,7 +297,10 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    utils::bootstrap_configuration bst_conf;
+    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        return tateyama::bootstrap::return_code::err;
+    }
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         try {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
@@ -288,7 +312,6 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
                     }
                     return rc;
                 }
-                LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
             } else {
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
                 if (!status_info->is_shutdown_requested()) {
@@ -328,7 +351,10 @@ return_code oltp_status() {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    utils::bootstrap_configuration bst_conf;
+    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        return tateyama::bootstrap::return_code::err;
+    }
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
         using state = proc_mutex::lock_state;
