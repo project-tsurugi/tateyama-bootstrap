@@ -51,6 +51,8 @@ const std::size_t check_count_startup = 100;
 const int sleep_time_unit_startup = 20;
 const std::size_t check_count_shutdown = 300;
 const int sleep_time_unit_shutdown = 1000;
+const std::size_t check_count_kill = 100;
+const int sleep_time_unit_kill = 20;
 const int sleep_time_unit_mutex = 50;
 
 using namespace tateyama::bootstrap::utils;
@@ -225,14 +227,27 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
 }
 
 return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configuration& bst_conf) {
+    auto rc = tateyama::bootstrap::return_code::ok;
     auto pid = file_mutex->pid(false);
     if (pid != 0) {
         DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
+        std::size_t check_count = check_count_kill;
+        int sleep_time_unit = sleep_time_unit_kill;
+        for (size_t i = 0; i < check_count; i++) {
+            if (auto rv = kill(pid, 0); rv != 0) {
+                if (errno != ESRCH) {
+                    LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
+                    rc = tateyama::bootstrap::return_code::err;
+                }
+                break;
+            }
+            usleep(sleep_time_unit * 1000);
+        }
         unlink(file_mutex->name().c_str());
         status_info_bridge::force_delete(bst_conf.digest());
         usleep(sleep_time_unit_mutex * 1000);
-        return tateyama::bootstrap::return_code::ok;
+        return rc;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
     return tateyama::bootstrap::return_code::err;
