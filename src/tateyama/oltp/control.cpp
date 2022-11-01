@@ -101,7 +101,10 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
 return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     if (!FLAGS_start_mode.empty()) {
         if (FLAGS_start_mode == "force") {
-            auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+            utils::bootstrap_configuration bst_conf;
+            if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+                return tateyama::bootstrap::return_code::err;
+            }
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
                 return rc;
@@ -141,7 +144,10 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             monitor_output->start();
         }
 
-        auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+        utils::bootstrap_configuration bst_conf;
+        if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+            return tateyama::bootstrap::return_code::err;
+        }
         if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
             std::size_t n = 0;
 
@@ -291,7 +297,10 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    utils::bootstrap_configuration bst_conf;
+    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        return tateyama::bootstrap::return_code::err;
+    }
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         try {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
@@ -343,7 +352,10 @@ return_code oltp_status() {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    auto bst_conf = utils::bootstrap_configuration(FLAGS_conf);
+    utils::bootstrap_configuration bst_conf;
+    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        return tateyama::bootstrap::return_code::err;
+    }
     if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
         auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
         using state = proc_mutex::lock_state;

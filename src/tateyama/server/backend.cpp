@@ -70,7 +70,11 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     // configuration
-    auto bst_conf = bootstrap_configuration(FLAGS_conf);
+    utils::bootstrap_configuration bst_conf;
+    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        LOG(ERROR) << "error in create_configuration";
+        exit(1);
+    }
     auto conf = bst_conf.create_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";

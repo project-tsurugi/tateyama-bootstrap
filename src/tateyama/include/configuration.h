@@ -17,6 +17,7 @@
 
 #include <string_view>
 #include <cstdlib>
+#include <exception>
 
 #include <boost/filesystem/path.hpp>
 #include <openssl/md5.h>
@@ -32,23 +33,23 @@ static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
 public:
-    explicit bootstrap_configuration(std::string_view f) {
-        // tsurugi.ini
-        if (!f.empty()) {
-            conf_file_ = boost::filesystem::path(std::string(f));
-        } else {
-            if (auto env = getenv(ENV_ENTRY); env != nullptr) {
-                conf_file_ = boost::filesystem::path(env) / CONF_FILE_NAME;
-            } else {
-                conf_file_ = std::string("");
-                property_file_absent_ = true;
-            }
+    bootstrap_configuration() {
+    }
+    static bool create_bootstrap_configuration(std::string_view file, bootstrap_configuration& target) {
+        try {
+            target = bootstrap_configuration(file);
+            return true;
+        } catch (std::runtime_error &e) {
+            LOG(ERROR) << e.what();
+            return false;
         }
-        std::string pid_file_name(PID_FILE_NAME);
-        pid_file_name += "-";
-        pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
-        pid_file_name += ".pid";
-        lock_file_ = PID_DIR / boost::filesystem::path(pid_file_name);
+    }
+    static std::shared_ptr<tateyama::api::configuration::whole> create_configuration(std::string_view file) {
+        bootstrap_configuration bst_conf;
+        if (create_bootstrap_configuration(file, bst_conf)) {
+            return bst_conf.create_configuration();
+        }
+        return nullptr;
     }
     std::shared_ptr<tateyama::api::configuration::whole> create_configuration() {
         if (!property_file_absent_) {
@@ -69,6 +70,36 @@ private:
     std::shared_ptr<tateyama::api::configuration::whole> configuration_;
     bool property_file_absent_{};
 
+    // should create this object via create_bootstrap_configuration()
+    explicit bootstrap_configuration(std::string_view f) {
+        // tsurugi.ini
+        if (!f.empty()) {
+            conf_file_ = boost::filesystem::path(std::string(f));
+        } else {
+            if (auto env = getenv(ENV_ENTRY); env != nullptr) {
+                conf_file_ = boost::filesystem::path(env) / CONF_FILE_NAME;
+            } else {
+                conf_file_ = std::string("");
+                property_file_absent_ = true;
+            }
+        }
+        // do sanity check for conf_file_
+        if (!property_file_absent_) {
+            boost::system::error_code error;
+            const bool result = boost::filesystem::exists(conf_file_, error);
+            if (!result || error) {
+                throw std::runtime_error(std::string("cannot find configuration file: ") + conf_file_.string());
+            }
+            if (boost::filesystem::is_directory(conf_file_)) {
+                throw std::runtime_error(conf_file_.string() + " is a directory");
+            }
+        }
+        std::string pid_file_name(PID_FILE_NAME);
+        pid_file_name += "-";
+        pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
+        pid_file_name += ".pid";
+        lock_file_ = PID_DIR / boost::filesystem::path(pid_file_name);
+    }
     std::string digest(const std::string& path_string) {
         MD5_CTX mdContext;
         unsigned int len = path_string.length();
