@@ -145,83 +145,84 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
         }
 
         utils::bootstrap_configuration bst_conf;
-        if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
-            return tateyama::bootstrap::return_code::err;
-        }
-        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-            std::size_t n = 0;
+        if (utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+            if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+                std::size_t n = 0;
 
-            std::unique_ptr<proc_mutex> file_mutex{};
-            enum {
-                init,
-                ok,
-                another,
-            } check_result = init;
-            for (size_t i = n; i < check_count_startup; i++) {
-                if (!file_mutex) {
-                    try {
-                        file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-                    } catch (std::runtime_error &e) {
-                        usleep(sleep_time_unit_startup * 1000);
-                        continue;
-                    }
-                }
-                if (file_mutex->check() == proc_mutex::lock_state::locked) {
-                    auto pid = file_mutex->pid(); 
-                    if (pid == 0) {
-                        continue;
-                    }
-                    check_result = (child_pid == pid) ? ok : another;
-                    n = i;
-                    break;
-                }
-                usleep(sleep_time_unit_startup * 5 * 1000);
-            }
-
-            if (check_result == ok) {
-                std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
-                // wait for creation of shared memory for status info
+                std::unique_ptr<proc_mutex> file_mutex{};
+                enum {
+                    init,
+                    ok,
+                    another,
+                } check_result = init;
                 for (size_t i = n; i < check_count_startup; i++) {
-                    if (status_info->attach(bst_conf.digest())) {
+                    if (!file_mutex) {
+                        try {
+                            file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+                        } catch (std::runtime_error &e) {
+                            usleep(sleep_time_unit_startup * 1000);
+                            continue;
+                        }
+                    }
+                    if (file_mutex->check() == proc_mutex::lock_state::locked) {
+                        auto pid = file_mutex->pid(); 
+                        if (pid == 0) {
+                            continue;
+                        }
+                        check_result = (child_pid == pid) ? ok : another;
                         n = i;
                         break;
                     }
-                    usleep(sleep_time_unit_startup * 1000);
+                    usleep(sleep_time_unit_startup * 5 * 1000);
                 }
 
-                // wait for pid set
-                bool checked = false;
-                for (size_t i = n; i < check_count_startup; i++) {
-                    auto pid = status_info->pid();
-                    if (pid == 0) {
-                        usleep(sleep_time_unit_startup * 1000);
-                        continue;
-                    }
-                    if (child_pid == pid) {
-                        if (monitor_output) {
-                            monitor_output->finish(true);
+                if (check_result == ok) {
+                    std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
+                    // wait for creation of shared memory for status info
+                    for (size_t i = n; i < check_count_startup; i++) {
+                        if (status_info->attach(bst_conf.digest())) {
+                            n = i;
+                            break;
                         }
-                        return tateyama::bootstrap::return_code::ok;
+                        usleep(sleep_time_unit_startup * 1000);
                     }
-                    LOG(ERROR) << "another " << server_name_string_for_status << " is running";
-                    rc = tateyama::bootstrap::return_code::err;
-                    checked = true;
-                    break;
-                }
-                if (!checked) {
-                    LOG(ERROR) << "cannot confirm the server process within the specified time";
+
+                    // wait for pid set
+                    bool checked = false;
+                    for (size_t i = n; i < check_count_startup; i++) {
+                        auto pid = status_info->pid();
+                        if (pid == 0) {
+                            usleep(sleep_time_unit_startup * 1000);
+                            continue;
+                        }
+                        if (child_pid == pid) {
+                            if (monitor_output) {
+                                monitor_output->finish(true);
+                            }
+                            return tateyama::bootstrap::return_code::ok;
+                        }
+                        LOG(ERROR) << "another " << server_name_string_for_status << " is running";
+                        rc = tateyama::bootstrap::return_code::err;
+                        checked = true;
+                        break;
+                    }
+                    if (!checked) {
+                        LOG(ERROR) << "cannot confirm the server process within the specified time";
+                        rc = tateyama::bootstrap::return_code::err;
+                    }
+                } else {
+                    if (check_result == init) {
+                        LOG(ERROR) << "cannot invoke a server process";
+                    } else {
+                        LOG(ERROR) << "another " << server_name_string_for_status << " is running";
+                    }
                     rc = tateyama::bootstrap::return_code::err;
                 }
             } else {
-                if (check_result == init) {
-                    LOG(ERROR) << "cannot invoke a server process";
-                } else {
-                    LOG(ERROR) << "another " << server_name_string_for_status << " is running";
-                }
+                LOG(ERROR) << "cannot find the configuration file";
                 rc = tateyama::bootstrap::return_code::err;
             }
         } else {
-            LOG(ERROR) << "cannot find the configuration file";
             rc = tateyama::bootstrap::return_code::err;
         }
         if (monitor_output) {

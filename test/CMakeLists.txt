@@ -31,7 +31,8 @@ function (add_test_executable source_file)
 endfunction (add_test_executable)
 
 file(GLOB SRCS
-        "tateyama/monitor/*.cpp"
+        "tateyama/monitor/*_test.cpp"
+        "tateyama/oltp/*_test.cpp"
 )
 
 foreach(file ${SRCS})
