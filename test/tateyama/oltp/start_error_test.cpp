@@ -18,10 +18,10 @@
 
 namespace tateyama::testing {
 
-class start_stop_test : public ::testing::Test {
+class start_error_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("start_stop_test", 20003);
+        helper_ = std::make_unique<directory_helper>("start_error_test", 20100);
         helper_->set_up();
     }
 
@@ -36,74 +36,19 @@ private:
     std::string name_{};
 };
 
-TEST_F(start_stop_test, success) {
+TEST_F(start_error_test, dir) {
     std::string command;
     
-    command = "oltp start --conf ";
-    command += helper_->conf_file_path();
+    command = "oltp start --conf /tmp";
     command += " --monitor ";
-    command += helper_->abs_path("test/start.log");
-    std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
-        FAIL();
-    }
-    EXPECT_TRUE(validate_json(helper_->abs_path("test/start.log")));
-    
-    FILE *fp;
-    command = "wc -l ";
-    command += helper_->abs_path("test/start.log");
-    std::cout << command << std::endl;
-    if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot wc" << std::endl;
-    }
-
-    int l;
-    auto rv = fscanf(fp, "%d", &l);
-    EXPECT_EQ(l, 2);
-    EXPECT_EQ(rv, 1);
-
-    command = "oltp shutdown --conf ";
-    command += helper_->conf_file_path();
-    command += " --monitor ";
-    command += helper_->abs_path("test/shutdown.log");
-    std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp shutdown" << std::endl;
-        FAIL();
-    }
-    EXPECT_TRUE(validate_json(helper_->abs_path("test/shutdown.log")));
-
-    command = "wc -l ";
-    command += helper_->abs_path("test/shutdown.log");
-    std::cout << command << std::endl;
-    if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot wc" << std::endl;
-    }
-}
-
-TEST_F(start_stop_test, fail) {
-    std::string command;
-    
-    command = "oltp start --conf ";
-    command += helper_->conf_file_path();
-    std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
-        FAIL();
-    }
-
-    command = "oltp start --conf ";
-    command += helper_->conf_file_path();
-    command += " --monitor ";
-    command += helper_->abs_path("test/start_fail.log");
+    command += helper_->abs_path("test/dir.log");
     std::cout << command << std::endl;
     EXPECT_NE(system(command.c_str()), 0);
-    EXPECT_TRUE(validate_json(helper_->abs_path("test/start_fail.log")));
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/dir.log")));
     
     FILE *fp;
     command = "grep fail ";
-    command += helper_->abs_path("test/start_fail.log");
+    command += helper_->abs_path("test/dir.log");
     command += " | wc -l";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
@@ -114,14 +59,57 @@ TEST_F(start_stop_test, fail) {
     auto rv = fscanf(fp, "%d", &l);
     EXPECT_EQ(l, 1);
     EXPECT_EQ(rv, 1);
+}
 
-    command = "oltp shutdown --conf ";
-    command += helper_->conf_file_path();
+TEST_F(start_error_test, dir_and_slash) {
+    std::string command;
+    
+    command = "oltp start --conf /tmp/";
+    command += " --monitor ";
+    command += helper_->abs_path("test/dir.log");
     std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp shutdown" << std::endl;
-        FAIL();
+    EXPECT_NE(system(command.c_str()), 0);
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/dir.log")));
+    
+    FILE *fp;
+    command = "grep fail ";
+    command += helper_->abs_path("test/dir.log");
+    command += " | wc -l";
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot grep and wc" << std::endl;
     }
+
+    int l;
+    auto rv = fscanf(fp, "%d", &l);
+    EXPECT_EQ(l, 1);
+    EXPECT_EQ(rv, 1);
+}
+
+TEST_F(start_error_test, end_slash) {
+    std::string command;
+    
+    command = "oltp start --conf ";
+    command += helper_->conf_file_path();
+    command += "/ --monitor ";
+    command += helper_->abs_path("test/dir.log");
+    std::cout << command << std::endl;
+    EXPECT_NE(system(command.c_str()), 0);
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/dir.log")));
+    
+    FILE *fp;
+    command = "grep fail ";
+    command += helper_->abs_path("test/dir.log");
+    command += " | wc -l";
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot grep and wc" << std::endl;
+    }
+
+    int l;
+    auto rv = fscanf(fp, "%d", &l);
+    EXPECT_EQ(l, 1);
+    EXPECT_EQ(rv, 1);
 }
 
 }  // namespace tateyama::testing

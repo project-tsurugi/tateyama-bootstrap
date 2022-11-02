@@ -18,10 +18,10 @@
 
 namespace tateyama::testing {
 
-class start_stop_test : public ::testing::Test {
+class start_error_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("start_stop_test", 20003);
+        helper_ = std::make_unique<directory_helper>("start_error_test", 20100);
         helper_->set_up();
     }
 
@@ -36,7 +36,7 @@ private:
     std::string name_{};
 };
 
-TEST_F(start_stop_test, success) {
+TEST_F(start_error_test, success) {
     std::string command;
     
     command = "oltp start --conf ";
@@ -82,11 +82,12 @@ TEST_F(start_stop_test, success) {
     }
 }
 
-TEST_F(start_stop_test, fail) {
+TEST_F(start_error_test, fail) {
     std::string command;
     
     command = "oltp start --conf ";
     command += helper_->conf_file_path();
+    command += "";
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
         std::cerr << "cannot oltp start" << std::endl;
