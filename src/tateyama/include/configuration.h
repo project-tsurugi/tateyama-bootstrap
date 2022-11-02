@@ -33,19 +33,17 @@ static const char *ENV_ENTRY = "TGDIR";  // NOLINT
 
 class bootstrap_configuration {
 public:
-    bootstrap_configuration() = default;
-    static bool create_bootstrap_configuration(std::string_view file, bootstrap_configuration& target) {
+    static bootstrap_configuration create_bootstrap_configuration(std::string_view file) {
         try {
-            target = bootstrap_configuration(file);
-            return true;
+            return bootstrap_configuration(file);
         } catch (std::runtime_error &e) {
             LOG(ERROR) << e.what();
-            return false;
+            return bootstrap_configuration();
         }
     }
     static std::shared_ptr<tateyama::api::configuration::whole> create_configuration(std::string_view file) {
-        bootstrap_configuration bst_conf;
-        if (create_bootstrap_configuration(file, bst_conf)) {
+        auto bst_conf = create_bootstrap_configuration(file);
+        if (bst_conf.valid()) {
             return bst_conf.create_configuration();
         }
         return nullptr;
@@ -56,11 +54,14 @@ public:
         }
         return nullptr;
     }
-    boost::filesystem::path lock_file() {
+    [[nodiscard]] boost::filesystem::path lock_file() const {
         return lock_file_;
     }
-    std::string digest() {
+    [[nodiscard]] std::string digest() {
         return digest(boost::filesystem::canonical(conf_file_).string());
+    }
+    [[nodiscard]] bool valid() const {
+        return valid_;
     }
 
 private:
@@ -68,8 +69,10 @@ private:
     boost::filesystem::path lock_file_;
     std::shared_ptr<tateyama::api::configuration::whole> configuration_;
     bool property_file_absent_{};
+    bool valid_{};
 
     // should create this object via create_bootstrap_configuration()
+    bootstrap_configuration() = default;
     explicit bootstrap_configuration(std::string_view f) {
         // tsurugi.ini
         if (!f.empty()) {
@@ -98,6 +101,7 @@ private:
         pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
         pid_file_name += ".pid";
         lock_file_ = PID_DIR / boost::filesystem::path(pid_file_name);
+        valid_ = true;
     }
     std::string digest(const std::string& path_string) {
         MD5_CTX mdContext;

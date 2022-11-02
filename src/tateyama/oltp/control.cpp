@@ -99,53 +99,62 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
 }
 
 return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
-    if (!FLAGS_start_mode.empty()) {
-        if (FLAGS_start_mode == "force") {
-            utils::bootstrap_configuration bst_conf;
-            if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
-                return tateyama::bootstrap::return_code::err;
-            }
-            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-            if (auto rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
-                return rc;
-            }
-        } else {
-            LOG(ERROR) << "only \"force\" can be specified for the start-mode";
-            return tateyama::bootstrap::return_code::err;
-        }
-    }
+    std::unique_ptr<utils::monitor> monitor_output{};
 
-    std::string server_name(server_name_string);
-    boost::filesystem::path path_for_this{};
-    if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
-        path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
-    } else{
-        path_for_this = boost::filesystem::canonical(a0f);
+    if(!FLAGS_monitor.empty() && need_check) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
     }
-    if (!boost::filesystem::exists(path_for_this)) {
-        LOG(ERROR) << "cannot find " << server_name_string;
-        return tateyama::bootstrap::return_code::err;
-    }
-
-    auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-    auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
-    std::vector<std::string> args{};
-    build_args(args, mode);
-    boost::process::child c(exec, boost::process::args (args));
-    pid_t child_pid = c.id();
-    c.detach();
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    if (need_check) {
-        std::unique_ptr<utils::monitor> monitor_output{};
+    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (bst_conf.valid()) {
+        if (!FLAGS_start_mode.empty()) {
+            if (FLAGS_start_mode == "force") {
+                auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+                if (rc = oltp_kill(file_mutex.get(), bst_conf); rc != tateyama::bootstrap::return_code::ok) {
+                    LOG(ERROR) << "cannot oltp kill before start";
+                    if (monitor_output) {
+                        monitor_output->finish(false);
+                    }
+                    return tateyama::bootstrap::return_code::err;
+                }
+            } else {
+                LOG(ERROR) << "only \"force\" can be specified for the start-mode";
+                if (monitor_output) {
+                    monitor_output->finish(false);
+                }
+                return tateyama::bootstrap::return_code::err;
+            }
+        }
+
+        std::string server_name(server_name_string);
+        boost::filesystem::path path_for_this{};
+        if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
+            path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
+        } else{
+            path_for_this = boost::filesystem::canonical(a0f);
+        }
+        if (!boost::filesystem::exists(path_for_this)) {
+            LOG(ERROR) << "cannot find " << server_name_string;
+            return tateyama::bootstrap::return_code::err;
+        }
+
+        auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+        auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+        std::vector<std::string> args{};
+        build_args(args, mode);
+        boost::process::child c(exec, boost::process::args (args));
+        pid_t child_pid = c.id();
+        c.detach();
 
         if(!FLAGS_monitor.empty()) {
             monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
             monitor_output->start();
         }
 
-        utils::bootstrap_configuration bst_conf;
-        if (utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
+        rc = tateyama::bootstrap::return_code::ok;
+        if (need_check) {
             if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
                 std::size_t n = 0;
 
@@ -222,15 +231,17 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                 LOG(ERROR) << "cannot find the configuration file";
                 rc = tateyama::bootstrap::return_code::err;
             }
-        } else {
             rc = tateyama::bootstrap::return_code::err;
         }
-        if (monitor_output) {
-            monitor_output->finish(false);
-        }
-        return rc;
+    } else {
+        LOG(ERROR) << "error in configuration file name";
+        rc = tateyama::bootstrap::return_code::err;
     }
-    return tateyama::bootstrap::return_code::ok;  // when need_check is false, it should return ok
+
+    if (monitor_output) {  // monitor_output is nullptr when need_check is false
+        monitor_output->finish(false);
+    }
+    return rc;
 }
 
 return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configuration& bst_conf) {
@@ -298,25 +309,13 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    utils::bootstrap_configuration bst_conf;
-    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
-        return tateyama::bootstrap::return_code::err;
-    }
-    if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        try {
-            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-            if (force) {
-                rc = oltp_kill(file_mutex.get(), bst_conf);
-                if (rc == tateyama::bootstrap::return_code::ok) {
-                    if (monitor_output) {
-                        monitor_output->finish(true);
-                    }
-                    return rc;
-                }
-            } else {
-                std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
-                if (!status_info->is_shutdown_requested()) {
-                    rc = oltp_shutdown(file_mutex.get(), status_info.get());
+    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (bst_conf.valid()) {
+        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+            try {
+                auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+                if (force) {
+                    rc = oltp_kill(file_mutex.get(), bst_conf);
                     if (rc == tateyama::bootstrap::return_code::ok) {
                         if (monitor_output) {
                             monitor_output->finish(true);
@@ -324,16 +323,30 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
                         return rc;
                     }
                 } else {
-                    LOG(ERROR) << "another shutdown is being conducted";
-                    rc = tateyama::bootstrap::return_code::err;
+                    std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
+                    if (!status_info->is_shutdown_requested()) {
+                        rc = oltp_shutdown(file_mutex.get(), status_info.get());
+                        if (rc == tateyama::bootstrap::return_code::ok) {
+                            if (monitor_output) {
+                                monitor_output->finish(true);
+                            }
+                            return rc;
+                        }
+                    } else {
+                        LOG(ERROR) << "another shutdown is being conducted";
+                        rc = tateyama::bootstrap::return_code::err;
+                    }
                 }
+            } catch (std::runtime_error &e) {
+                LOG(ERROR) << e.what();
+                rc = tateyama::bootstrap::return_code::err;
             }
-        } catch (std::runtime_error &e) {
-            LOG(ERROR) << e.what();
+        } else {
+            LOG(ERROR) << "error in create_configuration";
             rc = tateyama::bootstrap::return_code::err;
         }
     } else {
-        LOG(ERROR) << "error in create_configuration";
+        LOG(ERROR) << "error in configuration file name";
         rc = tateyama::bootstrap::return_code::err;
     }
 
@@ -352,80 +365,82 @@ return_code oltp_status() {
     }
 
     auto rc = tateyama::bootstrap::return_code::ok;
-    utils::bootstrap_configuration bst_conf;
-    if (!utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf, bst_conf)) {
-        return tateyama::bootstrap::return_code::err;
-    }
-    if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-        auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
-        using state = proc_mutex::lock_state;
-        switch (file_mutex->check()) {
-        case state::no_file:
-            if (monitor_output) {
-                monitor_output->status(tateyama::bootstrap::utils::status::stop);
+    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (bst_conf.valid()) {
+        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
+            using state = proc_mutex::lock_state;
+            switch (file_mutex->check()) {
+            case state::no_file:
+                if (monitor_output) {
+                    monitor_output->status(tateyama::bootstrap::utils::status::stop);
+                    break;
+                }
+                std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
                 break;
-            }
-            std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
-            break;
-        case state::locked:
-        {
-            std::unique_ptr<status_info_bridge> status_info{};
-            try {
-                status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
+            case state::locked:
+            {
+                std::unique_ptr<status_info_bridge> status_info{};
+                try {
+                    status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
 
-                switch(status_info->whole()) {
-                case tateyama::status_info::state::initial:
-                case tateyama::status_info::state::ready:
-                    if (monitor_output) {
-                        monitor_output->status(tateyama::bootstrap::utils::status::ready);
+                    switch(status_info->whole()) {
+                    case tateyama::status_info::state::initial:
+                    case tateyama::status_info::state::ready:
+                        if (monitor_output) {
+                            monitor_output->status(tateyama::bootstrap::utils::status::ready);
+                            break;
+                        }
+                        std::cout << server_name_string_for_status << " is BOOTING_UP" << std::endl;
                         break;
-                    }
-                    std::cout << server_name_string_for_status << " is BOOTING_UP" << std::endl;
-                    break;
-                case tateyama::status_info::state::activated:
-                    if (monitor_output) {
-                        monitor_output->status(tateyama::bootstrap::utils::status::activated);
+                    case tateyama::status_info::state::activated:
+                        if (monitor_output) {
+                            monitor_output->status(tateyama::bootstrap::utils::status::activated);
+                            break;
+                        }
+                        std::cout << server_name_string_for_status << " is RUNNING" << std::endl;
                         break;
-                    }
-                    std::cout << server_name_string_for_status << " is RUNNING" << std::endl;
-                    break;
-                case tateyama::status_info::state::deactivating:
-                    if (monitor_output) {
-                        monitor_output->status(tateyama::bootstrap::utils::status::deactivating);
+                    case tateyama::status_info::state::deactivating:
+                        if (monitor_output) {
+                            monitor_output->status(tateyama::bootstrap::utils::status::deactivating);
+                            break;
+                        }
+                        std::cout << server_name_string_for_status << " is  SHUTTING_DOWN" << std::endl;
                         break;
-                    }
-                    std::cout << server_name_string_for_status << " is  SHUTTING_DOWN" << std::endl;
-                    break;
-                case tateyama::status_info::state::deactivated:
-                    if (monitor_output) {
-                        monitor_output->status(tateyama::bootstrap::utils::status::deactivated);
+                    case tateyama::status_info::state::deactivated:
+                        if (monitor_output) {
+                            monitor_output->status(tateyama::bootstrap::utils::status::deactivated);
+                            break;
+                        }
+                        std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
                         break;
-                    }
-                    std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
-                    break;
-                };
-            } catch (std::exception& e) {
-                LOG(ERROR) << e.what();
-                rc = tateyama::bootstrap::return_code::err;
-            }
-            break;
-        }
-        default:
-            if (monitor_output) {
-                monitor_output->status(tateyama::bootstrap::utils::status::unknown);
+                    };
+                } catch (std::exception& e) {
+                    LOG(ERROR) << e.what();
+                    rc = tateyama::bootstrap::return_code::err;
+                }
                 break;
             }
-            std::cout << server_name_string_for_status << " is UNKNOWN" << std::endl;
-            break;
-        }
-        if (rc == tateyama::bootstrap::return_code::ok) {
-            if (monitor_output) {
-                monitor_output->finish(true);
+            default:
+                if (monitor_output) {
+                    monitor_output->status(tateyama::bootstrap::utils::status::unknown);
+                    break;
+                }
+                std::cout << server_name_string_for_status << " is UNKNOWN" << std::endl;
+                break;
             }
-            return rc;
+            if (rc == tateyama::bootstrap::return_code::ok) {
+                if (monitor_output) {
+                    monitor_output->finish(true);
+                }
+                return rc;
+            }
+        } else {
+            LOG(ERROR) << "error in create_configuration";
+            rc = tateyama::bootstrap::return_code::err;
         }
     } else {
-        LOG(ERROR) << "error in create_configuration";
+        LOG(ERROR) << "error in configuration file name";
         rc = tateyama::bootstrap::return_code::err;
     }
 
