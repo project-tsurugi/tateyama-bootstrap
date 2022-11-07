@@ -263,6 +263,7 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             if((fp = popen(command.c_str(), "r")) == nullptr){
                 LOG(ERROR) << "cannot grep and wc";
                 rc = tateyama::bootstrap::return_code::err;
+                exit(__LINE__);
                 break;
             }
             int l;
@@ -270,6 +271,7 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             if(rv != 1) {
                 LOG(ERROR) << "wc output is curious";
                 rc = tateyama::bootstrap::return_code::err;
+                exit(__LINE__);
                 break;
             }
             if (l == 0) {
@@ -281,9 +283,11 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             usleep(sleep_time_unit * 1000);
         }
         LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        exit(__LINE__);
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+    exit(__LINE__);
     return tateyama::bootstrap::return_code::err;
 }
 
