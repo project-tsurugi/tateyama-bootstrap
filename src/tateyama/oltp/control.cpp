@@ -252,13 +252,27 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
         int sleep_time_unit = sleep_time_unit_kill;
+        std::string command = "ps -ef | grep ";
+        command += server_name_string;
+        command += " | grep ";
+        command += std::to_string(pid);
+        command += " | grep -v grep | wc -l";
+        
         for (size_t i = 0; i < check_count; i++) {
-            if (auto rv = kill(pid, 0); rv != 0) {
-                if (errno != ESRCH) {
-                    LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
-                    rc = tateyama::bootstrap::return_code::err;
-                    exit(__LINE__);
-                }
+            FILE *fp;
+            if((fp = popen(command.c_str(), "r")) == nullptr){
+                LOG(ERROR) << "cannot grep and wc";
+                rc = tateyama::bootstrap::return_code::err;
+                break;
+            }
+            int l;
+            auto rv = fscanf(fp, "%d", &l);
+            if(rv != 1) {
+                LOG(ERROR) << "wc output is curious";
+                rc = tateyama::bootstrap::return_code::err;
+                break;
+            }
+            if (l == 0) {
                 unlink(file_mutex->name().c_str());
                 status_info_bridge::force_delete(bst_conf.digest());
                 usleep(sleep_time_unit_mutex * 1000);
@@ -267,11 +281,9 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             usleep(sleep_time_unit * 1000);
         }
         LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
-        exit(__LINE__);
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-    exit(__LINE__);
     return tateyama::bootstrap::return_code::err;
 }
 
