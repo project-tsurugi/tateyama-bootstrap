@@ -52,7 +52,7 @@ const int sleep_time_unit_startup = 20;
 const std::size_t check_count_shutdown = 300;
 const int sleep_time_unit_shutdown = 1000;
 const std::size_t check_count_kill = 100;
-const int sleep_time_unit_kill = 200;
+const int sleep_time_unit_kill = 20;
 const int sleep_time_unit_mutex = 50;
 
 using namespace tateyama::bootstrap::utils;
@@ -257,6 +257,7 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                 if (errno != ESRCH) {
                     LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
                     rc = tateyama::bootstrap::return_code::err;
+                    exit(__LINE__);
                 }
                 unlink(file_mutex->name().c_str());
                 status_info_bridge::force_delete(bst_conf.digest());
@@ -266,9 +267,11 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             usleep(sleep_time_unit * 1000);
         }
         LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        exit(__LINE__);
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+    exit(__LINE__);
     return tateyama::bootstrap::return_code::err;
 }
 
