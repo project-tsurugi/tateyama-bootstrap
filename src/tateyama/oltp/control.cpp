@@ -258,14 +258,15 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                     LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
                     rc = tateyama::bootstrap::return_code::err;
                 }
-                break;
+                unlink(file_mutex->name().c_str());
+                status_info_bridge::force_delete(bst_conf.digest());
+                usleep(sleep_time_unit_mutex * 1000);
+                return rc;
             }
             usleep(sleep_time_unit * 1000);
         }
-        unlink(file_mutex->name().c_str());
-        status_info_bridge::force_delete(bst_conf.digest());
-        usleep(sleep_time_unit_mutex * 1000);
-        return rc;
+        LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
     return tateyama::bootstrap::return_code::err;
