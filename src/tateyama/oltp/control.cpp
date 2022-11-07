@@ -261,14 +261,17 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                 unlink(file_mutex->name().c_str());
                 status_info_bridge::force_delete(bst_conf.digest());
                 usleep(sleep_time_unit_mutex * 1000);
+                std::cout << __func__ << ":" << __LINE__ << " " << "return " << rc << std::endl;
                 return rc;
             }
             usleep(sleep_time_unit * 1000);
         }
         LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        std::cout << __func__ << ":" << __LINE__ << " " << "return " << std::endl;
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+    std::cout << __func__ << ":" << __LINE__ << " " << "return " << std::endl;
     return tateyama::bootstrap::return_code::err;
 }
 
