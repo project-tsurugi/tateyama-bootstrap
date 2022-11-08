@@ -29,6 +29,7 @@ DEFINE_string(label, "", "label for this operation");  // NOLINT
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
 DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for oltp_start()
+DEFINE_int32(timeout, -1, "timeout for oltp shutdown, no timeout control takes place if 0 is specified");  // NOLINT for oltp_start()
 
 // for backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
