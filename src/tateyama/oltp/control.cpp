@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error
+#include <array>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -244,9 +245,32 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
     return rc;
 }
 
+void do_ps(int pid) {
+    std::string command = "ps -ef | grep ";
+    command += server_name_string;
+    command += " | grep ";
+    command += std::to_string(pid);
+    command += " | grep -v grep";
+        
+    FILE *fp;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        LOG(ERROR) << "cannot grep and wc";
+        return;
+    }
+    std::array<char, 16384> buf;
+    auto s = fread(static_cast<void*>(buf.data()), 1, 16384, fp);
+    buf.at(s) = '\0';
+    std::cout << buf.data() << std::endl;
+}
+
+
 return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configuration& bst_conf) {
     auto rc = tateyama::bootstrap::return_code::ok;
     auto pid = file_mutex->pid(false);
+
+    std::cout << "======== before ========" << std::endl;
+    do_ps(pid);
+    
     if (pid != 0) {
         DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
@@ -263,9 +287,10 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             if((fp = popen(command.c_str(), "r")) == nullptr){
                 LOG(ERROR) << "cannot grep and wc";
                 rc = tateyama::bootstrap::return_code::err;
-                exit(__LINE__);
                 break;
             }
+            std::cout << "======== " << i << " ========" << std::endl;
+            do_ps(pid);
             int l;
             auto rv = fscanf(fp, "%d", &l);
             if(rv != 1) {
@@ -283,12 +308,11 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
             usleep(sleep_time_unit * 1000);
         }
         LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
-        exit(__LINE__);
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-    exit(__LINE__);
-    return tateyama::bootstrap::return_code::err;
+//    return tateyama::bootstrap::return_code::err;
+    return rc;
 }
 
 return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* status_info) {
