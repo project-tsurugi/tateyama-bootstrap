@@ -162,8 +162,11 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             std::vector<std::string> args{};
             build_args(args, mode);
             boost::process::child c(exec, boost::process::args (args));
-            *reinterpret_cast<pid_t*>(shmData) = c.id();
+            pid_t child_pid = c.id();
+            *reinterpret_cast<pid_t*>(shmData) = child_pid;
             c.detach();
+            int status{};
+            waitpid(child_pid, &status, 0);
             exit(0);
         }
 
