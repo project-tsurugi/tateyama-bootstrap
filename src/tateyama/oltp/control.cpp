@@ -46,6 +46,7 @@ DECLARE_bool(tpch);  // NOLINT
 
 namespace tateyama::bootstrap {
 
+constexpr static int data_size = 128;
 constexpr std::string_view server_name_string = "tateyama-server";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
 const std::size_t check_count_startup = 100;
@@ -141,14 +142,48 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             return tateyama::bootstrap::return_code::err;
         }
 
-        auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-        auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
-        std::vector<std::string> args{};
-        build_args(args, mode);
-        boost::process::child c(exec, boost::process::args (args));
-        pid_t child_pid = c.id();
-        c.detach();
+        int  id;
+        // Shared memory create a new with IPC_CREATE
+        if((id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666)) == -1){
+            perror("shmget()");
+            exit(-1);
+        }
+        char *shmData{};
+        // Shared memory attach and convert char address
+        if(shmData = (char *)shmat(id, NULL, 0); reinterpret_cast<std::uintptr_t>(reinterpret_cast<void*>(shmData)) == static_cast<std::uintptr_t>(-1)){
+            perror("shmat()");
+            exit(-1);
+        }
+        *reinterpret_cast<pid_t*>(shmData) = 0;
+        
+        if (fork() == 0) {
+            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+            auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+            std::vector<std::string> args{};
+            build_args(args, mode);
+            boost::process::child c(exec, boost::process::args (args));
+            *reinterpret_cast<pid_t*>(shmData) = c.id();
+            c.detach();
+            exit(0);
+        }
 
+        pid_t child_pid;
+        do {
+            child_pid = *reinterpret_cast<pid_t*>(shmData);
+            usleep(sleep_time_unit_startup * 1000);
+        } while(child_pid == 0);
+
+        // Detach shred memory
+        if(shmdt(shmData)==-1) {
+            perror("shmdt()");
+        }
+        // Remove shred memory
+        if(shmctl(id, IPC_RMID, 0)==-1){
+            perror("shmctl()");
+            exit(EXIT_FAILURE);
+        }
+
+        // start here
         if(!FLAGS_monitor.empty()) {
             monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
             monitor_output->start();
