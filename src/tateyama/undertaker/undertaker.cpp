@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdlib.h>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 int main(int, char* argv[]) {
-    pid_t pid = atoi(argv[1]);
+    char *e{};
+    pid_t pid = strtol(*(argv+1), &e, 10);
     int status{};
 
     waitpid(pid, &status, 0);

@@ -175,7 +175,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
 
             std::string undertaker_name(undertaker_name_string);
             auto undertaker = base / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
-            execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);
+            execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);  // NOLINT
             exit(-1);  // should not reach here
         }
 
