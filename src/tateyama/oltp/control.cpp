@@ -308,32 +308,22 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
 
     std::cout << "======== before ========" << std::endl;
     do_ps(pid);
-    
+
     if (pid != 0) {
         DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
         int sleep_time_unit = sleep_time_unit_kill;
-        std::string command = "ps -ef | grep ";
-        command += server_name_string;
-        command += " | grep ";
-        command += std::to_string(pid);
-        command += " | grep -v grep | wc -l";
-        
         for (size_t i = 0; i < check_count; i++) {
-            FILE *fp = popen(command.c_str(), "r");  // NOLINT
-            if (fp == nullptr) {
-                LOG(ERROR) << "cannot grep and wc";
-                rc = tateyama::bootstrap::return_code::err;
-                break;
-            }
+
             std::cout << "======== " << i << " ========" << std::endl;
             do_ps(pid);
-            std::string buf{};
-            buf.resize(16);
-            auto s = fread(static_cast<void*>(buf.data()), 1, 16, fp);
-            buf.at(s) = '\0';
-            if (stoi(buf) == 0) {
+
+            if (auto rv = kill(pid, 0); rv != 0) {
+                if (errno != ESRCH) {
+                    LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
+                    rc = tateyama::bootstrap::return_code::err;
+                }
                 unlink(file_mutex->name().c_str());
                 status_info_bridge::force_delete(bst_conf.digest());
                 usleep(sleep_time_unit_mutex * 1000);
@@ -345,8 +335,7 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
-//    return tateyama::bootstrap::return_code::err;
-    return rc;
+    return tateyama::bootstrap::return_code::err;
 }
 
 return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* status_info) {
