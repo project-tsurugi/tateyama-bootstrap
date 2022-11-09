@@ -46,8 +46,10 @@ DECLARE_bool(tpch);  // NOLINT
 
 namespace tateyama::bootstrap {
 
+constexpr static int data_size = sizeof(pid_t);
 constexpr std::string_view server_name_string = "tateyama-server";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
+constexpr std::string_view undertaker_name_string = "undertaker";
 const std::size_t check_count_startup = 100;
 const int sleep_time_unit_startup = 20;
 const std::size_t check_count_shutdown = 300;
@@ -102,7 +104,7 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
 return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty() && need_check) {
+    if (!FLAGS_monitor.empty() && need_check) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -141,17 +143,55 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             return tateyama::bootstrap::return_code::err;
         }
 
-        auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-        auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
-        std::vector<std::string> args{};
-        build_args(args, mode);
-        boost::process::child c(exec, boost::process::args (args));
-        pid_t child_pid = c.id();
-        c.detach();
+        int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
+        // Shared memory create a new with IPC_CREATE
+        if (shm_id == -1) {
+            LOG(ERROR) << "error in shmget()";
+            if (monitor_output) {
+                monitor_output->finish(false);
+            }
+            return tateyama::bootstrap::return_code::err;
+        }
+        // Shared memory attach and convert char address
+        auto *shm_data = shmat(shm_id, nullptr, 0);
+        if (reinterpret_cast<std::uintptr_t>(shm_data) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
+            LOG(ERROR) << "error in shmat()";
+            if (monitor_output) {
+                monitor_output->finish(false);
+            }
+            return tateyama::bootstrap::return_code::err;
+        }
+        *static_cast<pid_t*>(shm_data) = 0;
 
-        if(!FLAGS_monitor.empty()) {
-            monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
-            monitor_output->start();
+        if (fork() == 0) {
+            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
+            auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+            std::vector<std::string> args{};
+            build_args(args, mode);
+            boost::process::child c(exec, boost::process::args (args));
+            pid_t child_pid = c.id();
+            *static_cast<pid_t*>(shm_data) = child_pid;
+            c.detach();
+
+            std::string undertaker_name(undertaker_name_string);
+            auto undertaker = base / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
+            execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);
+            exit(-1);  // should not reach here
+        }
+
+        pid_t child_pid{};
+        do {
+            usleep(sleep_time_unit_startup * 1000);
+            child_pid = *static_cast<pid_t*>(shm_data);
+        } while (child_pid == 0);
+
+        // Detach shred memory
+        if (shmdt(shm_data) == -1) {
+            LOG(ERROR) << "error in shmdt()";
+        }
+        // Remove shred memory
+        if (shmctl(shm_id, IPC_RMID, nullptr)==-1) {
+            LOG(ERROR) << "error in shctl()";
         }
 
         rc = tateyama::bootstrap::return_code::ok;
@@ -259,14 +299,15 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                     LOG(ERROR) << "cannot confirm whether the process has terminated or not due to an error " << errno;
                     rc = tateyama::bootstrap::return_code::err;
                 }
-                break;
+                unlink(file_mutex->name().c_str());
+                status_info_bridge::force_delete(bst_conf.digest());
+                usleep(sleep_time_unit_mutex * 1000);
+                return rc;
             }
             usleep(sleep_time_unit * 1000);
         }
-        unlink(file_mutex->name().c_str());
-        status_info_bridge::force_delete(bst_conf.digest());
-        usleep(sleep_time_unit_mutex * 1000);
-        return rc;
+        LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
     return tateyama::bootstrap::return_code::err;
@@ -310,7 +351,7 @@ return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* sta
 return_code oltp_shutdown_kill(bool force, bool status_output) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty() && status_output) {
+    if (!FLAGS_monitor.empty() && status_output) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -366,7 +407,7 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
 return_code oltp_status() {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
