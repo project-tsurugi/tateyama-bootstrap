@@ -38,6 +38,7 @@ DECLARE_string(label);  // NOLINT
 DECLARE_bool(quiesce);  // NOLINT
 DECLARE_bool(maintenance_server);  // NOLINT
 DECLARE_string(start_mode);  // NOLINT
+DECLARE_int32(timeout); // NOLINT
 
 DECLARE_string(location);  // NOLINT
 DECLARE_bool(load);  // NOLINT
@@ -282,7 +283,13 @@ return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* sta
 
     std::size_t check_count = check_count_shutdown;
     int sleep_time_unit = sleep_time_unit_shutdown;
-    for (size_t i = 0; i < check_count; i++) {
+    size_t timeout = 1000L * check_count * sleep_time_unit;  // in nS
+    if (FLAGS_timeout > 0) {
+        timeout = 1000000L * FLAGS_timeout;  // in nS
+    } else if(FLAGS_timeout == 0) {
+        timeout = INT64_MAX;  // practically infinite time
+    }
+    for (size_t i = 0; i < timeout; i += sleep_time_unit * 1000) {
         if (file_mutex->check() == proc_mutex::lock_state::no_file) {
             if (dot) {
                 std::cout << std::endl;
