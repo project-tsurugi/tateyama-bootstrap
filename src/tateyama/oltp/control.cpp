@@ -103,7 +103,7 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
 return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty() && need_check) {
+    if (!FLAGS_monitor.empty() && need_check) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -142,20 +142,20 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             return tateyama::bootstrap::return_code::err;
         }
 
-        int  id;
+        int id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
         // Shared memory create a new with IPC_CREATE
-        if((id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666)) == -1){
+        if (id == -1) {
             perror("shmget()");
             exit(-1);
         }
-        char *shmData{};
         // Shared memory attach and convert char address
-        if(shmData = (char *)shmat(id, NULL, 0); reinterpret_cast<std::uintptr_t>(reinterpret_cast<void*>(shmData)) == static_cast<std::uintptr_t>(-1)){
+        auto *shmData = shmat(id, nullptr, 0);
+        if (reinterpret_cast<std::uintptr_t>(shmData) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
             perror("shmat()");
             exit(-1);
         }
-        *reinterpret_cast<pid_t*>(shmData) = 0;
-        
+        *static_cast<pid_t*>(shmData) = 0;
+
         if (fork() == 0) {
             auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
             auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
@@ -163,31 +163,31 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
             build_args(args, mode);
             boost::process::child c(exec, boost::process::args (args));
             pid_t child_pid = c.id();
-            *reinterpret_cast<pid_t*>(shmData) = child_pid;
+            *static_cast<pid_t*>(shmData) = child_pid;
             c.detach();
             int status{};
             waitpid(child_pid, &status, 0);
             exit(0);
         }
 
-        pid_t child_pid;
+        pid_t child_pid{};
         do {
-            child_pid = *reinterpret_cast<pid_t*>(shmData);
             usleep(sleep_time_unit_startup * 1000);
+            child_pid = *static_cast<pid_t*>(shmData);
         } while(child_pid == 0);
 
         // Detach shred memory
-        if(shmdt(shmData)==-1) {
+        if (shmdt(shmData)==-1) {
             perror("shmdt()");
         }
         // Remove shred memory
-        if(shmctl(id, IPC_RMID, 0)==-1){
+        if (shmctl(id, IPC_RMID, nullptr)==-1) {
             perror("shmctl()");
             exit(EXIT_FAILURE);
         }
 
         // start here
-        if(!FLAGS_monitor.empty()) {
+        if (!FLAGS_monitor.empty()) {
             monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
             monitor_output->start();
         }
@@ -290,12 +290,12 @@ void do_ps(int pid) {
     command += std::to_string(pid);
     command += " | grep -v grep";
         
-    FILE *fp;
-    if((fp = popen(command.c_str(), "r")) == nullptr){
+    FILE *fp = popen(command.c_str(), "r");  // NOLINT
+    if (fp == nullptr) {
         LOG(ERROR) << "cannot grep and wc";
         return;
     }
-    std::array<char, 16384> buf;
+    std::array<char, 16384> buf{};
     auto s = fread(static_cast<void*>(buf.data()), 1, 16384, fp);
     buf.at(s) = '\0';
     std::cout << buf.data() << std::endl;
@@ -321,23 +321,19 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
         command += " | grep -v grep | wc -l";
         
         for (size_t i = 0; i < check_count; i++) {
-            FILE *fp;
-            if((fp = popen(command.c_str(), "r")) == nullptr){
+            FILE *fp = popen(command.c_str(), "r");  // NOLINT
+            if (fp == nullptr) {
                 LOG(ERROR) << "cannot grep and wc";
                 rc = tateyama::bootstrap::return_code::err;
                 break;
             }
             std::cout << "======== " << i << " ========" << std::endl;
             do_ps(pid);
-            int l;
-            auto rv = fscanf(fp, "%d", &l);
-            if(rv != 1) {
-                LOG(ERROR) << "wc output is curious";
-                rc = tateyama::bootstrap::return_code::err;
-                exit(__LINE__);
-                break;
-            }
-            if (l == 0) {
+            std::string buf{};
+            buf.resize(16);
+            auto s = fread(static_cast<void*>(buf.data()), 1, 16, fp);
+            buf.at(s) = '\0';
+            if (stoi(buf) == 0) {
                 unlink(file_mutex->name().c_str());
                 status_info_bridge::force_delete(bst_conf.digest());
                 usleep(sleep_time_unit_mutex * 1000);
@@ -385,7 +381,7 @@ return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* sta
 return_code oltp_shutdown_kill(bool force, bool status_output) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty() && status_output) {
+    if (!FLAGS_monitor.empty() && status_output) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -441,7 +437,7 @@ return_code oltp_shutdown_kill(bool force, bool status_output) {
 return_code oltp_status() {
     std::unique_ptr<utils::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
