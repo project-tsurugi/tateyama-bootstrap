@@ -324,9 +324,9 @@ return_code oltp_shutdown(utils::proc_mutex* file_mutex, status_info_bridge* sta
 
     std::size_t check_count = check_count_shutdown;
     int sleep_time_unit = sleep_time_unit_shutdown;
-    size_t timeout = 1000L * check_count * sleep_time_unit;  // in nS
+    size_t timeout = 1000L * check_count * sleep_time_unit;  // in uS
     if (FLAGS_timeout > 0) {
-        timeout = 1000000L * FLAGS_timeout;  // in nS
+        timeout = 1000000L * FLAGS_timeout;  // in uS
     } else if(FLAGS_timeout == 0) {
         timeout = INT64_MAX;  // practically infinite time
     }
