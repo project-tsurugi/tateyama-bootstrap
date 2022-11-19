@@ -82,7 +82,8 @@ int backend_main(int argc, char **argv) {
     }
 
     // mutex
-    auto mutex = std::make_unique<proc_mutex>(bst_conf.lock_file());
+    auto mutex_file = bst_conf.lock_file();
+    auto mutex = std::make_unique<proc_mutex>(mutex_file);
     if (!mutex->lock()) {
         exit(1);
     }
@@ -119,11 +120,14 @@ int backend_main(int argc, char **argv) {
     // status_info
     auto status_info = sv.find_resource<tateyama::status_info::resource::bridge>();
 
-    if(! sv.setup()) {
+    if (!sv.setup()) {
         // detailed message must have been logged in the components where setup error occurs
         LOG(ERROR) << "Starting server failed due to errors in setting up server application framework.";
         exit(1);
     }
+    // should do after setup()
+    status_info->mutex_file(mutex_file.string());
+
     auto* db = sqlsvc->database();
     if (tpcc_mode) {
         db->config()->prepare_benchmark_tables(true);
@@ -133,7 +137,7 @@ int backend_main(int argc, char **argv) {
     }
     status_info->whole(tateyama::status_info::state::ready);
 
-    if(! sv.start()) {
+    if (!sv.start()) {
         // detailed message must have been logged in the components where start error occurs
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
         exit(1);
