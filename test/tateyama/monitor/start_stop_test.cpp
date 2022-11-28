@@ -82,7 +82,7 @@ TEST_F(start_stop_test, success) {
     }
 }
 
-TEST_F(start_stop_test, fail) {
+TEST_F(start_stop_test, start_twice) {  // issue_109
     std::string command;
     
     command = "oltp start --conf ";
@@ -96,14 +96,14 @@ TEST_F(start_stop_test, fail) {
     command = "oltp start --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
-    command += helper_->abs_path("test/start_fail.log");
+    command += helper_->abs_path("test/start_twice.log");
     std::cout << command << std::endl;
-    EXPECT_NE(system(command.c_str()), 0);
-    EXPECT_TRUE(validate_json(helper_->abs_path("test/start_fail.log")));
+    EXPECT_EQ(system(command.c_str()), 0);
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/start_twice.log")));
     
     FILE *fp;
-    command = "grep fail ";
-    command += helper_->abs_path("test/start_fail.log");
+    command = "grep success ";
+    command += helper_->abs_path("test/start_twice.log");
     command += " | wc -l";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
