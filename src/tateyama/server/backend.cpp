@@ -142,8 +142,6 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
         exit(1);
     }
-    status_info->whole(tateyama::status_info::state::activated);
-    LOG(INFO) << "database started";
 
     if (FLAGS_load) {
         if (tpcc_mode) {
@@ -169,6 +167,9 @@ int backend_main(int argc, char **argv) {
             LOG(INFO) << "TPC-H data load end";
         }
     }
+
+    status_info->whole(tateyama::status_info::state::activated);
+    LOG(INFO) << "database started";
 
     // wait for a shutdown request
     status_info->wait_for_shutdown();
