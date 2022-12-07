@@ -84,7 +84,7 @@ static bool prompt(std::string_view msg)
     return rv;
 }
 
-static std::string name() {
+static std::string database_name() {
     if (auto conf = bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         auto endpoint_config = conf->get_section("ipc_endpoint");
         if (endpoint_config == nullptr) {
@@ -102,6 +102,14 @@ static std::string name() {
     exit(2);
 }
 
+static std::string digest() {
+    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (bst_conf.valid()) {
+        return bst_conf.digest();
+    }
+    return std::string();
+}
+    
 return_code oltp_backup_create(const std::string& path_to_backup) {
     std::unique_ptr<utils::monitor> monitor_output{};
 
@@ -112,7 +120,7 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
 
     auto rc = tateyama::bootstrap::return_code::ok;
     auth_options();
-    auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
+    auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
     auto backup_begin = requestBegin.mutable_backup_begin();
     if (!FLAGS_label.empty()) {
@@ -212,7 +220,7 @@ return_code oltp_backup_estimate() {
     auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         request.mutable_backup_estimate();
         auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
@@ -240,7 +248,7 @@ return_code oltp_backup_estimate() {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << name();
+        LOG(ERROR) << "could not connect to database with name " << database_name();
     }
     rc = tateyama::bootstrap::return_code::err;
 
@@ -270,7 +278,7 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
     auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_backup = request.mutable_restore_backup();
         restore_backup->set_path(path_to_backup);
@@ -302,7 +310,7 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << name();
+        LOG(ERROR) << "could not connect to database with name " << database_name();
     }
     rc = tateyama::bootstrap::return_code::err;
 
@@ -324,7 +332,7 @@ return_code oltp_restore_tag(const std::string& tag_name) {
     auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(name(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_tag = request.mutable_restore_tag();
@@ -351,7 +359,7 @@ return_code oltp_restore_tag(const std::string& tag_name) {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << name();
+        LOG(ERROR) << "could not connect to database with name " << database_name();
     }
     rc = tateyama::bootstrap::return_code::err;
 

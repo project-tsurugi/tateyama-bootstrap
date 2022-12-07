@@ -44,10 +44,10 @@ public:
     status_info_bridge& operator=(status_info_bridge&& other) noexcept = delete;
 
     bool attach(const std::string& digest) {
-        std::string status_file_name = digest;
-        status_file_name += ".stat";
+        status_file_name_ = digest;
+        status_file_name_ += ".stat";
         try {
-            segment_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, status_file_name.c_str());
+            segment_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, status_file_name_.c_str());
         } catch (const boost::interprocess::interprocess_exception& ex) {
             return false;
         }
@@ -67,15 +67,22 @@ public:
     [[nodiscard]] bool request_shutdown() {
         return resource_status_memory_->request_shutdown();
     }
-    static void force_delete(const std::string& digest) {
-        std::string status_file_name = digest;
-        status_file_name += ".stat";
-        boost::interprocess::shared_memory_object::remove(status_file_name.c_str());
+    [[nodiscard]] bool alive() {
+        return resource_status_memory_->alive();
+    }
+    void apply_shm_entry(std::function<void(std::string_view)> f) {
+        resource_status_memory_->apply_shm_entry(std::move(f));
+    }
+    void force_delete() {
+        if (!status_file_name_.empty()) {
+            boost::interprocess::shared_memory_object::remove(status_file_name_.c_str());
+        }
     }
 
 private:
     std::unique_ptr<boost::interprocess::managed_shared_memory> segment_{};
     std::unique_ptr<tateyama::status_info::resource_status_memory> resource_status_memory_{};
+    std::string status_file_name_{};
 };
 
 } // namespace tateyama::bootstrap::utils

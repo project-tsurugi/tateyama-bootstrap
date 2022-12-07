@@ -203,6 +203,10 @@ public:
         container->set_closed();
         container = nullptr;
     }
+    static void remove_shm_entry(std::string_view name) {
+        std::string n(name);
+        boost::interprocess::shared_memory_object::remove(n.c_str());
+    }
 
 private:
     std::string db_name_;
