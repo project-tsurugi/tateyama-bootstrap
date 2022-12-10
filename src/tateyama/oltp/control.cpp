@@ -31,6 +31,7 @@
 #include "oltp.h"
 #include "monitor.h"
 #include "status_info.h"
+#include "client_wire.h"
 
 DECLARE_string(conf);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
@@ -50,12 +51,12 @@ constexpr static int data_size = sizeof(pid_t);
 constexpr std::string_view server_name_string = "tateyama-server";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
 constexpr std::string_view undertaker_name_string = "undertaker";
-const std::size_t check_count_startup = 100;
-const int sleep_time_unit_startup = 20;
-const std::size_t check_count_shutdown = 300;
+const int sleep_time_unit_regular = 20;
 const int sleep_time_unit_shutdown = 1000;
+const std::size_t check_count_startup = 100;
+const std::size_t check_count_shutdown = 300;
+const std::size_t check_count_status = 10;
 const std::size_t check_count_kill = 100;
-const int sleep_time_unit_kill = 20;
 const int sleep_time_unit_mutex = 50;
 
 using namespace tateyama::bootstrap::utils;
@@ -181,7 +182,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
 
         pid_t child_pid{};
         do {
-            usleep(sleep_time_unit_startup * 1000);
+            usleep(sleep_time_unit_regular * 1000);
             child_pid = *static_cast<pid_t*>(shm_data);
         } while (child_pid == 0);
 
@@ -212,7 +213,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                         try {
                             file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                         } catch (std::runtime_error &e) {
-                            usleep(sleep_time_unit_startup * 1000);
+                            usleep(sleep_time_unit_regular * 1000);
                             continue;
                         }
                     }
@@ -225,7 +226,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                         n = i;
                         break;
                     }
-                    usleep(sleep_time_unit_startup * 5 * 1000);
+                    usleep(sleep_time_unit_regular * 5 * 1000);
                 }
                 if (check_result == ok) {  // case in which child_pid matches the pid recorded in file_mutex
                     std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
@@ -235,7 +236,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                             n = i;
                             break;
                         }
-                        usleep(sleep_time_unit_startup * 1000);
+                        usleep(sleep_time_unit_regular * 1000);
                     }
 
                     // wait until pid is stored in the status_info
@@ -243,7 +244,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                     for (size_t i = n; i < check_count_startup; i++) {
                         auto pid_in_status_info = status_info->pid();
                         if (pid_in_status_info == 0) {
-                            usleep(sleep_time_unit_startup * 1000);
+                            usleep(sleep_time_unit_regular * 1000);
                             continue;
                         }
                         // observed that pid has been stored in the status_info
@@ -299,7 +300,12 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
         DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
-        int sleep_time_unit = sleep_time_unit_kill;
+        if (FLAGS_timeout > 0) {
+            check_count = (1000L * FLAGS_timeout) / sleep_time_unit_regular;  // in mS
+        } else if(FLAGS_timeout == 0) {
+            check_count = INT64_MAX;  // practically infinite time
+        }
+        int sleep_time_unit = sleep_time_unit_regular;
         for (size_t i = 0; i < check_count; i++) {
             if (auto rv = kill(pid, 0); rv != 0) {
                 if (errno != ESRCH) {
@@ -307,13 +313,13 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                     rc = tateyama::bootstrap::return_code::err;
                 }
                 unlink(file_mutex->name().c_str());
-                status_info_bridge::force_delete(bst_conf.digest());
-                usleep(sleep_time_unit_mutex * 1000);
+                std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
+                status_info->apply_shm_entry(tateyama::common::wire::session_wire_container::remove_shm_entry);
                 return rc;
             }
             usleep(sleep_time_unit * 1000);
         }
-        LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_kill * check_count) / 1000 << " seconds";
+        LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds";
         return tateyama::bootstrap::return_code::err;
     }
     LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
@@ -435,44 +441,51 @@ return_code oltp_status() {
                 break;
             case state::locked:
             {
-                std::unique_ptr<status_info_bridge> status_info{};
-                try {
-                    status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
+                for (std::size_t i = 0; i < check_count_status; i++) {
+                    std::unique_ptr<status_info_bridge> status_info{};
+                    try {
+                        status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
 
-                    switch(status_info->whole()) {
-                    case tateyama::status_info::state::initial:
-                    case tateyama::status_info::state::ready:
-                        if (monitor_output) {
-                            monitor_output->status(tateyama::bootstrap::utils::status::ready);
+                        switch(status_info->whole()) {
+                        case tateyama::status_info::state::initial:
+                        case tateyama::status_info::state::ready:
+                            if (monitor_output) {
+                                monitor_output->status(tateyama::bootstrap::utils::status::ready);
+                                break;
+                            }
+                            std::cout << server_name_string_for_status << " is BOOTING_UP" << std::endl;
                             break;
-                        }
-                        std::cout << server_name_string_for_status << " is BOOTING_UP" << std::endl;
-                        break;
-                    case tateyama::status_info::state::activated:
-                        if (monitor_output) {
-                            monitor_output->status(tateyama::bootstrap::utils::status::activated);
+                        case tateyama::status_info::state::activated:
+                            if (monitor_output) {
+                                monitor_output->status(tateyama::bootstrap::utils::status::activated);
+                                break;
+                            }
+                            std::cout << server_name_string_for_status << " is RUNNING" << std::endl;
                             break;
-                        }
-                        std::cout << server_name_string_for_status << " is RUNNING" << std::endl;
-                        break;
-                    case tateyama::status_info::state::deactivating:
-                        if (monitor_output) {
-                            monitor_output->status(tateyama::bootstrap::utils::status::deactivating);
+                        case tateyama::status_info::state::deactivating:
+                            if (monitor_output) {
+                                monitor_output->status(tateyama::bootstrap::utils::status::deactivating);
+                                break;
+                            }
+                            std::cout << server_name_string_for_status << " is  SHUTTING_DOWN" << std::endl;
                             break;
-                        }
-                        std::cout << server_name_string_for_status << " is  SHUTTING_DOWN" << std::endl;
-                        break;
-                    case tateyama::status_info::state::deactivated:
-                        if (monitor_output) {
-                            monitor_output->status(tateyama::bootstrap::utils::status::deactivated);
+                        case tateyama::status_info::state::deactivated:
+                            if (monitor_output) {
+                                monitor_output->status(tateyama::bootstrap::utils::status::deactivated);
+                                break;
+                            }
+                            std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
                             break;
-                        }
-                        std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
+                        };
                         break;
-                    };
-                } catch (std::exception& e) {
-                    LOG(ERROR) << e.what();
-                    rc = tateyama::bootstrap::return_code::err;
+                    } catch (std::exception& e) {
+                        if (i < (check_count_status - 1)) {
+                            usleep(sleep_time_unit_regular * 1000);
+                        } else {
+                            LOG(ERROR) << e.what();
+                            rc = tateyama::bootstrap::return_code::err;
+                        }
+                    }
                 }
                 break;
             }

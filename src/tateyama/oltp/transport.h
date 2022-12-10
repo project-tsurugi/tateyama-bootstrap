@@ -25,6 +25,7 @@
 #include <tateyama/proto/datastore/request.pb.h>
 #include <tateyama/proto/datastore/response.pb.h>
 
+#include "status_info.h"
 #include "client_wire.h"
 
 namespace tateyama::bootstrap::wire {
@@ -35,10 +36,11 @@ class transport {
 public:
     transport() = delete;
 
-    explicit transport(std::string_view name, tateyama::framework::component::id_type type) :
+    transport(std::string_view name, std::string_view digest, tateyama::framework::component::id_type type) :
         wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(name).connect())) {
         header_.set_message_version(MESSAGE_VERSION);
         header_.set_service_id(type);
+        status_info_ = std::make_unique<tateyama::bootstrap::utils::status_info_bridge>(std::string(digest));
     }
 
     template <typename T>
@@ -56,7 +58,18 @@ public:
         wire_.write(ss.str());
         wire_.flush();
 
-        response_wire.await();
+        while (true) {
+            try {
+                response_wire.await();
+                break;
+            } catch (std::runtime_error &e) {
+                if (status_info_->alive()) {
+                    continue;
+                }
+                LOG(ERROR) << e.what();
+                return std::nullopt;
+            }
+        }
         std::string res_message{};
         res_message.resize(response_wire.get_length());
         response_wire.read(res_message.data());
@@ -82,6 +95,7 @@ public:
 private:
     tateyama::common::wire::session_wire_container wire_;
     ::tateyama::proto::framework::request::Header header_{};
+    std::unique_ptr<tateyama::bootstrap::utils::status_info_bridge> status_info_{};
 };
 
 } // tateyama::bootstrap::wire
