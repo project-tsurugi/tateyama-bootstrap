@@ -53,10 +53,10 @@ constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP databas
 constexpr std::string_view undertaker_name_string = "undertaker";
 const int sleep_time_unit_regular = 20;
 const int sleep_time_unit_shutdown = 1000;
-const std::size_t check_count_startup = 100;
-const std::size_t check_count_shutdown = 300;
-const std::size_t check_count_status = 10;
-const std::size_t check_count_kill = 100;
+const std::size_t check_count_startup = 100;   // 2S
+const std::size_t check_count_shutdown = 300;  // 300S (use sleep_time_unit_shutdown)
+const std::size_t check_count_status = 10;     // 200mS
+const std::size_t check_count_kill = 500;      // 10S
 const int sleep_time_unit_mutex = 50;
 
 using namespace tateyama::bootstrap::utils;
