@@ -64,6 +64,7 @@ struct endpoint_context {
 
 int backend_main(int argc, char **argv) {
     google::InitGoogleLogging("tateyama_database_server");
+    google::InstallFailureSignalHandler();
 
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
