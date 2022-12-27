@@ -53,7 +53,7 @@ constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP databas
 constexpr std::string_view undertaker_name_string = "undertaker";
 const int sleep_time_unit_regular = 20;
 const int sleep_time_unit_shutdown = 1000;
-const std::size_t check_count_startup = 100;   // 2S
+const std::size_t check_count_startup = 500;   // 10S
 const std::size_t check_count_shutdown = 300;  // 300S (use sleep_time_unit_shutdown)
 const std::size_t check_count_status = 10;     // 200mS
 const std::size_t check_count_kill = 500;      // 10S
@@ -109,9 +109,9 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
         monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
-
     auto rc = tateyama::bootstrap::return_code::ok;
     auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+
     if (bst_conf.valid()) {
         if (!FLAGS_start_mode.empty()) {
             if (FLAGS_start_mode == "force") {
@@ -197,6 +197,12 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
 
         rc = tateyama::bootstrap::return_code::ok;
         if (need_check) {
+            std::size_t check_count = check_count_startup;
+            if (FLAGS_timeout > 0) {
+                check_count = (1000L * FLAGS_timeout) / sleep_time_unit_regular;  // in mS
+            } else if(FLAGS_timeout == 0) {
+                check_count = INT64_MAX;  // practically infinite time
+            }
             if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
                 std::size_t n = 0;
 
@@ -208,7 +214,7 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                     another,
                 } check_result = init;
                 pid_t pid_in_file_mutex{};
-                for (size_t i = n; i < check_count_startup; i++) {
+                for (size_t i = n; i < check_count; i++) {
                     if (!file_mutex) {
                         try {
                             file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
@@ -231,34 +237,37 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                 if (check_result == ok) {  // case in which child_pid matches the pid recorded in file_mutex
                     std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>();
                     // wait for creation of shared memory for status info
-                    for (size_t i = n; i < check_count_startup; i++) {
+                    bool checked_status_info = false;
+                    for (size_t i = n; i < check_count; i++) {
                         if (status_info->attach(bst_conf.digest())) {
                             n = i;
+                            checked_status_info = true;
                             break;
                         }
                         usleep(sleep_time_unit_regular * 1000);
                     }
-
-                    // wait until pid is stored in the status_info
-                    bool checked_status_info = false;
-                    for (size_t i = n; i < check_count_startup; i++) {
-                        auto pid_in_status_info = status_info->pid();
-                        if (pid_in_status_info == 0) {
-                            usleep(sleep_time_unit_regular * 1000);
-                            continue;
-                        }
-                        // observed that pid has been stored in the status_info
-                        if (child_pid == pid_in_status_info) {  // case in which 'oltp start' command terminates successfully
-                            if (monitor_output) {
-                                monitor_output->finish(true);
+                    if (checked_status_info) {
+                        // wait until pid is stored in the status_info
+                        checked_status_info = false;
+                        for (size_t i = n; i < check_count; i++) {
+                            auto pid_in_status_info = status_info->pid();
+                            if (pid_in_status_info == 0) {
+                                usleep(sleep_time_unit_regular * 1000);
+                                continue;
                             }
-                            return tateyama::bootstrap::return_code::ok;
+                            // observed that pid has been stored in the status_info
+                            if (child_pid == pid_in_status_info) {  // case in which 'oltp start' command terminates successfully
+                                if (monitor_output) {
+                                    monitor_output->finish(true);
+                                }
+                                return tateyama::bootstrap::return_code::ok;
+                            }
+                            // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
+                            LOG(ERROR) << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match";
+                            rc = tateyama::bootstrap::return_code::err;
+                            checked_status_info = true;
+                            break;
                         }
-                        // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
-                        LOG(ERROR) << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match";
-                        rc = tateyama::bootstrap::return_code::err;
-                        checked_status_info = true;
-                        break;
                     }
                     if (!checked_status_info) {
                         LOG(ERROR) << "cannot confirm the server process within the specified time";
