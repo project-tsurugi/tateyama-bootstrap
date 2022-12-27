@@ -100,6 +100,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         // logging
         google::InitGoogleLogging(argv[0]);  // NOLINT
+        google::InstallFailureSignalHandler();
 
         // copy argv to args
         std::vector<std::string> args(argv, argv + argc);
