@@ -240,11 +240,11 @@ public:
 
     std::string connect() {
         auto& q = get_connection_queue();
-        std::size_t id = q.request();  // connect
-        q.check(id, true);  // wait
+        auto id = q.request();  // connect
+        auto session_id = q.wait(id);  // wait
         std::string sn{db_name_};
         sn += "-";
-        sn += std::to_string(id);
+        sn += std::to_string(session_id);
         return sn;
     }
     
