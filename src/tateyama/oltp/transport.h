@@ -56,7 +56,6 @@ public:
             return std::nullopt;
         }
         wire_.write(ss.str());
-        wire_.flush();
 
         while (true) {
             try {

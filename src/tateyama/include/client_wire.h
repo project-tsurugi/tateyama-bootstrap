@@ -91,23 +91,11 @@ public:
         message_header peep(bool wait = false) {
             return wire_->peep(bip_buffer_, wait);
         }
-        void brand_new() {
-            wire_->brand_new();
-        }
-        void write(const int b) {
-            wire_->write(bip_buffer_, b);
-        }
-        void write(const std::string& s) {
-            for (const char & c : s) {
-                wire_->write(bip_buffer_, static_cast<int>(c));
-            }
-        }
-        void flush(message_header::index_type index) noexcept {
-            wire_->flush(bip_buffer_, index);
+        void write(const std::string s, message_header::index_type index) {
+            wire_->write(bip_buffer_, s.data(), message_header(index, s.length()));
         }
         void disconnect() {
-            wire_->brand_new();
-            wire_->flush(bip_buffer_, message_header::not_use);
+            wire_->write(bip_buffer_, nullptr, message_header(message_header::not_use, 0));
         }
 
     private:
@@ -173,24 +161,8 @@ public:
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
 
-    void write(const int b) {
-        if (!header_processed_) {
-            request_wire_.brand_new();
-            header_processed_ = true;
-        }
-        request_wire_.write(b);
-    }
     void write(const std::string& s) {
-        if (!header_processed_) {
-            request_wire_.brand_new();
-            header_processed_ = true;
-        }
-        request_wire_.write(s);
-    }
-    void flush() noexcept {
-        request_wire_.flush(index_);
-        index_ = -1;
-        header_processed_ = false;
+        request_wire_.write(s, index_);
     }
     response_wire_container& get_response_wire() noexcept {
         return response_wire_;
@@ -214,7 +186,6 @@ private:
     wire_container request_wire_{};
     response_wire_container response_wire_{};
     message_header::index_type index_{};
-    bool header_processed_{};
 };
 
 class connection_container
