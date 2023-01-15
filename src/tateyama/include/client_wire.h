@@ -91,7 +91,7 @@ public:
         message_header peep(bool wait = false) {
             return wire_->peep(bip_buffer_, wait);
         }
-        void write(const std::string s, message_header::index_type index) {
+        void write(const std::string& s, message_header::index_type index) {
             wire_->write(bip_buffer_, s.data(), message_header(index, s.length()));
         }
         void disconnect() {
@@ -119,10 +119,10 @@ public:
         [[nodiscard]] response_header::msg_type get_type() const noexcept {
             return wire_->get_type();
         }
-        void read(char* to) noexcept {
+        void read(char* to) {
             wire_->read(to, bip_buffer_);
         }
-        void close() noexcept {
+        void close() {
             wire_->close();
         }
 
