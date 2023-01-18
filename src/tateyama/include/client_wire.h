@@ -39,16 +39,21 @@ public:
             }
         }
         std::string_view get_chunk() {
-            if (wrap_around_.data()) {
-                auto rv = wrap_around_;
-                wrap_around_ = std::string_view(nullptr, 0);
-                return rv;
+            if (!wrap_around_.empty()) {
+                wrap_around_.clear();
             }
             if (current_wire_ == nullptr) {
                 current_wire_ = active_wire();
             }
             if (current_wire_ != nullptr) {
-                return current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), wrap_around_);
+                std::string_view extrusion{};
+                auto rv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
+                if (extrusion.length() == 0) {
+                    return rv;
+                }
+                wrap_around_ = rv;
+                wrap_around_ += extrusion;
+                return wrap_around_;
             }
             return std::string_view(nullptr, 0);
         }
@@ -79,9 +84,9 @@ public:
         boost::interprocess::managed_shared_memory* managed_shm_ptr_;
         std::string rsw_name_;
         shm_resultset_wires* shm_resultset_wires_{};
-        std::string_view wrap_around_{};
         //   for client
         shm_resultset_wire* current_wire_{};
+        std::string wrap_around_{};
     };
 
     class wire_container {
@@ -186,6 +191,7 @@ private:
     wire_container request_wire_{};
     response_wire_container response_wire_{};
     message_header::index_type index_{};
+    bool header_processed_{};
 };
 
 class connection_container

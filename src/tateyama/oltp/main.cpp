@@ -34,6 +34,7 @@ DEFINE_int32(timeout, -1, "timeout for oltp shutdown, no timeout control takes p
 // for backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
 DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
+DEFINE_string(use_file_list, "", "json file describing the individual files to be specified for restore");  // NOLINT
 
 // for tateyama-server
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -75,9 +76,22 @@ int oltp_main(const std::vector<std::string>& args) {
 
         int rv{};
         if (args.at(2) == "backup") {
-            rv = backup::oltp_restore_backup(args.at(3));
+            if (args.size() > 3) {
+                auto arg = args.at(3);
+                if (!FLAGS_use_file_list.empty()) {
+                    rv = backup::oltp_restore_backup_use_file_list(arg);
+                } else {
+                    rv = backup::oltp_restore_backup(args.at(3));
+                }
+            } else {
+                LOG(ERROR) << "directory is not specficed";
+            }
         } else if (args.at(2) == "tag") {
-            rv = backup::oltp_restore_tag(args.at(3));
+            if (args.size() > 3) {
+                rv = backup::oltp_restore_tag(args.at(3));
+            } else {
+                LOG(ERROR) << "tag is not specficed";
+            }
         } else {
             LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
             rv = -1;
