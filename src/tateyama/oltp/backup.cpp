@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2022 tsurugi project.
+ * Copyright 2022-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,12 +34,14 @@
 #include "authentication.h"
 #include "transport.h"
 #include "monitor.h"
+#include "file_list.h"
 
 DECLARE_string(conf);  // NOLINT
 DECLARE_bool(force);  // NOLINT
 DECLARE_bool(keep_backup);  // NOLINT
 DECLARE_string(label);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
+DECLARE_string(use_file_list);  // NOLINT
 
 namespace tateyama::bootstrap::backup {
 
@@ -150,14 +152,14 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
 
             std::size_t total_bytes = 0;
             if(!FLAGS_monitor.empty()) {
-                for (auto&& e : rb.success().files()) {
+                for (auto&& e : rb.success().simple_source().files()) {
                     auto src = boost::filesystem::path(e);
                     total_bytes += boost::filesystem::file_size(src);
                 }
             }
 
             std::size_t completed_bytes = 0;
-            for (auto&& e : rb.success().files()) {
+            for (auto&& e : rb.success().simple_source().files()) {
                 auto src = boost::filesystem::path(e);
                 boost::filesystem::copy_file(src, location / src.filename());
                 if(!FLAGS_monitor.empty()) {
@@ -280,25 +282,108 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
-        auto restore_backup = request.mutable_restore_backup();
-        restore_backup->set_path(path_to_backup);
-        restore_backup->set_keep_backup(FLAGS_keep_backup);
+        auto restore_begin = request.mutable_restore_begin();
+        restore_begin->set_backup_directory(path_to_backup);
+        restore_begin->set_keep_backup(FLAGS_keep_backup);
         if (!FLAGS_label.empty()) {
-            restore_backup->set_label(FLAGS_label);
+            restore_begin->set_label(FLAGS_label);
         }
-        auto response = transport->send<::tateyama::proto::datastore::response::RestoreBackup>(request);
-        request.clear_restore_backup();
+        auto response = transport->send<::tateyama::proto::datastore::response::RestoreBegin>(request);
+        request.clear_restore_begin();
         transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
-            case ::tateyama::proto::datastore::response::RestoreBackup::kSuccess:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kSuccess:
                 break;
-            case ::tateyama::proto::datastore::response::RestoreBackup::kNotFound:
-            case ::tateyama::proto::datastore::response::RestoreBackup::kPermissionError:
-            case ::tateyama::proto::datastore::response::RestoreBackup::kBrokenData:
-            case ::tateyama::proto::datastore::response::RestoreBackup::kUnknownError:
-            case ::tateyama::proto::datastore::response::RestoreBackup::RESULT_NOT_SET:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kNotFound:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kPermissionError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
+                LOG(ERROR) << " ends up with " << response.value().result_case();
+                rc = tateyama::bootstrap::return_code::err;
+            }
+            if (rc == tateyama::bootstrap::return_code::ok) {
+                if (monitor_output) {
+                    monitor_output->finish(true);
+                }
+                return rc;
+            }
+        }
+    } catch (std::runtime_error &e) {
+        LOG(ERROR) << "could not connect to database with name " << database_name();
+    }
+    rc = tateyama::bootstrap::return_code::err;
+
+    if (monitor_output) {
+        monitor_output->finish(false);
+    }
+    return rc;
+}
+
+return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup) {
+    std::unique_ptr<utils::monitor> monitor_output{};
+
+    if(!FLAGS_force) {
+        if (!prompt("continue? (press y or n) : ")) {
+            std::cout << "restore backup has been canceled." << std::endl;
+            LOG(INFO) << "restore backup has been canceled.";
+            return tateyama::bootstrap::return_code::err;
+        }
+    }
+
+    if(!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
+    auto rc = tateyama::bootstrap::return_code::ok;
+    auth_options();
+
+    try {
+        auto parser = std::make_unique<tateyama::bootstrap::utils::file_list>();
+        if (!parser->read_json(FLAGS_use_file_list)) {
+            LOG(ERROR) << "error occurred in using the file_list (" << FLAGS_use_file_list << ")";
+            if (monitor_output) {
+                monitor_output->finish(false);
+            }
+            return tateyama::bootstrap::return_code::err;
+        }
+        if (!FLAGS_keep_backup) {
+            LOG(WARNING) << "option --nokeep_backup is ignored when --use-file-list is specified";
+        }
+
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        ::tateyama::proto::datastore::request::Request request{};
+        auto restore_begin = request.mutable_restore_begin();
+        auto entries = restore_begin->mutable_entries();
+        if (!path_to_backup.empty()) {
+            entries->set_directory(path_to_backup);
+        }
+        parser->for_each([entries](const std::string& source, const std::string& destination, bool detached) {
+                             auto file_set_entry = entries->add_file_set_entry();
+                             file_set_entry->set_source_path(source);
+                             file_set_entry->set_destination_path(destination);
+                             file_set_entry->set_detached(detached);
+                         });
+        if (!FLAGS_label.empty()) {
+            restore_begin->set_label(FLAGS_label);
+        }
+        auto response = transport->send<::tateyama::proto::datastore::response::RestoreBegin>(request);
+        restore_begin->clear_entries();
+        request.clear_restore_begin();
+        transport->close();
+
+        if (response) {
+            switch(response.value().result_case()) {
+            case ::tateyama::proto::datastore::response::RestoreBegin::kSuccess:
+                break;
+            case ::tateyama::proto::datastore::response::RestoreBegin::kNotFound:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kPermissionError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
                 rc = tateyama::bootstrap::return_code::err;
             }
@@ -335,19 +420,21 @@ return_code oltp_restore_tag(const std::string& tag_name) {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};
-        auto restore_tag = request.mutable_restore_tag();
-        restore_tag->set_name(tag_name);
-        auto response = transport->send<::tateyama::proto::datastore::response::RestoreTag>(request);
-        request.clear_restore_tag();
+        auto restore_begin = request.mutable_restore_begin();
+        restore_begin->set_tag_name(tag_name);
+        auto response = transport->send<::tateyama::proto::datastore::response::RestoreBegin>(request);
+        request.clear_restore_begin();
         transport->close();
 
         if (response) {
             switch(response.value().result_case()) {
-            case ::tateyama::proto::datastore::response::RestoreTag::kSuccess:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kSuccess:
                 break;
-            case ::tateyama::proto::datastore::response::RestoreTag::kNotFound:
-            case ::tateyama::proto::datastore::response::RestoreTag::kUnknownError:
-            case ::tateyama::proto::datastore::response::RestoreTag::RESULT_NOT_SET:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kNotFound:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kPermissionError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
+            case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
+            case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
                 rc = tateyama::bootstrap::return_code::err;
             }
