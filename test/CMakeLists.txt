@@ -10,7 +10,7 @@ target_compile_options(${test_target}
 
 target_include_directories(${test_target}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/tateyama
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/tateyama/include
 )
 
 target_link_libraries(${test_target}
@@ -33,6 +33,7 @@ endfunction (add_test_executable)
 file(GLOB SRCS
         "tateyama/monitor/*_test.cpp"
         "tateyama/oltp/*_test.cpp"
+        "tateyama/include/*_test.cpp"
 )
 
 foreach(file ${SRCS})

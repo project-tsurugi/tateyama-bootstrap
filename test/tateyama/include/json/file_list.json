@@ -1,0 +1,19 @@
+{
+    "entries": [
+        {
+            "source_path": "example_source1",
+            "destination_path": "example_destination1",
+            "detached": true
+        },
+        {
+            "source_path": "example_source2",
+            "destination_path": "example_destination2",
+            "detached": false
+        },
+        {
+            "source_path": "example_source3",
+            "destination_path": "example_destination3",
+            "detached": true
+        }
+    ]
+}

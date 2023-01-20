@@ -43,6 +43,7 @@ namespace tateyama::bootstrap::backup {
     return_code oltp_backup_create(const std::string& path_to_backup);
     return_code oltp_backup_estimate();
     return_code oltp_restore_backup(const std::string& path_to_backup);
+    return_code oltp_restore_backup_use_file_list(const std::string& path_to_file_list);
     return_code oltp_restore_tag(const std::string& tag_name);
 
 } //  tateyama::bootstrap::backup
