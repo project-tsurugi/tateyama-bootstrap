@@ -31,9 +31,14 @@ public:
     file_list() = default;
     ~file_list() = default;
 
+    file_list(file_list const& other) = default;
+    file_list& operator=(file_list const& other) = default;
+    file_list(file_list&& other) noexcept = default;
+    file_list& operator=(file_list&& other) noexcept = default;
+
     bool read_json(const std::string& file_name) {
         try {
-            boost::property_tree::read_json(file_name.c_str(), pt_);
+            boost::property_tree::read_json(file_name, pt_);
             return true;
         } catch (std::exception const& e) {
             std::cerr << e.what() << std::endl;
@@ -41,7 +46,7 @@ public:
         }
     }
 
-    void for_each(std::function<void(const std::string&, const std::string&, bool)> f) {
+    void for_each(const std::function<void(const std::string&, const std::string&, bool)>& f) {
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& child, pt_.get_child("entries")) {
             const boost::property_tree::ptree& info = child.second;
 

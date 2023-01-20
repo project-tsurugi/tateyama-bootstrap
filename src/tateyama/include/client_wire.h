@@ -191,7 +191,6 @@ private:
     wire_container request_wire_{};
     response_wire_container response_wire_{};
     message_header::index_type index_{};
-    bool header_processed_{};
 };
 
 class connection_container
