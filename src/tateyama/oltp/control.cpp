@@ -260,6 +260,12 @@ return_code oltp_start(const std::string& argv0, bool need_check, tateyama::fram
                                 if (monitor_output) {
                                     monitor_output->finish(true);
                                 }
+                                // wait for the server running when boot mode is maintenance_server (work around)
+                                if (mode == tateyama::framework::boot_mode::maintenance_server) {
+                                    while (status_info->whole() != tateyama::status_info::state::activated) {
+                                        usleep(sleep_time_unit_regular * 1000);
+                                    }
+                                }
                                 return tateyama::bootstrap::return_code::ok;
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
