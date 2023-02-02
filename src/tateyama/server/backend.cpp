@@ -25,6 +25,7 @@
 
 #include <tateyama/framework/server.h>
 #include <tateyama/status/resource/bridge.h>
+#include <tateyama/diagnostic/resource/diagnostic_resource.h>
 
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -61,6 +62,14 @@ using namespace tateyama::bootstrap::utils;
 struct endpoint_context {
     std::unordered_map<std::string, std::string> options_{};
 };
+
+// for diagnostic resource
+static std::shared_ptr<tateyama::diagnostic::resource::diagnostic_resource> diagnostic_resource_body{};
+static void sighup_handler(int s) {
+    if (diagnostic_resource_body) {
+        diagnostic_resource_body->sighup_handler(s);
+    }
+}
 
 int backend_main(int argc, char **argv) {
     google::InitGoogleLogging("tateyama_database_server");
@@ -142,6 +151,13 @@ int backend_main(int argc, char **argv) {
         // detailed message must have been logged in the components where start error occurs
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
         exit(1);
+    }
+
+    // diagnostic
+    diagnostic_resource_body = sv.find_resource<tateyama::diagnostic::resource::diagnostic_resource>();
+    diagnostic_resource_body->add_print_callback("sharksfin", sharksfin::print_diagnostics);
+    if (signal(SIGHUP, sighup_handler) == SIG_ERR) {
+        LOG(ERROR) << "cannot register signal handler";
     }
 
     if (FLAGS_load) {

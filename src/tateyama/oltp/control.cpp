@@ -533,4 +533,28 @@ return_code oltp_status() {
     return rc;
 }
 
+return_code oltp_diagnostic() {
+    auto rc = tateyama::bootstrap::return_code::ok;
+    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (bst_conf.valid()) {
+        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+            try {
+                auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+                auto pid = file_mutex->pid(false);
+                kill(pid, SIGHUP);
+            } catch (std::runtime_error &e) {
+                LOG(ERROR) << e.what();
+                rc = tateyama::bootstrap::return_code::err;
+            }
+        } else {
+            LOG(ERROR) << "error in create_configuration";
+            rc = tateyama::bootstrap::return_code::err;
+        }
+    } else {
+        LOG(ERROR) << "error in configuration file name";
+        rc = tateyama::bootstrap::return_code::err;
+    }
+    return rc;
+}
+
 }  // tateyama::bootstrap
