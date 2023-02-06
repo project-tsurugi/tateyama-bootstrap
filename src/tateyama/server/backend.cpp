@@ -64,7 +64,7 @@ struct endpoint_context {
 };
 
 // for diagnostic resource
-std::shared_ptr<tateyama::diagnostic::resource::diagnostic_resource> diagnostic_resource_body{};
+static std::shared_ptr<tateyama::diagnostic::resource::diagnostic_resource> diagnostic_resource_body{};  // NOLINT
 static void sighup_handler(int s) {
     if (diagnostic_resource_body) {
         diagnostic_resource_body->sighup_handler(s);
@@ -156,7 +156,7 @@ int backend_main(int argc, char **argv) {
     // diagnostic
     diagnostic_resource_body = sv.find_resource<tateyama::diagnostic::resource::diagnostic_resource>();
     diagnostic_resource_body->add_print_callback("sharksfin", sharksfin::print_diagnostics);
-    if (signal(SIGHUP, sighup_handler) == SIG_ERR) {  // NOINT  #define SIG_ERR  ((__sighandler_t) -1) in a system header file
+    if (signal(SIGHUP, sighup_handler) == SIG_ERR) {  // NOLINT  #define SIG_ERR  ((__sighandler_t) -1) in a system header file
         LOG(ERROR) << "cannot register signal handler";
     }
 
