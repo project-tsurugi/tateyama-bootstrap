@@ -533,28 +533,34 @@ return_code oltp_status() {
     return rc;
 }
 
-return_code oltp_diagnostic() {
-    auto rc = tateyama::bootstrap::return_code::ok;
+static pid_t get_pid() {
     auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
-            try {
-                auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-                auto pid = file_mutex->pid(false);
-                kill(pid, SIGHUP);
-            } catch (std::runtime_error &e) {
-                LOG(ERROR) << e.what();
-                rc = tateyama::bootstrap::return_code::err;
-            }
-        } else {
-            LOG(ERROR) << "error in create_configuration";
-            rc = tateyama::bootstrap::return_code::err;
+            auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+            return file_mutex->pid(false);  // may throws std::runtime_error
         }
-    } else {
-        LOG(ERROR) << "error in configuration file name";
-        rc = tateyama::bootstrap::return_code::err;
+        throw std::runtime_error("error in create_configuration");
     }
-    return rc;
+    throw std::runtime_error("error in configuration file name");
+}
+
+return_code oltp_diagnostic() {
+    try {
+        kill(get_pid(), SIGHUP);
+        return tateyama::bootstrap::return_code::ok;
+    } catch (std::runtime_error &e) {
+        return tateyama::bootstrap::return_code::err;
+    }
+}
+
+return_code oltp_pid() {
+    try {
+        std::cout << get_pid() << std::endl;
+        return tateyama::bootstrap::return_code::ok;
+    } catch (std::runtime_error &e) {
+        return tateyama::bootstrap::return_code::err;
+    }
 }
 
 }  // tateyama::bootstrap
