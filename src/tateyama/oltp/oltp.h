@@ -35,6 +35,7 @@ namespace tateyama::bootstrap {
     return_code oltp_kill(utils::proc_mutex*, utils::bootstrap_configuration&);
     return_code oltp_shutdown_kill(bool force, bool status_output = true);
     return_code oltp_diagnostic();
+    return_code oltp_pid();
 
 } //  tateyama::bootstrap
 

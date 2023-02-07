@@ -60,6 +60,9 @@ int oltp_main(const std::vector<std::string>& args) {
     if (args.at(1) == "diagnostic") {
         return oltp_diagnostic();
     }
+    if (args.at(1) == "pid") {
+        return oltp_pid();
+    }
     if (args.at(1) == "backup") {
         if (args.at(2) == "create") {
             if (args.size() < 4) {
