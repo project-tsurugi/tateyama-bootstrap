@@ -17,6 +17,7 @@ target_link_libraries(${test_target}
         PUBLIC gtest
         PRIVATE glog::glog
         PRIVATE gflags::gflags
+        PRIVATE rt
         )
 
 function (add_test_executable source_file)
