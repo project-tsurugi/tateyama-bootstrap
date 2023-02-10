@@ -65,9 +65,9 @@ struct endpoint_context {
 
 // for diagnostic resource
 static std::shared_ptr<tateyama::diagnostic::resource::diagnostic_resource> diagnostic_resource_body{};  // NOLINT
-static void sighup_handler(int s) {
+static void sighup_handler(int) {
     if (diagnostic_resource_body) {
-        diagnostic_resource_body->sighup_handler(s);
+        diagnostic_resource_body->print_diagnostics(std::cerr);
     }
 }
 
