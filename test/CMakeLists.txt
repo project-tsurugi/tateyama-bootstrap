@@ -18,6 +18,7 @@ target_link_libraries(${test_target}
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE rt
+        PRIVATE Boost::filesystem
         )
 
 function (add_test_executable source_file)
