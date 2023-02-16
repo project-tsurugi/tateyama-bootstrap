@@ -20,6 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <string>
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
@@ -34,6 +35,7 @@ class directory_helper {
     directory_helper(std::string prefix, std::uint32_t port) : prefix_(prefix), port_(port) {
         location_ = std::string(base);
         location_ += prefix;
+        location_ += std::to_string(getpid());
         location_ += "/";
 
         conf_ = abs_path("conf/tsurugi.conf");
