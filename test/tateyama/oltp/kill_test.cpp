@@ -17,6 +17,7 @@
 #include "test_root.h"
 
 #include "client_wire.h"
+#include <boost/filesystem.hpp>
 
 namespace tateyama::testing {
 
@@ -39,6 +40,10 @@ private:
 };
 
 TEST_F(kill_test, ipc_file) {
+    {
+        auto info = boost::filesystem::space("/tmp/");
+        std::cout << "/tmp/: free " << info.free << "B, " << info.free / 1024 / 1024 << "MiB" << std::endl;
+    }
     std::string command;
     
     command = "oltp start --conf ";
