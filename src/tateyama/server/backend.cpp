@@ -91,12 +91,14 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
-    {
+    try {
         std::ostringstream oss;
         boost::property_tree::json_parser::write_json(oss, conf->get_ptree());
         LOG(INFO) << "==== configuration begin ====";
         LOG(INFO) << oss.str();
         LOG(INFO) << "==== configuration end ====";
+    } catch (boost::property_tree::json_parser_error& e) {
+        LOG(ERROR) << e.what();
     }
 
     // mutex
