@@ -19,6 +19,7 @@
 #include <iostream>
 #include <chrono>
 #include <csignal>
+#include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -89,6 +90,15 @@ int backend_main(int argc, char **argv) {
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
+    }
+    try {
+        std::ostringstream oss;
+        boost::property_tree::json_parser::write_json(oss, conf->get_ptree());
+        LOG(INFO) << "==== configuration begin ====";
+        LOG(INFO) << oss.str();
+        LOG(INFO) << "==== configuration end ====";
+    } catch (boost::property_tree::json_parser_error& e) {
+        LOG(ERROR) << e.what();
     }
 
     // mutex
