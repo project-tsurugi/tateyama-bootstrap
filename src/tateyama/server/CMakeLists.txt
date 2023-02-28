@@ -43,6 +43,11 @@ if (OGAWAYAMA)
     target_compile_definitions(server PUBLIC OGAWAYAMA)
 endif()
 
+if (ENABLE_JEMALLOC)
+    target_link_libraries(server
+            PRIVATE jemalloc::jemalloc)
+endif (ENABLE_JEMALLOC)
+
 set_compile_options(server)
 
 install_libexec(server ${export_name})
