@@ -31,6 +31,7 @@ option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
 option(OGAWAYAMA "activate ogawayama brigde" OFF)
+option(ENABLE_JEMALLOC "use jemalloc instead of default malloc" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
@@ -68,6 +69,10 @@ find_package(Boost
         )
 find_package(Protobuf REQUIRED)
 find_package(mpdecpp REQUIRED)
+
+if (ENABLE_JEMALLOC)
+    find_package(jemalloc REQUIRED)
+endif (ENABLE_JEMALLOC)
 
 if (BUILD_TESTS)
   add_subdirectory(third_party) # should be before enable_testing()
