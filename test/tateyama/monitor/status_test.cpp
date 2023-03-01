@@ -74,16 +74,35 @@ TEST_F(status_test, success) {
         FAIL();
     }
 
-    command = "oltp status --conf ";
-    command += helper_->conf_file_path();
-    command += " --monitor ";
-    command += helper_->abs_path("test/running.log");
-    std::cout << command << std::endl;
-    if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp status" << std::endl;
+    bool go_ahead = false;
+    for (std::size_t i = 0; i < 10; i++) {
+        command = "oltp status --conf ";
+        command += helper_->conf_file_path();
+        command += " --monitor ";
+        command += helper_->abs_path("test/running.log");
+        std::cout << command << std::endl;
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot oltp status" << std::endl;
+            FAIL();
+        }
+        EXPECT_TRUE(validate_json(helper_->abs_path("test/running.log")));
+
+        command = "grep starting ";
+        command += helper_->abs_path("test/running.log");
+        command += " | wc -l";
+        if((fp = popen(command.c_str(), "r")) == nullptr){
+            std::cerr << "cannot wc" << std::endl;
+        }
+        rv = fscanf(fp, "%d", &l);
+        if (l == 0 && rv == 1) {
+            go_ahead = true;
+            break;
+        }
+        usleep(5 * 1000);
+    }
+    if (!go_ahead) {
         FAIL();
     }
-    EXPECT_TRUE(validate_json(helper_->abs_path("test/running.log")));
 
     command = "grep running ";
     command += helper_->abs_path("test/running.log");
