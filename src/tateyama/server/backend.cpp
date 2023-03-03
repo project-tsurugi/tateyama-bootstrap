@@ -149,11 +149,13 @@ int backend_main(int argc, char **argv) {
     status_info->mutex_file(mutex_file.string());
 
     auto* db = sqlsvc->database();
-    if (tpcc_mode) {
-        db->config()->prepare_benchmark_tables(true);
-    }
-    if (tpch_mode) {
-        db->config()->prepare_analytics_benchmark_tables(true);
+    if (db) {
+        if (tpcc_mode) {
+            db->config()->prepare_benchmark_tables(true);
+        }
+        if (tpch_mode) {
+            db->config()->prepare_analytics_benchmark_tables(true);
+        }
     }
     status_info->whole(tateyama::status_info::state::ready);
 
