@@ -33,7 +33,7 @@ public:
             std::cerr << "cannot oltp start" << std::endl;
             FAIL();
         }
-        usleep(100 * 1000);
+        helper_->confirm_started();
 
         command = "oltp backup create ";
         command += helper_->abs_path("backup");

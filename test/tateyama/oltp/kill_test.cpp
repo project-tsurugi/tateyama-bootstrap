@@ -40,31 +40,14 @@ private:
 };
 
 TEST_F(kill_test, ipc_file) {
-    {
-        auto info = boost::filesystem::space("/tmp/");
-        std::cout << "/tmp/: free " << info.free << "B, " << info.free / 1024 / 1024 << "MiB" << std::endl;
-    }
     std::string command;
     
-    command = "cat ";
-    command += helper_->conf_file_path();
-    std::cout << "==== check tsurugi.conf ===" << std::endl;
-    std::cout << command << std::endl;
-    EXPECT_EQ(system(command.c_str()), 0);
-    std::cout << "==== check end ===" << std::endl;
-    
-    command = "ls -Rl ";
-    command += helper_->abs_path("");
-    std::cout << "==== check /tmp/kill_test files ===" << std::endl;
-    std::cout << command << std::endl;
-    EXPECT_EQ(system(command.c_str()), 0);
-    std::cout << "==== check end ===" << std::endl;
-           
     command = "oltp start --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     EXPECT_EQ(system(command.c_str()), 0);
-    
+    helper_->confirm_started();
+
     auto wire = tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container("kill_test").connect());
 
     command = "ls /dev/shm/kill_test";
