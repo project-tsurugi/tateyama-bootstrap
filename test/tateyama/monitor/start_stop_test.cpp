@@ -48,6 +48,7 @@ TEST_F(start_stop_test, success) {
         std::cerr << "cannot oltp start" << std::endl;
         FAIL();
     }
+    helper_->confirm_started();
     EXPECT_TRUE(validate_json(helper_->abs_path("test/start.log")));
     
     FILE *fp;
@@ -92,6 +93,7 @@ TEST_F(start_stop_test, start_twice) {  // issue_109
         std::cerr << "cannot oltp start" << std::endl;
         FAIL();
     }
+    helper_->confirm_started();
 
     command = "oltp start --conf ";
     command += helper_->conf_file_path();

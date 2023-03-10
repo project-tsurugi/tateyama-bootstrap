@@ -105,7 +105,37 @@ class directory_helper {
         return conf_;
     }
 
-  private:
+    void confirm_started() {
+        std::string command;
+        for (std::size_t i = 0; i < 10; i++) {
+            command = "oltp status --conf ";
+            command += conf_file_path();
+            command += " --monitor ";
+            command += abs_path("test/confirming.log");
+            std::cout << command << std::endl;
+            if (system(command.c_str()) != 0) {
+                std::cerr << "cannot oltp status" << std::endl;
+                FAIL();
+            }
+
+            FILE *fp;
+            command = "grep starting ";
+            command += abs_path("test/confirming.log");
+            command += " | wc -l";
+            if((fp = popen(command.c_str(), "r")) == nullptr){
+                std::cerr << "cannot wc" << std::endl;
+            }
+            int l, rv;
+            rv = fscanf(fp, "%d", &l);
+            if (l == 0 && rv == 1) {
+                return;
+            }
+            usleep(5 * 1000);
+        }
+        FAIL();
+    }
+
+private:
     std::string prefix_;
     std::uint32_t port_;
     std::string location_{};
