@@ -393,6 +393,7 @@ return_code oltp_kill(utils::proc_mutex* file_mutex, utils::bootstrap_configurat
                 unlink(file_mutex->name().c_str());
                 std::unique_ptr<status_info_bridge> status_info = std::make_unique<status_info_bridge>(bst_conf.digest());
                 status_info->apply_shm_entry(tateyama::common::wire::session_wire_container::remove_shm_entry);
+                status_info->force_delete();
                 return rc;
             }
             default:
