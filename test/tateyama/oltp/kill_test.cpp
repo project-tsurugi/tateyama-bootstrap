@@ -46,6 +46,20 @@ TEST_F(kill_test, ipc_file) {
     }
     std::string command;
     
+    command = "cat ";
+    command += helper_->conf_file_path();
+    std::cout << "==== check tsurugi.conf ===" << std::endl;
+    std::cout << command << std::endl;
+    EXPECT_EQ(system(command.c_str()), 0);
+    std::cout << "==== check end ===" << std::endl;
+    
+    command = "ls -Rl ";
+    command += helper_->abs_path("");
+    std::cout << "==== check /tmp/kill_test files ===" << std::endl;
+    std::cout << command << std::endl;
+    EXPECT_EQ(system(command.c_str()), 0);
+    std::cout << "==== check end ===" << std::endl;
+           
     command = "oltp start --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
