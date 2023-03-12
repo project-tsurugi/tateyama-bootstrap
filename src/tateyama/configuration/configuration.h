@@ -24,7 +24,7 @@
 
 #include <tateyama/api/configuration.h>
 
-namespace tateyama::bootstrap::utils {
+namespace tateyama::configuration {
 
 static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");  // NOLINT
 static const boost::filesystem::path PID_DIR = boost::filesystem::path("/tmp");  // NOLINT
@@ -130,4 +130,4 @@ private:
     }
 };
 
-} // namespace tateyama::bootstrap::utils
+} // namespace tateyama::configuration

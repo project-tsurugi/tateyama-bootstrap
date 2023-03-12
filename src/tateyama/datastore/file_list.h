@@ -24,7 +24,7 @@
 #include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 
-namespace tateyama::bootstrap::utils {
+namespace tateyama::datastore {
 
 class file_list {
 public:

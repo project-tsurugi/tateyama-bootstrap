@@ -19,7 +19,7 @@
 #include <iostream>
 #include <fstream>
 
-namespace tateyama::bootstrap::utils {
+namespace tateyama::monitor {
 
 enum class status : std::int64_t {
     stop = 0,

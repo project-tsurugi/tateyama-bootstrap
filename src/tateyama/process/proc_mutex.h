@@ -24,7 +24,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-namespace tateyama::bootstrap::utils {
+namespace tateyama::process {
 
 class proc_mutex {
   public:
@@ -135,4 +135,4 @@ private:
     }
 };
 
-}  // tateyama::bootstrap::utils;
+}  // tateyama::process

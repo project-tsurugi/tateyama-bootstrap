@@ -29,11 +29,11 @@
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
-#include "oltp.h"
-#include "configuration.h"
-#include "authentication.h"
-#include "transport.h"
-#include "monitor.h"
+#include "configuration/configuration.h"
+#include "authentication/authentication.h"
+#include "transport/transport.h"
+#include "monitor/monitor.h"
+#include "backup.h"
 #include "file_list.h"
 
 DECLARE_string(conf);  // NOLINT
@@ -43,9 +43,7 @@ DECLARE_string(label);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
 DECLARE_string(use_file_list);  // NOLINT
 
-namespace tateyama::bootstrap::backup {
-
-using namespace tateyama::bootstrap::utils;
+namespace tateyama::datastore {
 
 static bool prompt(std::string_view msg)
 {
@@ -87,16 +85,16 @@ static bool prompt(std::string_view msg)
 }
 
 static std::string database_name() {
-    if (auto conf = bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
+    if (auto conf = configuration::bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         auto endpoint_config = conf->get_section("ipc_endpoint");
         if (endpoint_config == nullptr) {
             LOG(ERROR) << "cannot find ipc_endpoint section in the configuration";
-            exit(tateyama::bootstrap::return_code::err);
+            exit(oltp::return_code::err);
         }
         auto database_name_opt = endpoint_config->get<std::string>("database_name");
         if (!database_name_opt) {
             LOG(ERROR) << "cannot find database_name at the section in the configuration";
-            exit(tateyama::bootstrap::return_code::err);
+            exit(oltp::return_code::err);
         }
         return database_name_opt.value();
     }
@@ -105,23 +103,23 @@ static std::string database_name() {
 }
 
 static std::string digest() {
-    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         return bst_conf.digest();
     }
     return std::string();
 }
     
-return_code oltp_backup_create(const std::string& path_to_backup) {
-    std::unique_ptr<utils::monitor> monitor_output{};
+oltp::return_code oltp_backup_create(const std::string& path_to_backup) {
+    std::unique_ptr<monitor::monitor> monitor_output{};
 
     if(!FLAGS_monitor.empty()) {
-        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
 
-    auto rc = tateyama::bootstrap::return_code::ok;
-    auth_options();
+    auto rc = oltp::return_code::ok;
+    authentication::auth_options();
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
     auto backup_begin = requestBegin.mutable_backup_begin();
@@ -138,14 +136,14 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
             break;
         case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
             LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message();
-            rc = tateyama::bootstrap::return_code::err;
+            rc = oltp::return_code::err;
             break;
         default:
             LOG(ERROR) << "BackupBegin result_case() error: ";
-            rc = tateyama::bootstrap::return_code::err;
+            rc = oltp::return_code::err;
         }
 
-        if (rc == tateyama::bootstrap::return_code::ok) {
+        if (rc == oltp::return_code::ok) {
             std::int64_t backup_id = rb.success().id();
 
             auto location = boost::filesystem::path(path_to_backup);
@@ -186,13 +184,13 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
                     break;
                 case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
                     LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message();
-                    rc = tateyama::bootstrap::return_code::err;
+                    rc = oltp::return_code::err;
                     break;
                 default:
                     LOG(ERROR) << "BackupEnd result_case() error: ";
-                    rc = tateyama::bootstrap::return_code::err;
+                    rc = oltp::return_code::err;
                 }
-                if (rc == tateyama::bootstrap::return_code::ok) {
+                if (rc == oltp::return_code::ok) {
                     if (monitor_output) {
                         monitor_output->finish(true);
                     }
@@ -200,12 +198,12 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
                 }
             } else {
                 LOG(ERROR) << "BackupEnd response error: ";
-                rc = tateyama::bootstrap::return_code::err;
+                rc = oltp::return_code::err;
             }
         }
     } else {
         LOG(ERROR) << "BackupBegin response error: ";
-        rc = tateyama::bootstrap::return_code::err;
+        rc = oltp::return_code::err;
     }
 
     if (monitor_output) {
@@ -214,16 +212,16 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
     return rc;
 }
 
-return_code oltp_backup_estimate() {
-    std::unique_ptr<utils::monitor> monitor_output{};
+oltp::return_code oltp_backup_estimate() {
+    std::unique_ptr<monitor::monitor> monitor_output{};
 
     if(!FLAGS_monitor.empty()) {
-        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
 
-    auto rc = tateyama::bootstrap::return_code::ok;
-    auth_options();
+    auto rc = oltp::return_code::ok;
+    authentication::auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
@@ -244,9 +242,9 @@ return_code oltp_backup_estimate() {
             case ::tateyama::proto::datastore::response::BackupEstimate::kUnknownError:
             case ::tateyama::proto::datastore::response::BackupEstimate::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
-                rc = tateyama::bootstrap::return_code::err;
+                rc = oltp::return_code::err;
             }
-            if (rc == tateyama::bootstrap::return_code::ok) {
+            if (rc == oltp::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
@@ -256,7 +254,7 @@ return_code oltp_backup_estimate() {
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << database_name();
     }
-    rc = tateyama::bootstrap::return_code::err;
+    rc = oltp::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
@@ -264,24 +262,24 @@ return_code oltp_backup_estimate() {
     return rc;
 }
 
-return_code oltp_restore_backup(const std::string& path_to_backup) {
-    std::unique_ptr<utils::monitor> monitor_output{};
+oltp::return_code oltp_restore_backup(const std::string& path_to_backup) {
+    std::unique_ptr<monitor::monitor> monitor_output{};
 
     if(!FLAGS_force) {
         if (!prompt("continue? (press y or n) : ")) {
             std::cout << "restore backup has been canceled." << std::endl;
             LOG(INFO) << "restore backup has been canceled.";
-            return tateyama::bootstrap::return_code::err;
+            return oltp::return_code::err;
         }
     }
 
     if(!FLAGS_monitor.empty()) {
-        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
 
-    auto rc = tateyama::bootstrap::return_code::ok;
-    auth_options();
+    auto rc = oltp::return_code::ok;
+    authentication::auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
@@ -306,9 +304,9 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
-                rc = tateyama::bootstrap::return_code::err;
+                rc = oltp::return_code::err;
             }
-            if (rc == tateyama::bootstrap::return_code::ok) {
+            if (rc == oltp::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
@@ -318,7 +316,7 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << database_name();
     }
-    rc = tateyama::bootstrap::return_code::err;
+    rc = oltp::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
@@ -326,33 +324,33 @@ return_code oltp_restore_backup(const std::string& path_to_backup) {
     return rc;
 }
 
-return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup) {
-    std::unique_ptr<utils::monitor> monitor_output{};
+oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup) {
+    std::unique_ptr<monitor::monitor> monitor_output{};
 
     if(!FLAGS_force) {
         if (!prompt("continue? (press y or n) : ")) {
             std::cout << "restore backup has been canceled." << std::endl;
             LOG(INFO) << "restore backup has been canceled.";
-            return tateyama::bootstrap::return_code::err;
+            return oltp::return_code::err;
         }
     }
 
     if(!FLAGS_monitor.empty()) {
-        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
 
-    auto rc = tateyama::bootstrap::return_code::ok;
-    auth_options();
+    auto rc = oltp::return_code::ok;
+    authentication::auth_options();
 
     try {
-        auto parser = std::make_unique<tateyama::bootstrap::utils::file_list>();
+        auto parser = std::make_unique<file_list>();
         if (!parser->read_json(FLAGS_use_file_list)) {
             LOG(ERROR) << "error occurred in using the file_list (" << FLAGS_use_file_list << ")";
             if (monitor_output) {
                 monitor_output->finish(false);
             }
-            return tateyama::bootstrap::return_code::err;
+            return oltp::return_code::err;
         }
         if (!FLAGS_keep_backup) {
             LOG(WARNING) << "option --nokeep_backup is ignored when --use-file-list is specified";
@@ -389,9 +387,9 @@ return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup)
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
-                rc = tateyama::bootstrap::return_code::err;
+                rc = oltp::return_code::err;
             }
-            if (rc == tateyama::bootstrap::return_code::ok) {
+            if (rc == oltp::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
@@ -401,7 +399,7 @@ return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup)
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << database_name();
     }
-    rc = tateyama::bootstrap::return_code::err;
+    rc = oltp::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
@@ -409,16 +407,16 @@ return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup)
     return rc;
 }
 
-return_code oltp_restore_tag(const std::string& tag_name) {
-    std::unique_ptr<utils::monitor> monitor_output{};
+oltp::return_code oltp_restore_tag(const std::string& tag_name) {
+    std::unique_ptr<monitor::monitor> monitor_output{};
 
     if(!FLAGS_monitor.empty()) {
-        monitor_output = std::make_unique<utils::monitor>(FLAGS_monitor);
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
 
-    auto rc = tateyama::bootstrap::return_code::ok;
-    auth_options();
+    auto rc = oltp::return_code::ok;
+    authentication::auth_options();
 
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
@@ -440,9 +438,9 @@ return_code oltp_restore_tag(const std::string& tag_name) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 LOG(ERROR) << " ends up with " << response.value().result_case();
-                rc = tateyama::bootstrap::return_code::err;
+                rc = oltp::return_code::err;
             }
-            if (rc == tateyama::bootstrap::return_code::ok) {
+            if (rc == oltp::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
@@ -452,7 +450,7 @@ return_code oltp_restore_tag(const std::string& tag_name) {
     } catch (std::runtime_error &e) {
         LOG(ERROR) << "could not connect to database with name " << database_name();
     }
-    rc = tateyama::bootstrap::return_code::err;
+    rc = oltp::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);

@@ -1,5 +1,8 @@
 file(GLOB SOURCES
-        "*.cpp"
+        "main.cpp"
+        "../authentication/authentication.cpp"
+        "../datastore/backup.cpp"
+        "../process/control.cpp"
         )
 
 add_executable(oltp
@@ -13,7 +16,7 @@ set_target_properties(oltp
 
 target_include_directories(oltp
         PRIVATE .
-        PRIVATE ../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
         )
 
 target_link_libraries(oltp

@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include "test_root.h"
 
-#include <file_list.h>
+#include "datastore/file_list.h"
 
 namespace tateyama::testing {
 
@@ -28,7 +28,7 @@ TEST_F(file_list_test, simple) {
     const char* destination[] = { "example_destination1", "example_destination2", "example_destination3" };
     const bool detached[] = { true, false, true };
 
-    auto parser = std::make_unique<tateyama::bootstrap::utils::file_list>();
+    auto parser = std::make_unique<tateyama::datastore::file_list>();
     EXPECT_TRUE(parser->read_json("../../test/tateyama/include/json/file_list.json"));
 
     int i = 0;
