@@ -32,6 +32,7 @@ public:
             std::cerr << "cannot oltp start" << std::endl;
             FAIL();
         }
+        helper_->confirm_started();
         usleep(100 * 1000);
     }
 

@@ -112,7 +112,6 @@ class directory_helper {
             command += conf_file_path();
             command += " --monitor ";
             command += abs_path("test/confirming.log");
-            std::cout << command << std::endl;
             if (system(command.c_str()) != 0) {
                 std::cerr << "cannot oltp status" << std::endl;
                 FAIL();

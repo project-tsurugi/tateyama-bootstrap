@@ -164,7 +164,11 @@ return_code oltp_backup_create(const std::string& path_to_backup) {
                 boost::filesystem::copy_file(src, location / src.filename());
                 if(!FLAGS_monitor.empty()) {
                     completed_bytes += boost::filesystem::file_size(src);
-                    monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
+                    if (total_bytes > 0) {
+                        monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
+                    } else {
+                        monitor_output->progress(1.0);
+                    }
                 }
             }
 
