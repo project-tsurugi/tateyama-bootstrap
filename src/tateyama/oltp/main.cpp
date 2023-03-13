@@ -18,7 +18,9 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "oltp.h"
+#include "process/process.h"
+#include "datastore/backup.h"
+#include "configuration/configuration.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
@@ -42,26 +44,26 @@ DEFINE_bool(load, false, "Database contents are loaded from the location just af
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
 
 
-namespace tateyama::bootstrap {
+namespace tateyama::oltp {
 
 int oltp_main(const std::vector<std::string>& args) {
     if (args.at(1) == "start") {
-        return oltp_start(args.at(0), true);
+        return tateyama::process::oltp_start(args.at(0), true);
     }
     if (args.at(1) == "shutdown") {
-        return oltp_shutdown_kill(false);
+        return tateyama::process::oltp_shutdown_kill(false);
     }
     if (args.at(1) == "kill") {
-        return oltp_shutdown_kill(true);
+        return tateyama::process::oltp_shutdown_kill(true);
     }
     if (args.at(1) == "status") {
-        return oltp_status();
+        return tateyama::process::oltp_status();
     }
     if (args.at(1) == "diagnostic") {
-        return oltp_diagnostic();
+        return tateyama::process::oltp_diagnostic();
     }
     if (args.at(1) == "pid") {
-        return oltp_pid();
+        return tateyama::process::oltp_pid();
     }
     if (args.at(1) == "backup") {
         if (args.at(2) == "create") {
@@ -69,32 +71,32 @@ int oltp_main(const std::vector<std::string>& args) {
                 LOG(ERROR) << "need to specify path/to/backup";
                 return 4;
             }
-            return backup::oltp_backup_create(args.at(3));
+            return tateyama::datastore::oltp_backup_create(args.at(3));
         }
         if (args.at(2) == "estimate") {
-            return backup::oltp_backup_estimate();
+            return tateyama::datastore::oltp_backup_estimate();
         }
         LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
         return -1;
     }
     if (args.at(1) == "restore") {
-        oltp_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
+        tateyama::process::oltp_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
 
         int rv{};
         if (args.at(2) == "backup") {
             if (args.size() > 3) {
                 auto arg = args.at(3);
                 if (!FLAGS_use_file_list.empty()) {
-                    rv = backup::oltp_restore_backup_use_file_list(arg);
+                    rv = tateyama::datastore::oltp_restore_backup_use_file_list(arg);
                 } else {
-                    rv = backup::oltp_restore_backup(args.at(3));
+                    rv = tateyama::datastore::oltp_restore_backup(args.at(3));
                 }
             } else {
                 LOG(ERROR) << "directory is not specficed";
             }
         } else if (args.at(2) == "tag") {
             if (args.size() > 3) {
-                rv = backup::oltp_restore_tag(args.at(3));
+                rv = tateyama::datastore::oltp_restore_tag(args.at(3));
             } else {
                 LOG(ERROR) << "tag is not specficed";
             }
@@ -103,17 +105,17 @@ int oltp_main(const std::vector<std::string>& args) {
             rv = -1;
         }
 
-        oltp_shutdown_kill(false, false);
+        tateyama::process::oltp_shutdown_kill(false, false);
         return rv;
     }
     if (args.at(1) == "quiesce") {
-        return oltp_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
+        return tateyama::process::oltp_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
     }
     LOG(ERROR) << "unknown command '" << args.at(1) << "'";
     return -1;
 }
 
-}  // tateyama::bootstrap
+}  // tateyama::oltp
 
 
 int main(int argc, char* argv[]) {
@@ -129,7 +131,7 @@ int main(int argc, char* argv[]) {
         gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-        return static_cast<int>(tateyama::bootstrap::oltp_main(args));
+        return static_cast<int>(tateyama::oltp::oltp_main(args));
     }
     LOG(ERROR) << "no arguments";
     return -1;

@@ -13,16 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
-namespace tateyama::oltp {
+namespace tateyama::authentication {
 
-/**
- * @brief return code
- */
-enum return_code {
-    ok = 0,
-    err = 1,
-};
+void auth_options();
 
-} //  tateyama::oltp
+}  // tateyama::bootstrap

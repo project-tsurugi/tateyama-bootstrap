@@ -20,9 +20,9 @@
 
 #include <tateyama/status/resource/core.h>
 
-#include "configuration.h"
+#include "configuration/configuration.h"
 
-namespace tateyama::bootstrap::utils {
+namespace tateyama::server {
 
 class status_info_bridge {
 public:
@@ -85,4 +85,4 @@ private:
     std::string status_file_name_{};
 };
 
-} // namespace tateyama::bootstrap::utils
+} // namespace tateyama::server

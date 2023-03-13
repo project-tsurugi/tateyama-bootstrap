@@ -31,7 +31,7 @@ DEFINE_string(auth_token, "", "authentication token");  // NOLINT
 DEFINE_string(credentials, "", "path to credentials.json");  // NOLINT
 DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
 
-namespace tateyama::bootstrap {
+namespace tateyama::authentication {
 
 constexpr std::string_view pre_defined_auth_file_name = "/tmp/auth";  // FIXME specify concrete file
 

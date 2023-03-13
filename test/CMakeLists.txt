@@ -10,7 +10,7 @@ target_compile_options(${test_target}
 
 target_include_directories(${test_target}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/tateyama/include
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/tateyama
 )
 
 target_link_libraries(${test_target}

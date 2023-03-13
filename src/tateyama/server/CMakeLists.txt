@@ -17,7 +17,7 @@ set_target_properties(server
 
 target_include_directories(server
         PRIVATE .
-        PRIVATE ../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
         )
 
 target_link_libraries(server

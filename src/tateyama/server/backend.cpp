@@ -36,11 +36,11 @@
 #endif
 #include <jogasaki/api.h>
 
+#include "process/proc_mutex.h"
+#include "configuration/configuration.h"
 #include "server.h"
 #include "utils.h"
-#include "proc_mutex.h"
-#include "configuration.h"
-#include "monitor.h"
+// #include "monitor/monitor.h"
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -55,9 +55,7 @@ DEFINE_bool(force, false, "an option for oltp, do not use here");  // NOLINT  du
 DEFINE_bool(keep_backup, false, "an option for oltp, do not use here");  // NOLINT  dummy
 DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT  dummy
 
-namespace tateyama::bootstrap {
-
-using namespace tateyama::bootstrap::utils;
+namespace tateyama::server {
 
 // should be in sync one in ipc_provider/steram_provider
 struct endpoint_context {
@@ -81,7 +79,7 @@ int backend_main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     // configuration
-    auto bst_conf = utils::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (!bst_conf.valid()) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
@@ -103,7 +101,7 @@ int backend_main(int argc, char **argv) {
 
     // mutex
     auto mutex_file = bst_conf.lock_file();
-    auto mutex = std::make_unique<proc_mutex>(mutex_file);
+    auto mutex = std::make_unique<process::proc_mutex>(mutex_file);
     if (!mutex->lock()) {
         exit(1);
     }
@@ -177,7 +175,7 @@ int backend_main(int argc, char **argv) {
             // load tpc-c tables
             LOG(INFO) << "TPC-C data load begin";
             try {
-                jogasaki::common_cli::load(*db, FLAGS_location);
+                jogasaki::utils::load(*db, FLAGS_location);
             } catch (std::exception& e) {
                 LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
                 std::abort();
@@ -188,7 +186,7 @@ int backend_main(int argc, char **argv) {
             // load tpc-h tables
             LOG(INFO) << "TPC-H data load begin";
             try {
-                jogasaki::common_cli::load_tpch(*db, FLAGS_location);
+                jogasaki::utils::load_tpch(*db, FLAGS_location);
             } catch (std::exception& e) {
                 LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
                 std::abort();
@@ -210,9 +208,9 @@ int backend_main(int argc, char **argv) {
     return 0;
 }
 
-}  // tateyama::bootstrap
+}  // tateyama::server
 
 
 int main(int argc, char **argv) {
-    return tateyama::bootstrap::backend_main(argc, argv);
+    return tateyama::server::backend_main(argc, argv);
 }

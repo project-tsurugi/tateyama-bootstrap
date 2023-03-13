@@ -13,11 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#pragma once
 
-namespace tateyama::bootstrap {
+#include "oltp/oltp.h"
 
-void auth_options();
+namespace tateyama::datastore {
 
-}  // tateyama::bootstrap
+    oltp::return_code oltp_backup_create(const std::string& path_to_backup);
+    oltp::return_code oltp_backup_estimate();
+    oltp::return_code oltp_restore_backup(const std::string& path_to_backup);
+    oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup);
+    oltp::return_code oltp_restore_tag(const std::string& tag_name);
+
+} //  tateyama::datastore

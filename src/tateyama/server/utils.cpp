@@ -27,7 +27,7 @@
 DEFINE_int32(dump_batch_size, 1024, "Batch size for dump");  //NOLINT
 DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
 
-namespace jogasaki::common_cli {
+namespace jogasaki::utils {
 
     std::vector<std::string> tables = {  // NOLINT
         "WAREHOUSE",
@@ -117,4 +117,4 @@ namespace jogasaki::common_cli {
         }
     }
 
-}  // jogasaki::common_cli
+}  // jogasaki::utils

@@ -25,7 +25,7 @@
 #include <tateyama/proto/datastore/request.pb.h>
 #include <tateyama/proto/datastore/response.pb.h>
 
-#include "status_info.h"
+#include "server/status_info.h"
 #include "client_wire.h"
 
 namespace tateyama::bootstrap::wire {
@@ -40,7 +40,7 @@ public:
         wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(name).connect())) {
         header_.set_message_version(MESSAGE_VERSION);
         header_.set_service_id(type);
-        status_info_ = std::make_unique<tateyama::bootstrap::utils::status_info_bridge>(std::string(digest));
+        status_info_ = std::make_unique<server::status_info_bridge>(std::string(digest));
     }
 
     template <typename T>
@@ -94,7 +94,7 @@ public:
 private:
     tateyama::common::wire::session_wire_container wire_;
     ::tateyama::proto::framework::request::Header header_{};
-    std::unique_ptr<tateyama::bootstrap::utils::status_info_bridge> status_info_{};
+    std::unique_ptr<tateyama::server::status_info_bridge> status_info_{};
 };
 
 } // tateyama::bootstrap::wire
