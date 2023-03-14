@@ -20,7 +20,6 @@
 #include <stdexcept> // std::runtime_error
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -70,7 +69,7 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
         args.emplace_back("--quiesce");
         break;
     default:
-        LOG(ERROR) << "illegal framework boot-up mode: " << tateyama::framework::to_string_view(mode);
+        std::cerr << "illegal framework boot-up mode: " << tateyama::framework::to_string_view(mode) << std::endl;
         break;
     }
     if (!FLAGS_conf.empty()) {
@@ -115,14 +114,14 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             if (FLAGS_start_mode == "force") {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                 if (rc = oltp_kill(file_mutex.get(), bst_conf); rc != oltp::return_code::ok) {
-                    LOG(ERROR) << "cannot oltp kill before start";
+                    std::cerr << "cannot oltp kill before start" << std::endl;
                     if (monitor_output) {
                         monitor_output->finish(false);
                     }
                     return oltp::return_code::err;
                 }
             } else {
-                LOG(ERROR) << "only \"force\" can be specified for the start-mode";
+                std::cerr << "only \"force\" can be specified for the start-mode" << std::endl;
                 if (monitor_output) {
                     monitor_output->finish(false);
                 }
@@ -138,14 +137,14 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             path_for_this = boost::filesystem::canonical(a0f);
         }
         if (!boost::filesystem::exists(path_for_this)) {
-            LOG(ERROR) << "cannot find " << server_name_string;
+            std::cerr << "cannot find " << server_name_string << std::endl;
             return oltp::return_code::err;
         }
 
         int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
         // Shared memory create a new with IPC_CREATE
         if (shm_id == -1) {
-            LOG(ERROR) << "error in shmget()";
+            std::cerr << "error in shmget()" << std::endl;
             if (monitor_output) {
                 monitor_output->finish(false);
             }
@@ -154,7 +153,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
         // Shared memory attach and convert char address
         auto *shm_data = shmat(shm_id, nullptr, 0);
         if (reinterpret_cast<std::uintptr_t>(shm_data) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
-            LOG(ERROR) << "error in shmat()";
+            std::cerr << "error in shmat()" << std::endl;
             if (monitor_output) {
                 monitor_output->finish(false);
             }
@@ -186,11 +185,11 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
 
         // Detach shred memory
         if (shmdt(shm_data) == -1) {
-            LOG(ERROR) << "error in shmdt()";
+            std::cerr << "error in shmdt()" << std::endl;
         }
         // Remove shred memory
         if (shmctl(shm_id, IPC_RMID, nullptr)==-1) {
-            LOG(ERROR) << "error in shctl()";
+            std::cerr << "error in shctl()" << std::endl;
         }
 
         rc = oltp::return_code::ok;
@@ -267,35 +266,35 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
                                 return oltp::return_code::ok;
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
-                            LOG(ERROR) << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match";
+                            std::cerr << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
                             rc = oltp::return_code::err;
                             checked_status_info = true;
                             break;
                         }
                     }
                     if (!checked_status_info) {
-                        LOG(ERROR) << "cannot confirm the server process within the specified time";
+                        std::cerr << "cannot confirm the server process within the specified time" << std::endl;
                         rc = oltp::return_code::err;
                     }
                 } else if (check_result == another) {
-                    LOG(ERROR) << "another " << server_name_string_for_status << " is running";
+                    std::cerr << "another " << server_name_string_for_status << " is running" << std::endl;
                     if (auto rv = kill(pid_in_file_mutex, 0); rv != 0) {  // the process (pid_in_file_mutex) is not alive
                         rc = oltp::return_code::err;
                     }
                     // does not change the return code when the process is alive
                 } else {  // case in which check_result == init
-                    LOG(ERROR) << "cannot invoke a server process";
+                    std::cerr << "cannot invoke a server process" << std::endl;
                     rc = oltp::return_code::err;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
-                LOG(ERROR) << "cannot find the configuration file";
+                std::cerr << "cannot find the configuration file" << std::endl;
                 rc = oltp::return_code::err;
             }
         } else {  // case in which need_check is false
             return oltp::return_code::ok;
         }
     } else {
-        LOG(ERROR) << "error in configuration file name";
+        std::cerr << "error in configuration file name" << std::endl;
         rc = oltp::return_code::err;
     }
 
@@ -375,7 +374,6 @@ oltp::return_code oltp_kill(proc_mutex* file_mutex, configuration::bootstrap_con
     auto rc = oltp::return_code::ok;
     auto pid = file_mutex->pid(false);
     if (pid != 0) {
-        DVLOG(log_trace) << "kill (SIGKILL) to process " << pid << " and remove " << file_mutex->name() << "and status_info_bridge";
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
         if (FLAGS_timeout > 0) {
@@ -399,10 +397,10 @@ oltp::return_code oltp_kill(proc_mutex* file_mutex, configuration::bootstrap_con
             }
             usleep(sleep_time_unit * 1000);
         }
-        LOG(ERROR) << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds";
+        std::cerr << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
         return oltp::return_code::err;
     }
-    LOG(ERROR) << "contents of the file (" << file_mutex->name() << ") cannot be used";
+    std::cerr << "contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
     return oltp::return_code::err;
 }
 
@@ -437,7 +435,7 @@ oltp::return_code oltp_shutdown(proc_mutex* file_mutex, server::status_info_brid
     if (dot) {
         std::cout << std::endl;
     }
-    LOG(ERROR) << "shutdown operation is still in progress, check it after some time";
+    std::cerr << "shutdown operation is still in progress, check it after some time" << std::endl;
     return oltp::return_code::err;
 }
 
@@ -474,20 +472,20 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
                             return rc;
                         }
                     } else {
-                        LOG(ERROR) << "another shutdown is being conducted";
+                        std::cerr << "another shutdown is being conducted" << std::endl;
                         rc = oltp::return_code::err;
                     }
                 }
             } catch (std::runtime_error &e) {
-                LOG(ERROR) << e.what();
+                std::cerr << e.what() << std::endl;
                 rc = oltp::return_code::err;
             }
         } else {
-            LOG(ERROR) << "error in create_configuration";
+            std::cerr << "error in create_configuration" << std::endl;
             rc = oltp::return_code::err;
         }
     } else {
-        LOG(ERROR) << "error in configuration file name";
+        std::cerr << "error in configuration file name" << std::endl;
         rc = oltp::return_code::err;
     }
 
@@ -544,7 +542,7 @@ oltp::return_code oltp_status() {
         std::cout << server_name_string_for_status << " is INACTIVE" << std::endl;
         break;
     case status_check_result::status_check_count_over:
-        LOG(ERROR) << "cannot check the state within the specified time";
+        std::cerr << "cannot check the state within the specified time" << std::endl;
         rc = oltp::return_code::err;
         break;
     case status_check_result::not_locked:
@@ -555,15 +553,15 @@ oltp::return_code oltp_status() {
         std::cout << server_name_string_for_status << " is UNKNOWN" << std::endl;
         break;
     case status_check_result::error_in_create_conf:
-        LOG(ERROR) << "error in create_configuration";
+        std::cerr << "error in create_configuration" << std::endl;
         rc = oltp::return_code::err;
         break;
     case status_check_result::error_in_conf_file_name:
-        LOG(ERROR) << "error in configuration file name";
+        std::cerr << "error in configuration file name" << std::endl;
         rc = oltp::return_code::err;
         break;
     default:
-        LOG(ERROR) << "should not reach here";
+        std::cerr << "should not reach here" << std::endl;
         rc = oltp::return_code::err;
         break;
     }

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 #include <string>
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include "process/process.h"
 #include "datastore/backup.h"
@@ -68,7 +68,7 @@ int oltp_main(const std::vector<std::string>& args) {
     if (args.at(1) == "backup") {
         if (args.at(2) == "create") {
             if (args.size() < 4) {
-                LOG(ERROR) << "need to specify path/to/backup";
+                std::cerr << "need to specify path/to/backup" << std::endl;
                 return 4;
             }
             return tateyama::datastore::oltp_backup_create(args.at(3));
@@ -76,7 +76,7 @@ int oltp_main(const std::vector<std::string>& args) {
         if (args.at(2) == "estimate") {
             return tateyama::datastore::oltp_backup_estimate();
         }
-        LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
+        std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
         return -1;
     }
     if (args.at(1) == "restore") {
@@ -92,16 +92,16 @@ int oltp_main(const std::vector<std::string>& args) {
                     rv = tateyama::datastore::oltp_restore_backup(args.at(3));
                 }
             } else {
-                LOG(ERROR) << "directory is not specficed";
+                std::cerr << "directory is not specficed" << std::endl;
             }
         } else if (args.at(2) == "tag") {
             if (args.size() > 3) {
                 rv = tateyama::datastore::oltp_restore_tag(args.at(3));
             } else {
-                LOG(ERROR) << "tag is not specficed";
+                std::cerr << "tag is not specficed" << std::endl;
             }
         } else {
-            LOG(ERROR) << "unknown backup subcommand '" << args.at(2) << "'";
+            std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
             rv = -1;
         }
 
@@ -111,7 +111,7 @@ int oltp_main(const std::vector<std::string>& args) {
     if (args.at(1) == "quiesce") {
         return tateyama::process::oltp_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
     }
-    LOG(ERROR) << "unknown command '" << args.at(1) << "'";
+    std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return -1;
 }
 
@@ -120,10 +120,6 @@ int oltp_main(const std::vector<std::string>& args) {
 
 int main(int argc, char* argv[]) {
     if (argc > 1) {
-        // logging
-        google::InitGoogleLogging(argv[0]);  // NOLINT
-        google::InstallFailureSignalHandler();
-
         // copy argv to args
         std::vector<std::string> args(argv, argv + argc);
 
@@ -133,6 +129,6 @@ int main(int argc, char* argv[]) {
 
         return static_cast<int>(tateyama::oltp::oltp_main(args));
     }
-    LOG(ERROR) << "no arguments";
+    std::cerr << "no arguments" << std::endl;
     return -1;
 }
