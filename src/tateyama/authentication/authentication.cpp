@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 #include <cstdlib>
 
 #include <gflags/gflags.h>
@@ -36,24 +37,34 @@ constexpr std::string_view pre_defined_auth_file_name = "/tmp/auth";  // FIXME s
 
 void auth_options() {
     if (!FLAGS_auth) {
-        DVLOG(log_trace) << "no-auth";
+#ifndef NDEBUG
+        std::cout << "no-auth" << std::endl;
+#endif
         return;
     }
     if (!FLAGS_user.empty()) {
-        DVLOG(log_trace) << "auth user:= " << FLAGS_user;
+#ifndef NDEBUG
+        std::cout << "auth user:= " << FLAGS_user << std::endl;
+#endif
         return;
     }
     if (!FLAGS_auth_token.empty()) {
-        DVLOG(log_trace) << "auth token: " << FLAGS_auth_token;
+#ifndef NDEBUG
+        std::cout << "auth token: " << FLAGS_auth_token << std::endl;
+#endif
         return;
     }
     if (!FLAGS_credentials.empty()) {
-        DVLOG(log_trace) << "auth credentials: " << FLAGS_credentials;
+#ifndef NDEBUG
+        std::cout << "auth credentials: " << FLAGS_credentials << std::endl;
+#endif
         return;
     }
 
     if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
-        DVLOG(log_trace) << "auth token fron TSURUGI_AUTH_TOKEN: " << token;
+#ifndef NDEBUG
+        std::cout << "auth token fron TSURUGI_AUTH_TOKEN: " << token << std::endl;
+#endif
         return;
     }
     const auto pre_defined_auth_file = boost::filesystem::path(std::string(pre_defined_auth_file_name));
@@ -70,7 +81,9 @@ void auth_options() {
         istrm.read(contents.data(), contents.length());
         istrm.close();
 
-        DVLOG(log_trace) << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents;        
+#ifndef NDEBUG
+        std::cout << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents << std::endl;
+#endif
     }
 }
 
