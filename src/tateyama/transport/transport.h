@@ -65,7 +65,7 @@ public:
                 if (status_info_->alive()) {
                     continue;
                 }
-                LOG(ERROR) << e.what();
+                std::cerr << e.what() << std::endl;
                 return std::nullopt;
             }
         }

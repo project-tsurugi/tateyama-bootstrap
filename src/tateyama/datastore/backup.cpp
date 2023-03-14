@@ -21,7 +21,6 @@
 #include <termios.h>
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -88,17 +87,17 @@ static std::string database_name() {
     if (auto conf = configuration::bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
         auto endpoint_config = conf->get_section("ipc_endpoint");
         if (endpoint_config == nullptr) {
-            LOG(ERROR) << "cannot find ipc_endpoint section in the configuration";
+            std::cerr << "cannot find ipc_endpoint section in the configuration" << std::endl;
             exit(oltp::return_code::err);
         }
         auto database_name_opt = endpoint_config->get<std::string>("database_name");
         if (!database_name_opt) {
-            LOG(ERROR) << "cannot find database_name at the section in the configuration";
+            std::cerr << "cannot find database_name at the section in the configuration" << std::endl;
             exit(oltp::return_code::err);
         }
         return database_name_opt.value();
     }
-    LOG(ERROR) << "error in create_configuration";
+    std::cerr << "error in create_configuration" << std::endl;
     exit(2);
 }
 
@@ -135,11 +134,11 @@ oltp::return_code oltp_backup_create(const std::string& path_to_backup) {
         case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
             break;
         case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-            LOG(ERROR) << "BackupBegin error: " << rb.unknown_error().message();
+            std::cerr << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
             rc = oltp::return_code::err;
             break;
         default:
-            LOG(ERROR) << "BackupBegin result_case() error: ";
+            std::cerr << "BackupBegin result_case() error: " << std::endl;
             rc = oltp::return_code::err;
         }
 
@@ -183,11 +182,11 @@ oltp::return_code oltp_backup_create(const std::string& path_to_backup) {
                 case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
                     break;
                 case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-                    LOG(ERROR) << "BackupEnd error: " << re.unknown_error().message();
+                    std::cerr << "BackupEnd error: " << re.unknown_error().message() << std::endl;
                     rc = oltp::return_code::err;
                     break;
                 default:
-                    LOG(ERROR) << "BackupEnd result_case() error: ";
+                    std::cerr << "BackupEnd result_case() error: " << std::endl;
                     rc = oltp::return_code::err;
                 }
                 if (rc == oltp::return_code::ok) {
@@ -197,12 +196,12 @@ oltp::return_code oltp_backup_create(const std::string& path_to_backup) {
                     return rc;
                 }
             } else {
-                LOG(ERROR) << "BackupEnd response error: ";
+                std::cerr << "BackupEnd response error: " << std::endl;
                 rc = oltp::return_code::err;
             }
         }
     } else {
-        LOG(ERROR) << "BackupBegin response error: ";
+        std::cerr << "BackupBegin response error: " << std::endl;
         rc = oltp::return_code::err;
     }
 
@@ -241,7 +240,7 @@ oltp::return_code oltp_backup_estimate() {
             }
             case ::tateyama::proto::datastore::response::BackupEstimate::kUnknownError:
             case ::tateyama::proto::datastore::response::BackupEstimate::RESULT_NOT_SET:
-                LOG(ERROR) << " ends up with " << response.value().result_case();
+                std::cerr << " ends up with " << response.value().result_case() << std::endl;
                 rc = oltp::return_code::err;
             }
             if (rc == oltp::return_code::ok) {
@@ -252,7 +251,7 @@ oltp::return_code oltp_backup_estimate() {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << database_name();
+        std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
     rc = oltp::return_code::err;
 
@@ -268,7 +267,6 @@ oltp::return_code oltp_restore_backup(const std::string& path_to_backup) {
     if(!FLAGS_force) {
         if (!prompt("continue? (press y or n) : ")) {
             std::cout << "restore backup has been canceled." << std::endl;
-            LOG(INFO) << "restore backup has been canceled.";
             return oltp::return_code::err;
         }
     }
@@ -303,7 +301,7 @@ oltp::return_code oltp_restore_backup(const std::string& path_to_backup) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                LOG(ERROR) << " ends up with " << response.value().result_case();
+                std::cerr << " ends up with " << response.value().result_case() << std::endl;
                 rc = oltp::return_code::err;
             }
             if (rc == oltp::return_code::ok) {
@@ -314,7 +312,7 @@ oltp::return_code oltp_restore_backup(const std::string& path_to_backup) {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << database_name();
+        std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
     rc = oltp::return_code::err;
 
@@ -330,7 +328,6 @@ oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_b
     if(!FLAGS_force) {
         if (!prompt("continue? (press y or n) : ")) {
             std::cout << "restore backup has been canceled." << std::endl;
-            LOG(INFO) << "restore backup has been canceled.";
             return oltp::return_code::err;
         }
     }
@@ -346,14 +343,14 @@ oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_b
     try {
         auto parser = std::make_unique<file_list>();
         if (!parser->read_json(FLAGS_use_file_list)) {
-            LOG(ERROR) << "error occurred in using the file_list (" << FLAGS_use_file_list << ")";
+            std::cerr << "error occurred in using the file_list (" << FLAGS_use_file_list << ")" << std::endl;
             if (monitor_output) {
                 monitor_output->finish(false);
             }
             return oltp::return_code::err;
         }
         if (!FLAGS_keep_backup) {
-            LOG(WARNING) << "option --nokeep_backup is ignored when --use-file-list is specified";
+            std::cerr << "option --nokeep_backup is ignored when --use-file-list is specified" << std::endl;
         }
 
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
@@ -386,7 +383,7 @@ oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_b
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                LOG(ERROR) << " ends up with " << response.value().result_case();
+                std::cerr << " ends up with " << response.value().result_case() << std::endl;
                 rc = oltp::return_code::err;
             }
             if (rc == oltp::return_code::ok) {
@@ -397,7 +394,7 @@ oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_b
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << database_name();
+        std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
     rc = oltp::return_code::err;
 
@@ -437,7 +434,7 @@ oltp::return_code oltp_restore_tag(const std::string& tag_name) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                LOG(ERROR) << " ends up with " << response.value().result_case();
+                std::cerr << " ends up with " << response.value().result_case() << std::endl;
                 rc = oltp::return_code::err;
             }
             if (rc == oltp::return_code::ok) {
@@ -448,7 +445,7 @@ oltp::return_code oltp_restore_tag(const std::string& tag_name) {
             }
         }
     } catch (std::runtime_error &e) {
-        LOG(ERROR) << "could not connect to database with name " << database_name();
+        std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
     rc = oltp::return_code::err;
 

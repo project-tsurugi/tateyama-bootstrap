@@ -16,7 +16,6 @@
 #include <cstdlib>
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>

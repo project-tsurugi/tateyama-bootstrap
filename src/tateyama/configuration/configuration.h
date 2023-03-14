@@ -37,7 +37,6 @@ public:
         try {
             return bootstrap_configuration(file);
         } catch (std::runtime_error &e) {
-            LOG(ERROR) << e.what();
             return bootstrap_configuration();
         }
     }
