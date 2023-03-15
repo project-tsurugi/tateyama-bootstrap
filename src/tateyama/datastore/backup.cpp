@@ -28,10 +28,10 @@
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
-#include "configuration/configuration.h"
-#include "authentication/authentication.h"
-#include "transport/transport.h"
-#include "monitor/monitor.h"
+#include "tateyama/configuration/configuration.h"
+#include "tateyama/authentication/authentication.h"
+#include "tateyama/transport/transport.h"
+#include "tateyama/monitor/monitor.h"
 #include "backup.h"
 #include "file_list.h"
 

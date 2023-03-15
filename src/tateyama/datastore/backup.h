@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "oltp/oltp.h"
+#include "tateyama/oltp/oltp.h"
 
 namespace tateyama::datastore {
 

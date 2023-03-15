@@ -27,9 +27,9 @@
 
 #include <tateyama/logging.h>
 
-#include "server/status_info.h"
-#include "transport/client_wire.h"
-#include "monitor/monitor.h"
+#include "tateyama/server/status_info.h"
+#include "tateyama/transport/client_wire.h"
+#include "tateyama/monitor/monitor.h"
 #include "process.h"
 
 DECLARE_string(conf);  // NOLINT

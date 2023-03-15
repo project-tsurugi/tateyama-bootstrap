@@ -25,7 +25,7 @@
 #include <tateyama/proto/datastore/request.pb.h>
 #include <tateyama/proto/datastore/response.pb.h>
 
-#include "server/status_info.h"
+#include "tateyama/server/status_info.h"
 #include "client_wire.h"
 
 namespace tateyama::bootstrap::wire {
