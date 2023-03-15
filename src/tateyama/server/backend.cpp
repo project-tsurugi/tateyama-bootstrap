@@ -36,8 +36,8 @@
 #endif
 #include <jogasaki/api.h>
 
-#include "process/proc_mutex.h"
-#include "configuration/configuration.h"
+#include "tateyama/process/proc_mutex.h"
+#include "tateyama/configuration/configuration.h"
 #include "server.h"
 #include "utils.h"
 // #include "monitor/monitor.h"

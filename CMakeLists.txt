@@ -44,6 +44,7 @@ endif()
 
 set(tateyama_package "tateyama-${SHARKSFIN_IMPLEMENTATION}")
 set(tateyama_engine "${tateyama_package}-engine")
+set(tateyama_api "${tateyama_package}-api")
 set(jogasaki_package "jogasaki-${SHARKSFIN_IMPLEMENTATION}")
 set(jogasaki_engine "${jogasaki_package}-engine")
 set(ogawayama_package "ogawayama-${SHARKSFIN_IMPLEMENTATION}")
