@@ -97,8 +97,6 @@ jobs:
           [ipc_endpoint]
               database_name=${TG_IT_DBNAME}
 
-          [sql]
-              prepare_qa_tables=true
           EOF
         env:
           TGDIR: ${{ github.workspace }}/${{ env.TG_PATH }}
