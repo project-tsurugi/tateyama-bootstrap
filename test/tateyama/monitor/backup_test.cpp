@@ -25,11 +25,11 @@ public:
         helper_->set_up();
         std::string command;
     
-        command = "oltp start --conf ";
+        command = "tgctl start --conf ";
         command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
-            std::cerr << "cannot oltp start" << std::endl;
+            std::cerr << "cannot tgctl start" << std::endl;
             FAIL();
         }
         helper_->confirm_started();
@@ -39,11 +39,11 @@ public:
     virtual void TearDown() {
         std::string command;
 
-        command = "oltp shutdown --conf ";
+        command = "tgctl shutdown --conf ";
         command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
-            std::cerr << "cannot oltp shutdown" << std::endl;
+            std::cerr << "cannot tgctl shutdown" << std::endl;
             FAIL();
         }
 
@@ -63,7 +63,7 @@ TEST_F(backup_test, begin) {
     int l;
     int rv;
     
-    command = "oltp backup create ";
+    command = "tgctl backup create ";
     command += helper_->abs_path("backup");
     command += " --conf ";
     command += helper_->conf_file_path();
@@ -71,7 +71,7 @@ TEST_F(backup_test, begin) {
     command += helper_->abs_path("test/backup_create.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp backup" << std::endl;
+        std::cerr << "cannot tgctl backup" << std::endl;
         FAIL();
     }
     EXPECT_TRUE(validate_json(helper_->abs_path("test/backup_create.log")));

@@ -108,12 +108,12 @@ class directory_helper {
     void confirm_started() {
         std::string command;
         for (std::size_t i = 0; i < 10; i++) {
-            command = "oltp status --conf ";
+            command = "tgctl status --conf ";
             command += conf_file_path();
             command += " --monitor ";
             command += abs_path("test/confirming.log");
             if (system(command.c_str()) != 0) {
-                std::cerr << "cannot oltp status" << std::endl;
+                std::cerr << "cannot tgctl status" << std::endl;
                 FAIL();
             }
 

@@ -44,7 +44,7 @@ private:
 TEST_F(kill_test, ipc_file) {
     std::string command;
     
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     EXPECT_EQ(system(command.c_str()), 0);
@@ -60,7 +60,7 @@ TEST_F(kill_test, ipc_file) {
     std::cout << command << std::endl;
     EXPECT_EQ(system(command.c_str()), 0);
 
-    command = "oltp kill --conf ";
+    command = "tgctl kill --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     EXPECT_EQ(system(command.c_str()), 0);

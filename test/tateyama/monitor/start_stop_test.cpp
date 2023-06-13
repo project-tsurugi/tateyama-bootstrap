@@ -39,13 +39,13 @@ private:
 TEST_F(start_stop_test, success) {
     std::string command;
     
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/start.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
+        std::cerr << "cannot tgctl start" << std::endl;
         FAIL();
     }
     helper_->confirm_started();
@@ -64,13 +64,13 @@ TEST_F(start_stop_test, success) {
     EXPECT_EQ(l, 2);
     EXPECT_EQ(rv, 1);
 
-    command = "oltp shutdown --conf ";
+    command = "tgctl shutdown --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/shutdown.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp shutdown" << std::endl;
+        std::cerr << "cannot tgctl shutdown" << std::endl;
         FAIL();
     }
     EXPECT_TRUE(validate_json(helper_->abs_path("test/shutdown.log")));
@@ -86,16 +86,16 @@ TEST_F(start_stop_test, success) {
 TEST_F(start_stop_test, start_twice) {  // issue_109
     std::string command;
     
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
+        std::cerr << "cannot tgctl start" << std::endl;
         FAIL();
     }
     helper_->confirm_started();
 
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/start_twice.log");
@@ -117,11 +117,11 @@ TEST_F(start_stop_test, start_twice) {  // issue_109
     EXPECT_EQ(l, 1);
     EXPECT_EQ(rv, 1);
 
-    command = "oltp shutdown --conf ";
+    command = "tgctl shutdown --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp shutdown" << std::endl;
+        std::cerr << "cannot tgctl shutdown" << std::endl;
         FAIL();
     }
 }

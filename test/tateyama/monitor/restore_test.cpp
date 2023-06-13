@@ -26,30 +26,30 @@ public:
 
         std::string command;
     
-        command = "oltp start --conf ";
+        command = "tgctl start --conf ";
         command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
-            std::cerr << "cannot oltp start" << std::endl;
+            std::cerr << "cannot tgctl start" << std::endl;
             FAIL();
         }
         helper_->confirm_started();
 
-        command = "oltp backup create ";
+        command = "tgctl backup create ";
         command += helper_->abs_path("backup");
         command += " --conf ";
         command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
-            std::cerr << "cannot oltp backup" << std::endl;
+            std::cerr << "cannot tgctl backup" << std::endl;
             FAIL();
         }
 
-        command = "oltp shutdown --conf ";
+        command = "tgctl shutdown --conf ";
         command += helper_->conf_file_path();
         std::cout << command << std::endl;
         if (system(command.c_str()) != 0) {
-            std::cerr << "cannot oltp shutdown" << std::endl;
+            std::cerr << "cannot tgctl shutdown" << std::endl;
             FAIL();
         }
     }
@@ -68,7 +68,7 @@ private:
 TEST_F(restore_test, begin) {
     std::string command;
     
-    command = "oltp restore backup ";
+    command = "tgctl restore backup ";
     command += helper_->abs_path("backup");
     command += " --conf ";
     command += helper_->conf_file_path();
@@ -77,7 +77,7 @@ TEST_F(restore_test, begin) {
     command += " --force";
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp backup" << std::endl;
+        std::cerr << "cannot tgctl backup" << std::endl;
         FAIL();
     }
     EXPECT_TRUE(validate_json(helper_->abs_path("test/restore.log")));

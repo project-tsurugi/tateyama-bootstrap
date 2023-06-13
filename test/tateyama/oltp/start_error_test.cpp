@@ -39,7 +39,7 @@ private:
 TEST_F(start_error_test, dir) {
     std::string command;
     
-    command = "oltp start --conf /tmp";
+    command = "tgctl start --conf /tmp";
     command += " --monitor ";
     command += helper_->abs_path("test/dir.log");
     std::cout << command << std::endl;
@@ -64,7 +64,7 @@ TEST_F(start_error_test, dir) {
 TEST_F(start_error_test, dir_and_slash) {
     std::string command;
     
-    command = "oltp start --conf /tmp/";
+    command = "tgctl start --conf /tmp/";
     command += " --monitor ";
     command += helper_->abs_path("test/dir.log");
     std::cout << command << std::endl;
@@ -89,7 +89,7 @@ TEST_F(start_error_test, dir_and_slash) {
 TEST_F(start_error_test, end_slash) {
     std::string command;
     
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     command += "/ --monitor ";
     command += helper_->abs_path("test/dir.log");

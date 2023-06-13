@@ -40,13 +40,13 @@ TEST_F(status_test, success) {
     std::string command;
     
     // check stop
-    command = "oltp status --conf ";
+    command = "tgctl status --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/stop.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp status" << std::endl;
+        std::cerr << "cannot tgctl status" << std::endl;
         FAIL();
     }
     EXPECT_TRUE(validate_json(helper_->abs_path("test/stop.log")));
@@ -66,22 +66,22 @@ TEST_F(status_test, success) {
 
 
     // check running
-    command = "oltp start --conf ";
+    command = "tgctl start --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp start" << std::endl;
+        std::cerr << "cannot tgctl start" << std::endl;
         FAIL();
     }
     helper_->confirm_started();
 
-    command = "oltp status --conf ";
+    command = "tgctl status --conf ";
     command += helper_->conf_file_path();
     command += " --monitor ";
     command += helper_->abs_path("test/running.log");
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp status" << std::endl;
+        std::cerr << "cannot tgctl status" << std::endl;
         FAIL();
     }
     EXPECT_TRUE(validate_json(helper_->abs_path("test/running.log")));
@@ -97,11 +97,11 @@ TEST_F(status_test, success) {
     EXPECT_EQ(l, 1);
     EXPECT_EQ(rv, 1);
 
-    command = "oltp shutdown --conf ";
+    command = "tgctl shutdown --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if (system(command.c_str()) != 0) {
-        std::cerr << "cannot oltp shutdown" << std::endl;
+        std::cerr << "cannot tgctl shutdown" << std::endl;
         FAIL();
     }
 }
