@@ -71,7 +71,7 @@ static void sighup_handler(int) {
 }
 
 int backend_main(int argc, char **argv) {
-    google::InitGoogleLogging("tateyama_database_server");
+    google::InitGoogleLogging("tsurugidb");
     google::InstallFailureSignalHandler();
 
     // command arguments

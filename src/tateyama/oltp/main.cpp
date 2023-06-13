@@ -38,7 +38,7 @@ DEFINE_bool(force, false, "no confirmation step");  // NOLINT
 DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
 DEFINE_string(use_file_list, "", "json file describing the individual files to be specified for restore");  // NOLINT
 
-// for tateyama-server
+// for tsurugidb
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
