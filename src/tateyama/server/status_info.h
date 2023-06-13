@@ -26,6 +26,8 @@ namespace tateyama::server {
 
 class status_info_bridge {
 public:
+    static constexpr std::string_view file_prefix = "tsurugidb-";  // NOLINT
+
     status_info_bridge() = default;
 
     explicit status_info_bridge(const std::string& digest) {
@@ -44,7 +46,8 @@ public:
     status_info_bridge& operator=(status_info_bridge&& other) noexcept = delete;
 
     bool attach(const std::string& digest) {
-        status_file_name_ = digest;
+        status_file_name_ = file_prefix;
+        status_file_name_ += digest;
         status_file_name_ += ".stat";
         try {
             segment_ = std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, status_file_name_.c_str());

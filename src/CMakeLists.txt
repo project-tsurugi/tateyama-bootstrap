@@ -15,7 +15,7 @@ add_executable(server
 
 set_target_properties(server
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "tateyama-server"
+        RUNTIME_OUTPUT_NAME "tsurugidb"
         )
 
 target_include_directories(server
@@ -56,7 +56,7 @@ install_libexec(server ${export_name})
 
 
 #############
-# oltp
+# tgctl
 #############
 set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/request.proto
@@ -100,7 +100,7 @@ add_dependencies(oltp
 
 set_target_properties(oltp
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "oltp"
+        RUNTIME_OUTPUT_NAME "tgctl"
         )
 
 target_include_directories(oltp
@@ -138,7 +138,7 @@ add_executable(undertaker
 
 set_target_properties(undertaker
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "undertaker"
+        RUNTIME_OUTPUT_NAME "tgundertaker"
         )
 
 target_include_directories(undertaker

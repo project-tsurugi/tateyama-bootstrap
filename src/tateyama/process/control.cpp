@@ -47,9 +47,9 @@ DECLARE_bool(tpch);  // NOLINT
 namespace tateyama::process {
 
 constexpr static int data_size = sizeof(pid_t);
-constexpr std::string_view server_name_string = "tateyama-server";
+constexpr std::string_view server_name_string = "tsurugidb";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
-constexpr std::string_view undertaker_name_string = "undertaker";
+constexpr std::string_view undertaker_name_string = "tgundertaker";
 const int sleep_time_unit_regular = 20;
 const int sleep_time_unit_shutdown = 1000;
 const std::size_t check_count_startup = 500;   // 10S
