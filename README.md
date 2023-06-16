@@ -49,6 +49,7 @@ available options:
 * `-DFORCE_INSTALL_RPATH=ON` - automatically configure `INSTALL_RPATH` for non-default library paths
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
 * `-DOGAWAYAMA=ON` - enable ogawayama bridge
+* `-DREMOTEKVS=ON` - enable remote kvs bridge (default OFF)
 * `-DENABLE_JEMALLOC` - use jemalloc instead of default `malloc`
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)

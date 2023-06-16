@@ -35,6 +35,10 @@
 #ifdef OGAWAYAMA
 #include <ogawayama/bridge/service.h>
 #endif
+#ifdef REMOTEKVS
+#include <jogasaki/api/kvsservice/service.h>
+#include <jogasaki/api/kvsservice/resource.h>
+#endif
 #include <jogasaki/api.h>
 
 #include "tateyama/process/proc_mutex.h"
@@ -134,6 +138,11 @@ int backend_main(int argc, char **argv) {
     // ogawayama bridge
     tgsv.add_service(std::make_shared<ogawayama::bridge::service>());
     LOG(INFO) << "ogawayama bridge created";
+#endif
+#ifdef REMOTEKVS
+    sv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
+    sv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
+    LOG(INFO) << "remotekvs bridge created";
 #endif
 
     // status_info
