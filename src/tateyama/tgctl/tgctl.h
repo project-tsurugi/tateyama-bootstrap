@@ -15,7 +15,7 @@
  */
 #pragma once
 
-namespace tateyama::oltp {
+namespace tateyama::tgctl {
 
 /**
  * @brief return code
@@ -25,4 +25,4 @@ enum return_code {
     err = 1,
 };
 
-} //  tateyama::oltp
+} //  tateyama::tgctl

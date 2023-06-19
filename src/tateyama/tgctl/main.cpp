@@ -29,9 +29,9 @@ DEFINE_string(label, "", "label for this operation");  // NOLINT
 
 // for control
 DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
-DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for oltp_start() invoked from start_maintenance_server()
-DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for oltp_start()
-DEFINE_int32(timeout, -1, "timeout for oltp shutdown, no timeout control takes place if 0 is specified");  // NOLINT for oltp_start()
+DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for tgctl_start() invoked from start_maintenance_server()
+DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for tgctl_start()
+DEFINE_int32(timeout, -1, "timeout for tgctl shutdown, no timeout control takes place if 0 is specified");  // NOLINT for tgctl_start()
 
 // for backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
@@ -44,26 +44,26 @@ DEFINE_bool(load, false, "Database contents are loaded from the location just af
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
 
 
-namespace tateyama::oltp {
+namespace tateyama::tgctl {
 
-int oltp_main(const std::vector<std::string>& args) {
+int tgctl_main(const std::vector<std::string>& args) {
     if (args.at(1) == "start") {
-        return tateyama::process::oltp_start(args.at(0), true);
+        return tateyama::process::tgctl_start(args.at(0), true);
     }
     if (args.at(1) == "shutdown") {
-        return tateyama::process::oltp_shutdown_kill(false);
+        return tateyama::process::tgctl_shutdown_kill(false);
     }
     if (args.at(1) == "kill") {
-        return tateyama::process::oltp_shutdown_kill(true);
+        return tateyama::process::tgctl_shutdown_kill(true);
     }
     if (args.at(1) == "status") {
-        return tateyama::process::oltp_status();
+        return tateyama::process::tgctl_status();
     }
     if (args.at(1) == "diagnostic") {
-        return tateyama::process::oltp_diagnostic();
+        return tateyama::process::tgctl_diagnostic();
     }
     if (args.at(1) == "pid") {
-        return tateyama::process::oltp_pid();
+        return tateyama::process::tgctl_pid();
     }
     if (args.at(1) == "backup") {
         if (args.at(2) == "create") {
@@ -71,32 +71,32 @@ int oltp_main(const std::vector<std::string>& args) {
                 std::cerr << "need to specify path/to/backup" << std::endl;
                 return 4;
             }
-            return tateyama::datastore::oltp_backup_create(args.at(3));
+            return tateyama::datastore::tgctl_backup_create(args.at(3));
         }
         if (args.at(2) == "estimate") {
-            return tateyama::datastore::oltp_backup_estimate();
+            return tateyama::datastore::tgctl_backup_estimate();
         }
         std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
         return -1;
     }
     if (args.at(1) == "restore") {
-        tateyama::process::oltp_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
+        tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
 
         int rv{};
         if (args.at(2) == "backup") {
             if (args.size() > 3) {
                 auto arg = args.at(3);
                 if (!FLAGS_use_file_list.empty()) {
-                    rv = tateyama::datastore::oltp_restore_backup_use_file_list(arg);
+                    rv = tateyama::datastore::tgctl_restore_backup_use_file_list(arg);
                 } else {
-                    rv = tateyama::datastore::oltp_restore_backup(args.at(3));
+                    rv = tateyama::datastore::tgctl_restore_backup(args.at(3));
                 }
             } else {
                 std::cerr << "directory is not specficed" << std::endl;
             }
         } else if (args.at(2) == "tag") {
             if (args.size() > 3) {
-                rv = tateyama::datastore::oltp_restore_tag(args.at(3));
+                rv = tateyama::datastore::tgctl_restore_tag(args.at(3));
             } else {
                 std::cerr << "tag is not specficed" << std::endl;
             }
@@ -105,17 +105,17 @@ int oltp_main(const std::vector<std::string>& args) {
             rv = -1;
         }
 
-        tateyama::process::oltp_shutdown_kill(false, false);
+        tateyama::process::tgctl_shutdown_kill(false, false);
         return rv;
     }
     if (args.at(1) == "quiesce") {
-        return tateyama::process::oltp_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
+        return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
     }
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return -1;
 }
 
-}  // tateyama::oltp
+}  // tateyama::tgctl
 
 
 int main(int argc, char* argv[]) {
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
         gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-        return static_cast<int>(tateyama::oltp::oltp_main(args));
+        return static_cast<int>(tateyama::tgctl::tgctl_main(args));
     }
     std::cerr << "no arguments" << std::endl;
     return -1;

@@ -23,11 +23,11 @@
 
 namespace tateyama::process {
 
-    oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode = tateyama::framework::boot_mode::database_server);
-    oltp::return_code oltp_status();
-    oltp::return_code oltp_kill(proc_mutex*, configuration::bootstrap_configuration&);
-    oltp::return_code oltp_shutdown_kill(bool force, bool status_output = true);
-    oltp::return_code oltp_diagnostic();
-    oltp::return_code oltp_pid();
+    tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode = tateyama::framework::boot_mode::database_server);
+    tgctl::return_code tgctl_status();
+    tgctl::return_code tgctl_kill(proc_mutex*, configuration::bootstrap_configuration&);
+    tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output = true);
+    tgctl::return_code tgctl_diagnostic();
+    tgctl::return_code tgctl_pid();
 
 } //  tateyama::process

@@ -99,33 +99,33 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
     }
 }
 
-oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
+tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty() && need_check) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
-    auto rc = oltp::return_code::ok;
+    auto rc = tgctl::return_code::ok;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
 
     if (bst_conf.valid()) {
         if (!FLAGS_start_mode.empty()) {
             if (FLAGS_start_mode == "force") {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-                if (rc = oltp_kill(file_mutex.get(), bst_conf); rc != oltp::return_code::ok) {
-                    std::cerr << "cannot oltp kill before start" << std::endl;
+                if (rc = tgctl_kill(file_mutex.get(), bst_conf); rc != tgctl::return_code::ok) {
+                    std::cerr << "cannot tgctl kill before start" << std::endl;
                     if (monitor_output) {
                         monitor_output->finish(false);
                     }
-                    return oltp::return_code::err;
+                    return tgctl::return_code::err;
                 }
             } else {
                 std::cerr << "only \"force\" can be specified for the start-mode" << std::endl;
                 if (monitor_output) {
                     monitor_output->finish(false);
                 }
-                return oltp::return_code::err;
+                return tgctl::return_code::err;
             }
         }
 
@@ -138,7 +138,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
         }
         if (!boost::filesystem::exists(path_for_this)) {
             std::cerr << "cannot find " << server_name_string << std::endl;
-            return oltp::return_code::err;
+            return tgctl::return_code::err;
         }
 
         int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
@@ -148,7 +148,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             if (monitor_output) {
                 monitor_output->finish(false);
             }
-            return oltp::return_code::err;
+            return tgctl::return_code::err;
         }
         // Shared memory attach and convert char address
         auto *shm_data = shmat(shm_id, nullptr, 0);
@@ -157,7 +157,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             if (monitor_output) {
                 monitor_output->finish(false);
             }
-            return oltp::return_code::err;
+            return tgctl::return_code::err;
         }
         *static_cast<pid_t*>(shm_data) = 0;
 
@@ -192,7 +192,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             std::cerr << "error in shctl()" << std::endl;
         }
 
-        rc = oltp::return_code::ok;
+        rc = tgctl::return_code::ok;
         if (need_check) {
             std::size_t check_count = check_count_startup;
             if (FLAGS_timeout > 0) {
@@ -253,7 +253,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
                                 continue;
                             }
                             // observed that pid has been stored in the status_info
-                            if (child_pid == pid_in_status_info) {  // case in which 'oltp start' command terminates successfully
+                            if (child_pid == pid_in_status_info) {  // case in which 'tgctl start' command terminates successfully
                                 if (monitor_output) {
                                     monitor_output->finish(true);
                                 }
@@ -263,44 +263,44 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
                                         usleep(sleep_time_unit_regular * 1000);
                                     }
                                 }
-                                return oltp::return_code::ok;
+                                return tgctl::return_code::ok;
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
                             std::cerr << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
-                            rc = oltp::return_code::err;
+                            rc = tgctl::return_code::err;
                             checked_status_info = true;
                             break;
                         }
                     }
                     if (!checked_status_info) {
                         std::cerr << "cannot confirm the server process within the specified time" << std::endl;
-                        rc = oltp::return_code::err;
+                        rc = tgctl::return_code::err;
                     }
                 } else if (check_result == another) {
                     std::cerr << "another " << server_name_string_for_status << " is running" << std::endl;
                     if (auto rv = kill(pid_in_file_mutex, 0); rv != 0) {  // the process (pid_in_file_mutex) is not alive
-                        rc = oltp::return_code::err;
+                        rc = tgctl::return_code::err;
                     }
                     // does not change the return code when the process is alive
                 } else {  // case in which check_result == init
                     std::cerr << "cannot invoke a server process" << std::endl;
-                    rc = oltp::return_code::err;
+                    rc = tgctl::return_code::err;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
                 std::cerr << "cannot find the configuration file" << std::endl;
-                rc = oltp::return_code::err;
+                rc = tgctl::return_code::err;
             }
         } else {  // case in which need_check is false
-            return oltp::return_code::ok;
+            return tgctl::return_code::ok;
         }
     } else {
         std::cerr << "error in configuration file name" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
     }
 
     if (monitor_output) {
-        // records error to the monitor_output even if rc == oltp::return_code::ok
-        monitor_output->finish(rc == oltp::return_code::ok);
+        // records error to the monitor_output even if rc == tgctl::return_code::ok
+        monitor_output->finish(rc == tgctl::return_code::ok);
     }
     return rc;
 }
@@ -370,8 +370,8 @@ static status_check_result status_check_internal() {
     return status_check_result::undefined;
 }
 
-oltp::return_code oltp_kill(proc_mutex* file_mutex, configuration::bootstrap_configuration& bst_conf) {
-    auto rc = oltp::return_code::ok;
+tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_configuration& bst_conf) {
+    auto rc = tgctl::return_code::ok;
     auto pid = file_mutex->pid(false);
     if (pid != 0) {
         kill(pid, SIGKILL);
@@ -398,18 +398,18 @@ oltp::return_code oltp_kill(proc_mutex* file_mutex, configuration::bootstrap_con
             usleep(sleep_time_unit * 1000);
         }
         std::cerr << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
-        return oltp::return_code::err;
+        return tgctl::return_code::err;
     }
     std::cerr << "contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
-    return oltp::return_code::err;
+    return tgctl::return_code::err;
 }
 
-oltp::return_code oltp_shutdown(proc_mutex* file_mutex, server::status_info_bridge* status_info) {
-    auto rc = oltp::return_code::ok;
+tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_bridge* status_info) {
+    auto rc = tgctl::return_code::ok;
     bool dot = false;
 
     if (!status_info->request_shutdown()) {
-        return  oltp::return_code::err;
+        return  tgctl::return_code::err;
     }
     usleep(sleep_time_unit_mutex * 1000);
 
@@ -436,10 +436,10 @@ oltp::return_code oltp_shutdown(proc_mutex* file_mutex, server::status_info_brid
         std::cout << std::endl;
     }
     std::cerr << "shutdown operation is still in progress, check it after some time" << std::endl;
-    return oltp::return_code::err;
+    return tgctl::return_code::err;
 }
 
-oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
+tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty() && status_output) {
@@ -447,15 +447,15 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
         monitor_output->start();
     }
 
-    auto rc = oltp::return_code::ok;
+    auto rc = tgctl::return_code::ok;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             try {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                 if (force) {
-                    rc = oltp_kill(file_mutex.get(), bst_conf);
-                    if (rc == oltp::return_code::ok) {
+                    rc = tgctl_kill(file_mutex.get(), bst_conf);
+                    if (rc == tgctl::return_code::ok) {
                         if (monitor_output) {
                             monitor_output->finish(true);
                         }
@@ -464,8 +464,8 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
                 } else {
                     auto status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
                     if (!status_info->is_shutdown_requested()) {
-                        rc = oltp_shutdown(file_mutex.get(), status_info.get());
-                        if (rc == oltp::return_code::ok) {
+                        rc = tgctl_shutdown(file_mutex.get(), status_info.get());
+                        if (rc == tgctl::return_code::ok) {
                             if (monitor_output) {
                                 monitor_output->finish(true);
                             }
@@ -473,20 +473,20 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
                         }
                     } else {
                         std::cerr << "another shutdown is being conducted" << std::endl;
-                        rc = oltp::return_code::err;
+                        rc = tgctl::return_code::err;
                     }
                 }
             } catch (std::runtime_error &e) {
                 std::cerr << e.what() << std::endl;
-                rc = oltp::return_code::err;
+                rc = tgctl::return_code::err;
             }
         } else {
             std::cerr << "error in create_configuration" << std::endl;
-            rc = oltp::return_code::err;
+            rc = tgctl::return_code::err;
         }
     } else {
         std::cerr << "error in configuration file name" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
     }
 
     if (monitor_output) {
@@ -495,7 +495,7 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
     return rc;
 }
 
-oltp::return_code oltp_status() {
+tgctl::return_code tgctl_status() {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty()) {
@@ -503,7 +503,7 @@ oltp::return_code oltp_status() {
         monitor_output->start();
     }
 
-    auto rc = oltp::return_code::ok;
+    auto rc = tgctl::return_code::ok;
     switch(status_check_internal()) {
     case status_check_result::no_file:
         if (monitor_output) {
@@ -543,7 +543,7 @@ oltp::return_code oltp_status() {
         break;
     case status_check_result::status_check_count_over:
         std::cerr << "cannot check the state within the specified time" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
         break;
     case status_check_result::not_locked:
         if (monitor_output) {
@@ -554,19 +554,19 @@ oltp::return_code oltp_status() {
         break;
     case status_check_result::error_in_create_conf:
         std::cerr << "error in create_configuration" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
         break;
     case status_check_result::error_in_conf_file_name:
         std::cerr << "error in configuration file name" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
         break;
     default:
         std::cerr << "should not reach here" << std::endl;
-        rc = oltp::return_code::err;
+        rc = tgctl::return_code::err;
         break;
     }
 
-    if (rc == oltp::return_code::ok) {
+    if (rc == tgctl::return_code::ok) {
         if (monitor_output) {
             monitor_output->finish(true);
         }
@@ -591,21 +591,21 @@ static pid_t get_pid() {
     throw std::runtime_error("error in configuration file name");
 }
 
-oltp::return_code oltp_diagnostic() {
+tgctl::return_code tgctl_diagnostic() {
     try {
         kill(get_pid(), SIGHUP);
-        return oltp::return_code::ok;
+        return tgctl::return_code::ok;
     } catch (std::runtime_error &e) {
-        return oltp::return_code::err;
+        return tgctl::return_code::err;
     }
 }
 
-oltp::return_code oltp_pid() {
+tgctl::return_code tgctl_pid() {
     try {
         std::cout << get_pid() << std::endl;
-        return oltp::return_code::ok;
+        return tgctl::return_code::ok;
     } catch (std::runtime_error &e) {
-        return oltp::return_code::err;
+        return tgctl::return_code::err;
     }
 }
 

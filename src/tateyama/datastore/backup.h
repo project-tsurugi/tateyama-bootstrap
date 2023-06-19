@@ -19,10 +19,10 @@
 
 namespace tateyama::datastore {
 
-    oltp::return_code oltp_backup_create(const std::string& path_to_backup);
-    oltp::return_code oltp_backup_estimate();
-    oltp::return_code oltp_restore_backup(const std::string& path_to_backup);
-    oltp::return_code oltp_restore_backup_use_file_list(const std::string& path_to_backup);
-    oltp::return_code oltp_restore_tag(const std::string& tag_name);
+    tgctl::return_code tgctl_backup_create(const std::string& path_to_backup);
+    tgctl::return_code tgctl_backup_estimate();
+    tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup);
+    tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to_backup);
+    tgctl::return_code tgctl_restore_tag(const std::string& tag_name);
 
 } //  tateyama::datastore
