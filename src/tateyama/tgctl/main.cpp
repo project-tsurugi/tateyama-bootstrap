@@ -20,7 +20,7 @@
 
 #include "tateyama/process/process.h"
 #include "tateyama/datastore/backup.h"
-#include "tateyama/configuration/configuration.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT

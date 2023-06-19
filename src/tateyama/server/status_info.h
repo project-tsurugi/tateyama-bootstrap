@@ -20,7 +20,7 @@
 
 #include <tateyama/status/resource/core.h>
 
-#include "tateyama/configuration/configuration.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 
 namespace tateyama::server {
 

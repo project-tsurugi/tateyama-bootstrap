@@ -17,8 +17,8 @@
 
 #include <tateyama/framework/boot_mode.h>
 
-#include "tateyama/configuration/configuration.h"
-#include "tateyama/oltp/oltp.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
+#include "tateyama/tgctl/tgctl.h"
 #include "proc_mutex.h"
 
 namespace tateyama::process {

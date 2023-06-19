@@ -200,7 +200,7 @@ oltp::return_code oltp_start(const std::string& argv0, bool need_check, tateyama
             } else if(FLAGS_timeout == 0) {
                 check_count = INT64_MAX;  // practically infinite time
             }
-            if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+            if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
                 std::size_t n = 0;
 
                 std::unique_ptr<proc_mutex> file_mutex{};
@@ -325,7 +325,7 @@ static status_check_result status_check_internal() {
     if (!bst_conf.valid()) {
         return status_check_result::error_in_conf_file_name;
     }
-    if (auto conf = bst_conf.create_configuration(); conf == nullptr) {
+    if (auto conf = bst_conf.get_configuration(); conf == nullptr) {
         return status_check_result::error_in_create_conf;
     }
     auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
@@ -450,7 +450,7 @@ oltp::return_code oltp_shutdown_kill(bool force, bool status_output) {
     auto rc = oltp::return_code::ok;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
-        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+        if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             try {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                 if (force) {
@@ -582,7 +582,7 @@ oltp::return_code oltp_status() {
 static pid_t get_pid() {
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
-        if (auto conf = bst_conf.create_configuration(); conf != nullptr) {
+        if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             return file_mutex->pid(false);  // may throws std::runtime_error
         }

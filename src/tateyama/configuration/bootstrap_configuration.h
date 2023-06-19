@@ -28,9 +28,10 @@
 namespace tateyama::configuration {
 
 static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");  // NOLINT
-static const boost::filesystem::path PID_DIR = boost::filesystem::path("/tmp");  // NOLINT
-static const std::string_view  PID_FILE_NAME = "tsurugi";
+static const std::string_view DEFAULT_PID_DIR = "/tmp";  // NOLINT and obsolete
+static const std::string_view PID_FILE_PREFIX = "tsurugi";
 static const char *ENV_ENTRY = "TGDIR";  // NOLINT
+std::string_view default_property_for_bootstrap();
 
 class bootstrap_configuration {
 public:
@@ -41,18 +42,8 @@ public:
             return bootstrap_configuration();
         }
     }
-    static std::shared_ptr<tateyama::api::configuration::whole> create_configuration(std::string_view file) {
-        auto bst_conf = create_bootstrap_configuration(file);
-        if (bst_conf.valid()) {
-            return bst_conf.create_configuration();
-        }
-        return nullptr;
-    }
-    std::shared_ptr<tateyama::api::configuration::whole> create_configuration() {
-        if (!property_file_absent_) {
-            return tateyama::api::configuration::create_configuration(conf_file_.string());
-        }
-        return nullptr;
+    std::shared_ptr<tateyama::api::configuration::whole> get_configuration() {
+        return configuration_;
     }
     [[nodiscard]] boost::filesystem::path lock_file() const {
         return lock_file_;
@@ -67,7 +58,7 @@ public:
 private:
     boost::filesystem::path conf_file_;
     boost::filesystem::path lock_file_;
-    std::shared_ptr<tateyama::api::configuration::whole> configuration_;
+    std::shared_ptr<tateyama::api::configuration::whole> configuration_{};
     bool property_file_absent_{};
     bool valid_{};
 
@@ -96,11 +87,19 @@ private:
                 throw std::runtime_error(conf_file_.string() + " is a directory");
             }
         }
-        std::string pid_file_name(PID_FILE_NAME);
+        configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
+
+        std::string directory{DEFAULT_PID_DIR};
+        if (auto system_config = configuration_->get_section("system"); system_config) {
+            if (auto pid_dir = system_config->get<std::string>("pid_directory"); pid_dir) {
+                directory = pid_dir.value();
+            }
+        }
+        std::string pid_file_name(PID_FILE_PREFIX);
         pid_file_name += "-";
         pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
         pid_file_name += ".pid";
-        lock_file_ = PID_DIR / boost::filesystem::path(pid_file_name);
+        lock_file_ = boost::filesystem::path(std::string(directory)) / boost::filesystem::path(pid_file_name);
         valid_ = true;
     }
     std::string digest(const std::string& path_string) {
