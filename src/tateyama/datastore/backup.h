@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "tateyama/oltp/oltp.h"
+#include "tateyama/tgctl/tgctl.h"
 
 namespace tateyama::datastore {
 

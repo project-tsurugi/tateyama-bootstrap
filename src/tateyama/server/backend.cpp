@@ -37,7 +37,7 @@
 #include <jogasaki/api.h>
 
 #include "tateyama/process/proc_mutex.h"
-#include "tateyama/configuration/configuration.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 #include "server.h"
 #include "utils.h"
 // #include "monitor/monitor.h"
@@ -84,7 +84,7 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
-    auto conf = bst_conf.create_configuration();
+    auto conf = bst_conf.get_configuration();
     if (conf == nullptr) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);

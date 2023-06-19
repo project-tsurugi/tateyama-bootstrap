@@ -7,6 +7,7 @@ endif()
 
 file(GLOB SERVER_SOURCES
         "tateyama/server/*.cpp"
+        "tateyama/configuration/*.cpp"
         )
 
 add_executable(server
@@ -73,8 +74,8 @@ PROTOBUF_GENERATE_CPP(GENERATED_PROTO_SRCS GENERATED_PROTO_HDRS ${ProtoFiles})
 add_custom_target(build_protos DEPENDS ${GENERATED_PROTO_SRCS})
 set(GENERATED_PROTO_SRCS ${GENERATED_PROTO_SRCS} PARENT_SCOPE)
 
-file(GLOB OLTP_SOURCES
-        "tateyama/oltp/*.cpp"
+file(GLOB TGCTL_SOURCES
+        "tateyama/tgctl/*.cpp"
         "tateyama/authentication/authentication.cpp"
         "tateyama/datastore/*.cpp"
         "tateyama/process/*.cpp"
@@ -89,26 +90,26 @@ set_source_files_properties(
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
         )
 
-add_executable(oltp
-        ${OLTP_SOURCES}
+add_executable(tgctl
+        ${TGCTL_SOURCES}
         ${GENERATED_PROTO_SRCS}
         )
 
-add_dependencies(oltp
+add_dependencies(tgctl
         build_protos
         )
 
-set_target_properties(oltp
+set_target_properties(tgctl
         PROPERTIES
         RUNTIME_OUTPUT_NAME "tgctl"
         )
 
-target_include_directories(oltp
+target_include_directories(tgctl
         PRIVATE ${CMAKE_BINARY_DIR}/src
         PRIVATE .
         )
 
-target_link_libraries(oltp
+target_link_libraries(tgctl
         PRIVATE api
         PRIVATE ${tateyama_api}
         PRIVATE glog::glog
@@ -120,9 +121,9 @@ target_link_libraries(oltp
         PRIVATE rt
         )
 
-set_compile_options(oltp)
+set_compile_options(tgctl)
 
-install_custom(oltp ${export_name})
+install_custom(tgctl ${export_name})
 
 
 #############

@@ -28,7 +28,7 @@
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
-#include "tateyama/configuration/configuration.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/authentication/authentication.h"
 #include "tateyama/transport/transport.h"
 #include "tateyama/monitor/monitor.h"
@@ -84,7 +84,7 @@ static bool prompt(std::string_view msg)
 }
 
 static std::string database_name() {
-    if (auto conf = configuration::bootstrap_configuration::create_configuration(FLAGS_conf); conf != nullptr) {
+    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf, tateyama::configuration::default_property_for_bootstrap()); conf != nullptr) {
         auto endpoint_config = conf->get_section("ipc_endpoint");
         if (endpoint_config == nullptr) {
             std::cerr << "cannot find ipc_endpoint section in the configuration" << std::endl;
