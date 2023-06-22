@@ -107,14 +107,10 @@ int backend_main(int argc, char **argv) {
     }
 
     bool tpch_mode = false;
-    bool tpcc_mode = false;
-    if (FLAGS_load) {
-        tpch_mode = false;
-        tpcc_mode = true;
-        if (FLAGS_tpch) {
-            tpch_mode = true;
-            tpcc_mode = false;
-        }
+    bool tpcc_mode = true;
+    if (FLAGS_tpch) {
+        tpch_mode = true;
+        tpcc_mode = false;
     }
 
     framework::boot_mode mode;
