@@ -59,7 +59,6 @@ private:
     boost::filesystem::path conf_file_;
     boost::filesystem::path lock_file_;
     std::shared_ptr<tateyama::api::configuration::whole> configuration_{};
-    bool property_file_absent_{};
     bool valid_{};
 
     // should create this object via create_bootstrap_configuration()
@@ -72,20 +71,17 @@ private:
             if (auto env = getenv(ENV_ENTRY); env != nullptr) {
                 conf_file_ = boost::filesystem::path(env) / CONF_FILE_NAME;
             } else {
-                conf_file_ = std::string("");
-                property_file_absent_ = true;
+                throw std::runtime_error("no configuration file specified");
             }
         }
         // do sanity check for conf_file_
-        if (!property_file_absent_) {
-            boost::system::error_code error;
-            const bool result = boost::filesystem::exists(conf_file_, error);
-            if (!result || error) {
-                throw std::runtime_error(std::string("cannot find configuration file: ") + conf_file_.string());
-            }
-            if (boost::filesystem::is_directory(conf_file_)) {
-                throw std::runtime_error(conf_file_.string() + " is a directory");
-            }
+        boost::system::error_code error;
+        const bool result = boost::filesystem::exists(conf_file_, error);
+        if (!result || error) {
+            throw std::runtime_error(std::string("cannot find configuration file: ") + conf_file_.string());
+        }
+        if (boost::filesystem::is_directory(conf_file_)) {
+            throw std::runtime_error(conf_file_.string() + " is a directory");
         }
         configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
 

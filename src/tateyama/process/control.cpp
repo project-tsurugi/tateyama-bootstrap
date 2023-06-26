@@ -294,7 +294,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             return tgctl::return_code::ok;
         }
     } else {
-        std::cerr << "error in configuration file name" << std::endl;
+        std::cerr << "cannot find a valid configuration file" << std::endl;
         rc = tgctl::return_code::err;
     }
 
