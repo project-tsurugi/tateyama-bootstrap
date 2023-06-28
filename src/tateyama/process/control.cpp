@@ -294,7 +294,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             return tgctl::return_code::ok;
         }
     } else {
-        std::cerr << "cannot find a valid configuration file" << std::endl;
+        std::cerr << "cannot find any valid configuration file" << std::endl;
         rc = tgctl::return_code::err;
     }
 
@@ -485,7 +485,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) {
             rc = tgctl::return_code::err;
         }
     } else {
-        std::cerr << "error in configuration file name" << std::endl;
+        std::cerr << "cannot find any valid configuration file" << std::endl;
         rc = tgctl::return_code::err;
     }
 
@@ -557,7 +557,7 @@ tgctl::return_code tgctl_status() {
         rc = tgctl::return_code::err;
         break;
     case status_check_result::error_in_conf_file_name:
-        std::cerr << "error in configuration file name" << std::endl;
+        std::cerr << "cannot find any valid configuration file" << std::endl;
         rc = tgctl::return_code::err;
         break;
     default:
@@ -588,7 +588,7 @@ static pid_t get_pid() {
         }
         throw std::runtime_error("error in create_configuration");
     }
-    throw std::runtime_error("error in configuration file name");
+    throw std::runtime_error("cannot find any valid configuration file");
 }
 
 tgctl::return_code tgctl_diagnostic() {
@@ -596,6 +596,7 @@ tgctl::return_code tgctl_diagnostic() {
         kill(get_pid(), SIGHUP);
         return tgctl::return_code::ok;
     } catch (std::runtime_error &e) {
+        std::cerr << e.what() << std::endl;
         return tgctl::return_code::err;
     }
 }
@@ -605,6 +606,7 @@ tgctl::return_code tgctl_pid() {
         std::cout << get_pid() << std::endl;
         return tgctl::return_code::ok;
     } catch (std::runtime_error &e) {
+        std::cerr << e.what() << std::endl;
         return tgctl::return_code::err;
     }
 }
