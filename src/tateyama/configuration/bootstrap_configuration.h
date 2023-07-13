@@ -30,7 +30,7 @@ namespace tateyama::configuration {
 static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");  // NOLINT
 static const std::string_view DEFAULT_PID_DIR = "/tmp";  // NOLINT and obsolete
 static const std::string_view PID_FILE_PREFIX = "tsurugi";
-static const char *ENV_ENTRY = "TGDIR";  // NOLINT
+static const char *ENV_ENTRY = "TSURUGI_CONF_DIR";  // NOLINT
 std::string_view default_property_for_bootstrap();
 
 class bootstrap_configuration {
