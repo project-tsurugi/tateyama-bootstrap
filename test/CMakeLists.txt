@@ -19,6 +19,7 @@ target_link_libraries(${test_target}
         PRIVATE gflags::gflags
         PRIVATE rt
         PRIVATE Boost::filesystem
+        PRIVATE ${tateyama_engine}
         )
 
 function (add_test_executable source_file)
@@ -34,8 +35,9 @@ endfunction (add_test_executable)
 
 file(GLOB SRCS
         "tateyama/monitor/*_test.cpp"
-        "tateyama/oltp/*_test.cpp"
         "tateyama/include/*_test.cpp"
+        "tateyama/tgctl/*_test.cpp"
+        "tateyama/configuration/*_test.cpp"
 )
 
 foreach(file ${SRCS})

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,11 @@
 
 namespace tateyama::configuration {
 
-static const boost::filesystem::path CONF_FILE_NAME = boost::filesystem::path("tsurugi.ini");  // NOLINT
 static const std::string_view DEFAULT_PID_DIR = "/tmp";  // NOLINT and obsolete
 static const std::string_view PID_FILE_PREFIX = "tsurugi";
-static const char *ENV_ENTRY = "TSURUGI_CONF_DIR";  // NOLINT
+static const char *ENV_CONF = "TSURUGI_CONF";  // NOLINT
+static const char *ENV_HOME = "TSURUGI_HOME";  // NOLINT
+static const boost::filesystem::path HOME_CONF_FILE = boost::filesystem::path("var/etc/tsurugi.ini");  // NOLINT
 std::string_view default_property_for_bootstrap();
 
 class bootstrap_configuration {
@@ -54,6 +55,9 @@ public:
     [[nodiscard]] bool valid() const {
         return valid_;
     }
+    [[nodiscard]] boost::filesystem::path conf_file() const {  // for test purpose
+        return conf_file_;
+    }
 
 private:
     boost::filesystem::path conf_file_;
@@ -68,10 +72,14 @@ private:
         if (!f.empty()) {
             conf_file_ = boost::filesystem::path(std::string(f));
         } else {
-            if (auto env = getenv(ENV_ENTRY); env != nullptr) {
-                conf_file_ = boost::filesystem::path(env) / CONF_FILE_NAME;
+            if (auto env_conf = getenv(ENV_CONF); env_conf != nullptr) {
+                conf_file_ = boost::filesystem::path(env_conf);
             } else {
-                throw std::runtime_error("no configuration file specified");
+                if (auto env_home = getenv(ENV_HOME); env_home != nullptr) {
+                    conf_file_ = boost::filesystem::path(env_home) / HOME_CONF_FILE;
+                } else {
+                    throw std::runtime_error("no configuration file specified");
+                }
             }
         }
         // do sanity check for conf_file_

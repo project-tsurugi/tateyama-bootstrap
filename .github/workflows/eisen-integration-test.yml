@@ -79,7 +79,7 @@ jobs:
         name: Clean_Workspace
         run: ${{ env.TG_IT_EISEN_PATH }}/scripts/clean-workspace.sh
         env:
-          TSURUGI_CONF_DIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+          TSURUGI_CONF: ${{ github.workspace }}/${{ env.TG_PATH }}/tsurugi.ini
           TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}
 
       - id: Install_Tateyama_Bootstrap
@@ -93,20 +93,20 @@ jobs:
       - id: Generate_Tsurugi_Config
         name: Generate_Tsurugi_Config
         run: |
-          cat <<EOF > ${TSURUGI_CONF_DIR}/tsurugi.ini
+          cat <<EOF > ${TSURUGI_CONF}
           [ipc_endpoint]
               database_name=${TG_IT_DBNAME}
 
           EOF
         env:
-          TSURUGI_CONF_DIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+          TSURUGI_CONF: ${{ github.workspace }}/${{ env.TG_PATH }}/tsurugi.ini
 
       - id: Integration_Test
         name: Integration_Test
         shell: bash --noprofile --norc -x {0}
         run: ${{ env.TG_IT_EISEN_PATH }}/scripts/integration-test.sh
         env:
-          TSURUGI_CONF_DIR: ${{ github.workspace }}/${{ env.TG_PATH }}
+          TSURUGI_CONF: ${{ github.workspace }}/${{ env.TG_PATH }}/tsurugi.ini
           TG_IT_EISEN_DIR: ${{ github.workspace }}/${{ env.TG_IT_EISEN_PATH }}
           TG_IT_INSTALL_DIR: ${{ github.workspace }}/${{ env.TG_IT_INSTALL_PATH }}
           TG_IT_RESULT_DIR: ${{ github.workspace }}/${{ env.TG_IT_RESULT_PATH }}

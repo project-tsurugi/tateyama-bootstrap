@@ -32,14 +32,20 @@ class directory_helper {
     constexpr static std::string_view base = "/tmp/";  // NOLINT
 
   public:
-    directory_helper(std::string prefix, std::uint32_t port) : prefix_(prefix), port_(port) {
+    directory_helper(std::string prefix, std::uint32_t port, bool direct) : prefix_(prefix), port_(port) {
         location_ = std::string(base);
-        location_ += prefix;
-        location_ += std::to_string(getpid());
-        location_ += "/";
-
-        conf_ = abs_path("conf/tsurugi.conf");
+        if (direct) {
+            location_ += prefix;
+            location_ += "/";
+            conf_ = abs_path("tsurugi.ini");
+        } else {
+            location_ += prefix;
+            location_ += std::to_string(getpid());
+            location_ += "/";
+            conf_ = abs_path("conf/tsurugi.ini");
+        }
     }
+    directory_helper(std::string prefix, std::uint32_t port) : directory_helper(prefix, port, false) {}
 
     std::string& abs_path(const char* child) {
         name_ = location_;
