@@ -107,13 +107,10 @@ int backend_main(int argc, char **argv) {
     }
 
     bool tpch_mode = false;
-    bool tpcc_mode = false;
     if (FLAGS_load) {
         tpch_mode = false;
-        tpcc_mode = true;
         if (FLAGS_tpch) {
             tpch_mode = true;
-            tpcc_mode = false;
         }
     }
 
@@ -152,9 +149,6 @@ int backend_main(int argc, char **argv) {
 
     auto* db = sqlsvc->database();
     if (db) {
-        if (tpcc_mode) {
-            db->config()->prepare_benchmark_tables(true);
-        }
         if (tpch_mode) {
             db->config()->prepare_analytics_benchmark_tables(true);
         }
@@ -175,17 +169,6 @@ int backend_main(int argc, char **argv) {
     }
 
     if (FLAGS_load) {
-        if (tpcc_mode) {
-            // load tpc-c tables
-            LOG(INFO) << "TPC-C data load begin";
-            try {
-                jogasaki::utils::load(*db, FLAGS_location);
-            } catch (std::exception& e) {
-                LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
-                std::abort();
-            }
-            LOG(INFO) << "TPC-C data load end";
-        }
         if (tpch_mode) {
             // load tpc-h tables
             LOG(INFO) << "TPC-H data load begin";
