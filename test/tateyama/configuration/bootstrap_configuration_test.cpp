@@ -42,6 +42,8 @@ TEST_F(bootstrap_configuration_test, conf) {
     auto conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration("");
     
     EXPECT_EQ(conf.conf_file().string(), "/tmp/bootstrap_configuration_test/var/etc/tsurugi.ini");
+    auto tateyama_conf = conf.get_configuration();
+    EXPECT_EQ(tateyama_conf->base_path(), std::nullopt);
 }
 
 TEST_F(bootstrap_configuration_test, conf_none) {
@@ -58,6 +60,8 @@ TEST_F(bootstrap_configuration_test, home) {
     auto conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration("");
     
     EXPECT_EQ(conf.conf_file().string(), "/tmp/bootstrap_configuration_test/var/etc/tsurugi.ini");
+    auto tateyama_conf = conf.get_configuration();
+    EXPECT_EQ(tateyama_conf->base_path().value(), std::filesystem::path("/tmp/bootstrap_configuration_test"));
 }
 
 TEST_F(bootstrap_configuration_test, home_none) {

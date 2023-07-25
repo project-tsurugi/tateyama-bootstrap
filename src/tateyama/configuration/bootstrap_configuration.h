@@ -20,6 +20,7 @@
 #include <exception>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
 
 #include <boost/filesystem/path.hpp>
 
@@ -68,6 +69,8 @@ private:
     // should create this object via create_bootstrap_configuration()
     bootstrap_configuration() = default;
     explicit bootstrap_configuration(std::string_view f) {
+        auto* env_home = getenv(ENV_HOME);
+
         // tsurugi.ini
         if (!f.empty()) {
             conf_file_ = boost::filesystem::path(std::string(f));
@@ -75,7 +78,7 @@ private:
             if (auto env_conf = getenv(ENV_CONF); env_conf != nullptr) {
                 conf_file_ = boost::filesystem::path(env_conf);
             } else {
-                if (auto env_home = getenv(ENV_HOME); env_home != nullptr) {
+                if (env_home != nullptr) {
                     conf_file_ = boost::filesystem::path(env_home) / HOME_CONF_FILE;
                 } else {
                     throw std::runtime_error("no configuration file specified");
@@ -93,6 +96,9 @@ private:
         }
         configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
 
+        if (env_home != nullptr) {
+            configuration_->base_path(std::filesystem::path(env_home));
+        }
         std::string directory{DEFAULT_PID_DIR};
         if (auto system_config = configuration_->get_section("system"); system_config) {
             if (auto pid_dir = system_config->get<std::string>("pid_directory"); pid_dir) {

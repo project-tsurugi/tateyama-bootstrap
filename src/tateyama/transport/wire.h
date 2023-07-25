@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 tsurugi project.
+ * Copyright 2019-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -336,7 +336,7 @@ protected:
             header_received_ = T(static_cast<char*>(buf));
         }
     }
-    
+
     boost::interprocess::managed_shared_memory::handle_t buffer_handle_{};  //NOLINT
     std::size_t capacity_;  //NOLINT
 
@@ -356,6 +356,14 @@ private:
     std::unique_ptr<std::string> copy_of_payload_{};  // in case of ring buffer wrap around
 };
 
+static constexpr std::int64_t MAX_TIMEOUT = 10L * 365L * 24L * 3600L * 1000L * 1000L;
+
+inline static std::int64_t u_cap(std::int64_t timeout) {
+    return (timeout > MAX_TIMEOUT) ? MAX_TIMEOUT : timeout;
+}
+inline static std::int64_t n_cap(std::int64_t timeout) {
+    return (timeout > (MAX_TIMEOUT * 1000)) ? (MAX_TIMEOUT * 1000) : timeout;
+}
 
 // for request
 class unidirectional_message_wire : public simple_wire<message_header> {
@@ -395,7 +403,11 @@ public:
     /**
      * @brief wait for response arrival and return its header.
      */
-    response_header await(const char* base) {
+    response_header await(const char* base, std::int64_t timeout = 0) {
+        if (timeout == 0) {
+            timeout = watch_interval * 1000 * 1000;
+        }
+
         while (true) {
             if (closed_.load()) {
                 header_received_ = response_header(0, 0, 0);
@@ -408,7 +420,8 @@ public:
                 boost::interprocess::scoped_lock lock(m_mutex_);
                 wait_for_read_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
-                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(watch_interval * 1000 * 1000), [this](){ return (stored() >= response_header::size) || closed_.load(); })) {
+
+                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(timeout)), [this](){ return (stored() >= response_header::size) || closed_.load(); })) {
                     wait_for_read_ = false;
                     throw std::runtime_error("response has not been received within the specified time");
                 }
@@ -474,29 +487,17 @@ public:
         unidirectional_simple_wire& operator = (unidirectional_simple_wire&&) = delete;
 
         /**
-         * @brief begin new record which will be flushed on commit.
-         *  used by server
-         */
-        void brand_new() {
-            std::size_t length = length_header::size;
-            if (length > room()) {
-                wait_to_resultset_write(length);
-            }
-            if (!closed_) {
-                pushed_.fetch_add(length);
-            }
-        }
-
-        /**
          * @brief push an unit of data into the wire.
          *  used by server
          */
         void write(const char* from, std::size_t length) {
-            if (!continued_) {
-                brand_new();
-                continued_ = true;
+            if (!closed_ && (length > 0)) {
+                if (!continued_) {
+                    brand_new();
+                    continued_ = true;
+                }
+                write(get_bip_address(managed_shm_ptr_), from, length);
             }
-            write(get_bip_address(managed_shm_ptr_), from, length);
         }
         /**
          * @brief mark the record boundary and notify the clinet of the record arrival.
@@ -506,6 +507,29 @@ public:
             if (continued_) {
                 flush(get_bip_address(managed_shm_ptr_));
             }
+        }
+        /**
+         * @brief check whether data of length can be written.
+         *  used by server
+         * @return true if the buffer has the room for data
+         */
+        [[nodiscard]] bool check_room(std::size_t length) noexcept {
+            if (continued_) {
+                return room() >= length;
+            }
+            return room() >= (length + length_header::size);
+        }
+        /**
+         * @brief wait data of length can be written.
+         *  used by server
+         * @return true if the buffer is closed by the client
+         */
+        [[nodiscard]] bool wait_room(std::size_t length) {
+            if (!continued_) {
+                length += length_header::size;
+            }
+            wait_to_resultset_write(length);
+            return closed_;
         }
 
         /**
@@ -563,14 +587,17 @@ public:
         }
 
     private:
-        void write(char* base, const char* from, std::size_t length) {
+        void brand_new() {
+            std::size_t length = length_header::size;
             if (length > room()) {
                 wait_to_resultset_write(length);
             }
-            if (!closed_) {
-                write_in_buffer(base, buffer_address(base, pushed_.load()), from, length);
-                pushed_.fetch_add(length);
-            }
+            pushed_.fetch_add(length);
+        }
+
+        void write(char* base, const char* from, std::size_t length) {
+            write_in_buffer(base, buffer_address(base, pushed_.load()), from, length);
+            pushed_.fetch_add(length);
         }
 
         void flush(char* base) noexcept {
@@ -712,9 +739,9 @@ public:
                 } else {
                     if (!c_record_.timed_wait(lock,
 #ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
-                                              boost::get_system_time() + boost::posix_time::nanoseconds(timeout),
+                                              boost::get_system_time() + boost::posix_time::nanoseconds(n_cap(timeout)),
 #else
-                                              boost::get_system_time() + boost::posix_time::microseconds(((timeout-500)/1000)+1),
+                                              boost::get_system_time() + boost::posix_time::microseconds(u_cap(((timeout-500)/1000)+1)),
 #endif
                                               [this, &active_wire](){
                                                   for (auto&& wire: unidirectional_simple_wires_) {
@@ -848,8 +875,10 @@ public:
         }
         if (flock(fd, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             flock(fd, LOCK_UN);
+            close(fd);
             return false;
         }
+        close(fd);
         return true;
     }
 
@@ -948,9 +977,9 @@ public:
                 boost::interprocess::scoped_lock lock(m_accepted_);
                 if (!c_accepted_.timed_wait(lock,
 #ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
-                                        boost::get_system_time() + boost::posix_time::nanoseconds(timeout),
+                                        boost::get_system_time() + boost::posix_time::nanoseconds(n_cap(timeout)),
 #else
-                                        boost::get_system_time() + boost::posix_time::microseconds(((timeout-500)/1000)+1),
+                                        boost::get_system_time() + boost::posix_time::microseconds(u_cap(((timeout-500)/1000)+1)),
 #endif
                                         [this](){ return (session_id_ != 0); })) {
                     throw std::runtime_error("connection response has not been accepted within the specified time");
