@@ -46,7 +46,7 @@ public:
         }
     }
 
-    void for_each(const std::function<void(const std::string&, const std::string&, bool)>& f) {
+    void for_each(const std::function<void(const std::string&, const std::string&, bool)>& func) {
         BOOST_FOREACH (const boost::property_tree::ptree::value_type& child, pt_.get_child("entries")) {
             const boost::property_tree::ptree& info = child.second;
 
@@ -55,7 +55,7 @@ public:
             boost::optional<bool> detached = info.get_optional<bool>("detached");
 
             if (source && destination && detached) {
-                f(source.get(), destination.get(), detached.get());
+                func(source.get(), destination.get(), detached.get());
             }
         }
     }

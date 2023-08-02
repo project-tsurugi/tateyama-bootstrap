@@ -29,7 +29,7 @@ DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
 
 namespace jogasaki::utils {
 
-    std::vector<std::string> tables = {  // NOLINT
+    const std::vector<std::string> tables = {  // NOLINT
         "WAREHOUSE",
         "DISTRICT",
         "CUSTOMER",
@@ -54,7 +54,7 @@ namespace jogasaki::utils {
     }
 
     void
-    dump([[maybe_unused]] jogasaki::api::database& db, std::string &location)
+    dump([[maybe_unused]] jogasaki::api::database& tgdb, std::string &location)
     {
         boost::filesystem::path dir = prepare(location);
         for (auto& table : tables) {
@@ -62,12 +62,12 @@ namespace jogasaki::utils {
             if (ofs.fail()) {
                 throw std::ios_base::failure("Failed to open file.");
             }
-            db.dump(ofs, table, FLAGS_dump_batch_size);
+            tgdb.dump(ofs, table, FLAGS_dump_batch_size);
         }
     }
 
     void
-    load([[maybe_unused]] jogasaki::api::database& db, std::string &location)
+    load([[maybe_unused]] jogasaki::api::database& tgdb, std::string &location)
     {
         boost::filesystem::path dir = prepare(location);
         for (auto& table : tables) {
@@ -75,12 +75,12 @@ namespace jogasaki::utils {
             if (ifs.fail()) {
                 throw std::ios_base::failure("Failed to open file.");
             }
-            db.load(ifs, table,  FLAGS_load_batch_size);
+            tgdb.load(ifs, table,  FLAGS_load_batch_size);
         }
     }
 
 
-    std::vector<std::string> tpch_tables = {  // NOLINT
+    const std::vector<std::string> tpch_tables = {  // NOLINT
         "PART",
         "SUPPLIER",
         "PARTSUPP",
@@ -92,7 +92,7 @@ namespace jogasaki::utils {
     };
 
     void
-    dump_tpch(jogasaki::api::database& db, std::string &location)
+    dump_tpch(jogasaki::api::database& tgdb, std::string &location)
     {
         boost::filesystem::path dir = prepare(location);
         for (auto& table : tpch_tables) {
@@ -100,12 +100,12 @@ namespace jogasaki::utils {
             if (ofs.fail()) {
                 throw std::ios_base::failure("Failed to open file.");
             }
-            db.dump(ofs, table, FLAGS_dump_batch_size);
+            tgdb.dump(ofs, table, FLAGS_dump_batch_size);
         }
     }
 
     void
-    load_tpch(jogasaki::api::database& db, std::string &location)
+    load_tpch(jogasaki::api::database& tgdb, std::string &location)
     {
         boost::filesystem::path dir = prepare(location);
         for (auto& table : tpch_tables) {
@@ -113,7 +113,7 @@ namespace jogasaki::utils {
             if (ifs.fail()) {
                 throw std::ios_base::failure("Failed to open file.");
             }
-            db.load(ifs, table, FLAGS_load_batch_size);
+            tgdb.load(ifs, table, FLAGS_load_batch_size);
         }
     }
 

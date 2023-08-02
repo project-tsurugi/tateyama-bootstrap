@@ -57,17 +57,17 @@ static bool prompt(std::string_view msg)
     tcsetattr( 0 , TCSAFLUSH , &io_conf );
 
     std::cout << msg;
-    bool rv{};
+    bool rtnv{};
     while(true) {
-        int c = getc(stdin);
-        if ((c == 'y' ) || (c == 'Y' )) {
+        int chr = getc(stdin);
+        if ((chr == 'y' ) || (chr == 'Y' )) {
             std::cout << "yes" << std::endl;
-            rv = true;
+            rtnv = true;
             break;
         }
-        if ((c == 'n' ) || (c == 'N' )) {
+        if ((chr == 'n' ) || (chr == 'N' )) {
             std::cout << "no" << std::endl;
-            rv = false;
+            rtnv = false;
             break;
         }
     }
@@ -80,7 +80,7 @@ static bool prompt(std::string_view msg)
     io_conf.c_cc[VTIME] = 1;
     tcsetattr( 0 , TCSAFLUSH , &io_conf );
 
-    return rv;
+    return rtnv;
 }
 
 static std::string database_name() {
@@ -106,7 +106,7 @@ static std::string digest() {
     if (bst_conf.valid()) {
         return bst_conf.digest();
     }
-    return std::string();
+    return {};
 }
     
 tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
@@ -117,7 +117,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
     auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
     ::tateyama::proto::datastore::request::Request requestBegin{};
@@ -129,35 +129,35 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
     requestBegin.clear_backup_begin();
 
     if (responseBegin) {
-        auto rb = responseBegin.value();
-        switch(rb.result_case()) {
+        auto rbgn = responseBegin.value();
+        switch(rbgn.result_case()) {
         case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
             break;
         case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-            std::cerr << "BackupBegin error: " << rb.unknown_error().message() << std::endl;
-            rc = tgctl::return_code::err;
+            std::cerr << "BackupBegin error: " << rbgn.unknown_error().message() << std::endl;
+            rtnv = tgctl::return_code::err;
             break;
         default:
             std::cerr << "BackupBegin result_case() error: " << std::endl;
-            rc = tgctl::return_code::err;
+            rtnv = tgctl::return_code::err;
         }
 
-        if (rc == tgctl::return_code::ok) {
-            std::int64_t backup_id = rb.success().id();
+        if (rtnv == tgctl::return_code::ok) {
+            auto backup_id = static_cast<std::int64_t>(rbgn.success().id());
 
             auto location = boost::filesystem::path(path_to_backup);
 
             std::size_t total_bytes = 0;
             if(!FLAGS_monitor.empty()) {
-                for (auto&& e : rb.success().simple_source().files()) {
-                    auto src = boost::filesystem::path(e);
+                for (auto&& file : rbgn.success().simple_source().files()) {
+                    auto src = boost::filesystem::path(file);
                     total_bytes += boost::filesystem::file_size(src);
                 }
             }
 
             std::size_t completed_bytes = 0;
-            for (auto&& e : rb.success().simple_source().files()) {
-                auto src = boost::filesystem::path(e);
+            for (auto&& file : rbgn.success().simple_source().files()) {
+                auto src = boost::filesystem::path(file);
                 boost::filesystem::copy_file(src, location / src.filename());
                 if(!FLAGS_monitor.empty()) {
                     completed_bytes += boost::filesystem::file_size(src);
@@ -177,38 +177,38 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
             transport->close();
 
             if (responseEnd) {
-                auto re = responseEnd.value();
-                switch(re.result_case()) {
+                auto rend = responseEnd.value();
+                switch(rend.result_case()) {
                 case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
                     break;
                 case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-                    std::cerr << "BackupEnd error: " << re.unknown_error().message() << std::endl;
-                    rc = tgctl::return_code::err;
+                    std::cerr << "BackupEnd error: " << rend.unknown_error().message() << std::endl;
+                    rtnv = tgctl::return_code::err;
                     break;
                 default:
                     std::cerr << "BackupEnd result_case() error: " << std::endl;
-                    rc = tgctl::return_code::err;
+                    rtnv = tgctl::return_code::err;
                 }
-                if (rc == tgctl::return_code::ok) {
+                if (rtnv == tgctl::return_code::ok) {
                     if (monitor_output) {
                         monitor_output->finish(true);
                     }
-                    return rc;
+                    return rtnv;
                 }
             } else {
                 std::cerr << "BackupEnd response error: " << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
         }
     } else {
         std::cerr << "BackupBegin response error: " << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
     }
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 tgctl::return_code tgctl_backup_estimate() {
@@ -219,7 +219,7 @@ tgctl::return_code tgctl_backup_estimate() {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
 
     try {
@@ -241,24 +241,24 @@ tgctl::return_code tgctl_backup_estimate() {
             case ::tateyama::proto::datastore::response::BackupEstimate::kUnknownError:
             case ::tateyama::proto::datastore::response::BackupEstimate::RESULT_NOT_SET:
                 std::cerr << " ends up with " << response.value().result_case() << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
-            if (rc == tgctl::return_code::ok) {
+            if (rtnv == tgctl::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
-                return rc;
+                return rtnv;
             }
         }
     } catch (std::runtime_error &e) {
         std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
-    rc = tgctl::return_code::err;
+    rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
@@ -276,7 +276,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
 
     try {
@@ -302,24 +302,24 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 std::cerr << " ends up with " << response.value().result_case() << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
-            if (rc == tgctl::return_code::ok) {
+            if (rtnv == tgctl::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
-                return rc;
+                return rtnv;
             }
         }
     } catch (std::runtime_error &e) {
         std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
-    rc = tgctl::return_code::err;
+    rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to_backup) {
@@ -337,7 +337,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
 
     try {
@@ -384,24 +384,24 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 std::cerr << " ends up with " << response.value().result_case() << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
-            if (rc == tgctl::return_code::ok) {
+            if (rtnv == tgctl::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
-                return rc;
+                return rtnv;
             }
         }
     } catch (std::runtime_error &e) {
         std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
-    rc = tgctl::return_code::err;
+    rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
@@ -412,7 +412,7 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
 
     try {
@@ -435,24 +435,24 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
                 std::cerr << " ends up with " << response.value().result_case() << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
-            if (rc == tgctl::return_code::ok) {
+            if (rtnv == tgctl::return_code::ok) {
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
-                return rc;
+                return rtnv;
             }
         }
     } catch (std::runtime_error &e) {
         std::cerr << "could not connect to database with name " << database_name() << std::endl;
     }
-    rc = tgctl::return_code::err;
+    rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 } //  tateyama::bootstrap::backup

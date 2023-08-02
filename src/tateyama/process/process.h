@@ -25,7 +25,7 @@ namespace tateyama::process {
 
     tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode = tateyama::framework::boot_mode::database_server);
     tgctl::return_code tgctl_status();
-    tgctl::return_code tgctl_kill(proc_mutex*, configuration::bootstrap_configuration&);
+    tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_configuration& bst_conf);
     tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output = true);
     tgctl::return_code tgctl_diagnostic();
     tgctl::return_code tgctl_pid();

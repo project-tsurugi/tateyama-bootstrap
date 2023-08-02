@@ -17,9 +17,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-int main(int, char* argv[]) {
-    char *e{};
-    pid_t pid = strtol(*(argv+1), &e, 10);
+int main([[maybe_unused]] int argc, char* argv[]) {
+    char *endptr{};
+    auto pid = static_cast<pid_t>(strtol(*(argv+1), &endptr, 10));
     int status{};
 
     waitpid(pid, &status, 0);

@@ -82,31 +82,31 @@ int tgctl_main(const std::vector<std::string>& args) {
     if (args.at(1) == "restore") {
         tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
 
-        int rv{};
+        int rtnv{};
         if (args.at(2) == "backup") {
             if (args.size() > 3) {
-                auto arg = args.at(3);
+                const auto& arg = args.at(3);
                 if (!FLAGS_use_file_list.empty()) {
-                    rv = tateyama::datastore::tgctl_restore_backup_use_file_list(arg);
+                    rtnv = tateyama::datastore::tgctl_restore_backup_use_file_list(arg);
                 } else {
-                    rv = tateyama::datastore::tgctl_restore_backup(args.at(3));
+                    rtnv = tateyama::datastore::tgctl_restore_backup(args.at(3));
                 }
             } else {
                 std::cerr << "directory is not specficed" << std::endl;
             }
         } else if (args.at(2) == "tag") {
             if (args.size() > 3) {
-                rv = tateyama::datastore::tgctl_restore_tag(args.at(3));
+                rtnv = tateyama::datastore::tgctl_restore_tag(args.at(3));
             } else {
                 std::cerr << "tag is not specficed" << std::endl;
             }
         } else {
             std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
-            rv = -1;
+            rtnv = -1;
         }
 
         tateyama::process::tgctl_shutdown_kill(false, false);
-        return rv;
+        return rtnv;
     }
     if (args.at(1) == "quiesce") {
         return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);

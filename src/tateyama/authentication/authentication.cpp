@@ -78,7 +78,7 @@ void auth_options() {
 
         std::string contents{};
         contents.resize(filesize);
-        istrm.read(contents.data(), contents.length());
+        istrm.read(contents.data(), static_cast<std::int64_t>(contents.length()));
         istrm.close();
 
 #ifndef NDEBUG

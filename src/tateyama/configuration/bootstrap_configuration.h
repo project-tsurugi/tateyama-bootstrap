@@ -40,7 +40,7 @@ public:
         try {
             return bootstrap_configuration(file);
         } catch (std::runtime_error &e) {
-            return bootstrap_configuration();
+            return {};
         }
     }
     std::shared_ptr<tateyama::api::configuration::whole> get_configuration() {
@@ -67,10 +67,12 @@ private:
 
     // should create this object via create_bootstrap_configuration()
     bootstrap_configuration() = default;
-    explicit bootstrap_configuration(std::string_view f) {
+    explicit bootstrap_configuration(std::string_view fname) {
+        auto* env_home = getenv(ENV_HOME);
+
         // tsurugi.ini
-        if (!f.empty()) {
-            conf_file_ = boost::filesystem::path(std::string(f));
+        if (!fname.empty()) {
+            conf_file_ = boost::filesystem::path(std::string(fname));
         } else {
             if (auto env_conf = getenv(ENV_CONF); env_conf != nullptr) {
                 conf_file_ = boost::filesystem::path(env_conf);

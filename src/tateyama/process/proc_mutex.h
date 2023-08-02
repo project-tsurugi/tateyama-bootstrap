@@ -36,8 +36,7 @@ class proc_mutex {
     };
     
     explicit proc_mutex(boost::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
-        : create_file_(create_file) {
-        lock_file_ = std::move(lock_file);
+        : lock_file_(std::move(lock_file)), create_file_(create_file) {
         if (!create_file_ && throw_exception && !boost::filesystem::exists(lock_file_)) {
             throw std::runtime_error("the lock file does not exist");
         }
@@ -100,9 +99,9 @@ class proc_mutex {
         return lock_state::locked;
     }
     [[nodiscard]] int pid(bool do_check = true) {
-        std::string s;
-        if (contents(s, do_check)) {
-            return stoi(s);
+        std::string str;
+        if (contents(str, do_check)) {
+            return stoi(str);
         }
         return 0;
     }
@@ -127,10 +126,10 @@ private:
         if (do_check && check() != lock_state::locked) {
             return false;
         }
-        auto sz = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
-        str.resize(sz, '\0');
+        auto size = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
+        str.resize(size, '\0');
         boost::filesystem::ifstream file(lock_file_);
-        file.read(&str[0], sz);
+        file.read(str.data(), static_cast<std::streamsize>(size));
         return true;
     }
 };

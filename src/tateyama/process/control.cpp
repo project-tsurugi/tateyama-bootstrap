@@ -50,13 +50,13 @@ constexpr static int data_size = sizeof(pid_t);
 constexpr std::string_view server_name_string = "tsurugidb";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
 constexpr std::string_view undertaker_name_string = "tgundertaker";
-const int sleep_time_unit_regular = 20;
-const int sleep_time_unit_shutdown = 1000;
+const std::size_t sleep_time_unit_regular = 20;
+const std::size_t sleep_time_unit_shutdown = 1000;
 const std::size_t check_count_startup = 500;   // 10S
 const std::size_t check_count_shutdown = 300;  // 300S (use sleep_time_unit_shutdown)
 const std::size_t check_count_status = 10;     // 200mS
 const std::size_t check_count_kill = 500;      // 10S
-const int sleep_time_unit_mutex = 50;
+const std::size_t sleep_time_unit_mutex = 50;
 
 void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
     switch (mode) {
@@ -106,14 +106,14 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
 
     if (bst_conf.valid()) {
         if (!FLAGS_start_mode.empty()) {
             if (FLAGS_start_mode == "force") {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-                if (rc = tgctl_kill(file_mutex.get(), bst_conf); rc != tgctl::return_code::ok) {
+                if (rtnv = tgctl_kill(file_mutex.get(), bst_conf); rtnv != tgctl::return_code::ok) {
                     std::cerr << "cannot tgctl kill before start" << std::endl;
                     if (monitor_output) {
                         monitor_output->finish(false);
@@ -166,10 +166,10 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
             std::vector<std::string> args{};
             build_args(args, mode);
-            boost::process::child c(exec, boost::process::args (args));
-            pid_t child_pid = c.id();
+            boost::process::child cld(exec, boost::process::args (args));
+            pid_t child_pid = cld.id();
             *static_cast<pid_t*>(shm_data) = child_pid;
-            c.detach();
+            cld.detach();
 
             std::string undertaker_name(undertaker_name_string);
             auto undertaker = base / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
@@ -192,7 +192,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             std::cerr << "error in shctl()" << std::endl;
         }
 
-        rc = tgctl::return_code::ok;
+        rtnv = tgctl::return_code::ok;
         if (need_check) {
             std::size_t check_count = check_count_startup;
             if (FLAGS_timeout > 0) {
@@ -201,7 +201,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                 check_count = INT64_MAX;  // practically infinite time
             }
             if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
-                std::size_t n = 0;
+                std::size_t chkn = 0;
 
                 std::unique_ptr<proc_mutex> file_mutex{};
                 // a flag indicating whether the child_pid matches the pid recorded in file_mutex
@@ -211,7 +211,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     another,
                 } check_result = init;
                 pid_t pid_in_file_mutex{};
-                for (size_t i = n; i < check_count; i++) {
+                for (size_t i = chkn; i < check_count; i++) {
                     if (!file_mutex) {
                         try {
                             file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
@@ -226,7 +226,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             continue;
                         }
                         check_result = (child_pid == pid_in_file_mutex) ? ok : another;
-                        n = i;
+                        chkn = i;
                         break;
                     }
                     usleep(sleep_time_unit_regular * 5 * 1000);
@@ -235,9 +235,9 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     auto status_info = std::make_unique<server::status_info_bridge>();
                     // wait for creation of shared memory for status info
                     bool checked_status_info = false;
-                    for (size_t i = n; i < check_count; i++) {
+                    for (size_t i = chkn; i < check_count; i++) {
                         if (status_info->attach(bst_conf.digest())) {
-                            n = i;
+                            chkn = i;
                             checked_status_info = true;
                             break;
                         }
@@ -246,7 +246,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     if (checked_status_info) {
                         // wait until pid is stored in the status_info
                         checked_status_info = false;
-                        for (size_t i = n; i < check_count; i++) {
+                        for (size_t i = chkn; i < check_count; i++) {
                             auto pid_in_status_info = status_info->pid();
                             if (pid_in_status_info == 0) {
                                 usleep(sleep_time_unit_regular * 1000);
@@ -267,42 +267,42 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
                             std::cerr << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
-                            rc = tgctl::return_code::err;
+                            rtnv = tgctl::return_code::err;
                             checked_status_info = true;
                             break;
                         }
                     }
                     if (!checked_status_info) {
                         std::cerr << "cannot confirm the server process within the specified time" << std::endl;
-                        rc = tgctl::return_code::err;
+                        rtnv = tgctl::return_code::err;
                     }
                 } else if (check_result == another) {
                     std::cerr << "another " << server_name_string_for_status << " is running" << std::endl;
-                    if (auto rv = kill(pid_in_file_mutex, 0); rv != 0) {  // the process (pid_in_file_mutex) is not alive
-                        rc = tgctl::return_code::err;
+                    if (auto krv = kill(pid_in_file_mutex, 0); krv != 0) {  // the process (pid_in_file_mutex) is not alive
+                        rtnv = tgctl::return_code::err;
                     }
                     // does not change the return code when the process is alive
                 } else {  // case in which check_result == init
                     std::cerr << "cannot invoke a server process" << std::endl;
-                    rc = tgctl::return_code::err;
+                    rtnv = tgctl::return_code::err;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
                 std::cerr << "cannot find the configuration file" << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
         } else {  // case in which need_check is false
             return tgctl::return_code::ok;
         }
     } else {
         std::cerr << "cannot find any valid configuration file" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
     }
 
     if (monitor_output) {
-        // records error to the monitor_output even if rc == tgctl::return_code::ok
-        monitor_output->finish(rc == tgctl::return_code::ok);
+        // records error to the monitor_output even if rtnv == tgctl::return_code::ok
+        monitor_output->finish(rtnv == tgctl::return_code::ok);
     }
-    return rc;
+    return rtnv;
 }
 
 enum status_check_result {
@@ -371,7 +371,7 @@ static status_check_result status_check_internal() {
 }
 
 tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_configuration& bst_conf) {
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     auto pid = file_mutex->pid(false);
     if (pid != 0) {
         kill(pid, SIGKILL);
@@ -390,7 +390,7 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
                 auto status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
                 status_info->apply_shm_entry(tateyama::common::wire::session_wire_container::remove_shm_entry);
                 status_info->force_delete();
-                return rc;
+                return rtnv;
             }
             default:
                 break;
@@ -405,7 +405,7 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
 }
 
 tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_bridge* status_info) {
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     bool dot = false;
 
     if (!status_info->request_shutdown()) {
@@ -414,7 +414,7 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     usleep(sleep_time_unit_mutex * 1000);
 
     std::size_t check_count = check_count_shutdown;
-    int sleep_time_unit = sleep_time_unit_shutdown;
+    std::size_t sleep_time_unit = sleep_time_unit_shutdown;
     size_t timeout = 1000L * check_count * sleep_time_unit;  // in uS
     if (FLAGS_timeout > 0) {
         timeout = 1000000L * FLAGS_timeout;  // in uS
@@ -426,7 +426,7 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
             if (dot) {
                 std::cout << std::endl;
             }
-            return rc;
+            return rtnv;
         }
         usleep(sleep_time_unit * 1000);
         std::cout << "."  << std::flush;
@@ -447,52 +447,52 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             try {
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                 if (force) {
-                    rc = tgctl_kill(file_mutex.get(), bst_conf);
-                    if (rc == tgctl::return_code::ok) {
+                    rtnv = tgctl_kill(file_mutex.get(), bst_conf);
+                    if (rtnv == tgctl::return_code::ok) {
                         if (monitor_output) {
                             monitor_output->finish(true);
                         }
-                        return rc;
+                        return rtnv;
                     }
                 } else {
                     auto status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
                     if (!status_info->is_shutdown_requested()) {
-                        rc = tgctl_shutdown(file_mutex.get(), status_info.get());
-                        if (rc == tgctl::return_code::ok) {
+                        rtnv = tgctl_shutdown(file_mutex.get(), status_info.get());
+                        if (rtnv == tgctl::return_code::ok) {
                             if (monitor_output) {
                                 monitor_output->finish(true);
                             }
-                            return rc;
+                            return rtnv;
                         }
                     } else {
                         std::cerr << "another shutdown is being conducted" << std::endl;
-                        rc = tgctl::return_code::err;
+                        rtnv = tgctl::return_code::err;
                     }
                 }
             } catch (std::runtime_error &e) {
                 std::cerr << e.what() << std::endl;
-                rc = tgctl::return_code::err;
+                rtnv = tgctl::return_code::err;
             }
         } else {
             std::cerr << "error in create_configuration" << std::endl;
-            rc = tgctl::return_code::err;
+            rtnv = tgctl::return_code::err;
         }
     } else {
         std::cerr << "cannot find any valid configuration file" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
     }
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 tgctl::return_code tgctl_status() {
@@ -503,7 +503,7 @@ tgctl::return_code tgctl_status() {
         monitor_output->start();
     }
 
-    auto rc = tgctl::return_code::ok;
+    auto rtnv = tgctl::return_code::ok;
     switch(status_check_internal()) {
     case status_check_result::no_file:
         if (monitor_output) {
@@ -543,7 +543,7 @@ tgctl::return_code tgctl_status() {
         break;
     case status_check_result::status_check_count_over:
         std::cerr << "cannot check the state within the specified time" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
         break;
     case status_check_result::not_locked:
         if (monitor_output) {
@@ -554,29 +554,29 @@ tgctl::return_code tgctl_status() {
         break;
     case status_check_result::error_in_create_conf:
         std::cerr << "error in create_configuration" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
         break;
     case status_check_result::error_in_conf_file_name:
         std::cerr << "cannot find any valid configuration file" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
         break;
     default:
         std::cerr << "should not reach here" << std::endl;
-        rc = tgctl::return_code::err;
+        rtnv = tgctl::return_code::err;
         break;
     }
 
-    if (rc == tgctl::return_code::ok) {
+    if (rtnv == tgctl::return_code::ok) {
         if (monitor_output) {
             monitor_output->finish(true);
         }
-        return rc;
+        return rtnv;
     }
 
     if (monitor_output) {
         monitor_output->finish(false);
     }
-    return rc;
+    return rtnv;
 }
 
 static pid_t get_pid() {
