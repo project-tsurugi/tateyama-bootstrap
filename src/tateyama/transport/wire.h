@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <exception>
 #include <atomic>
@@ -624,14 +625,18 @@ public:
         }
     }
     ~unidirectional_simple_wires() {
-        if (reserved_ != nullptr) {
-            managed_shm_ptr_->deallocate(reserved_);
-        }
-        for (auto&& wire: unidirectional_simple_wires_) {
-            if (!wire.equal(0)) {
-                managed_shm_ptr_->deallocate(wire.get_bip_address(managed_shm_ptr_));
-                wire.detach_buffer();
+        try {
+            if (reserved_ != nullptr) {
+                managed_shm_ptr_->deallocate(reserved_);
             }
+            for (auto&& wire: unidirectional_simple_wires_) {
+                if (!wire.equal(0)) {
+                    managed_shm_ptr_->deallocate(wire.get_bip_address(managed_shm_ptr_));
+                    wire.detach_buffer();
+                }
+            }
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
         }
     }
 

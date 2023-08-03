@@ -201,7 +201,7 @@ int backend_main(int argc, char **argv) {
 int main(int argc, char **argv) {
     try {
         return tateyama::server::backend_main(argc, argv);
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
         LOG(WARNING) << e.what();
     }
 }
