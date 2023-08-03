@@ -623,7 +623,7 @@ public:
             throw std::runtime_error("cannot allocate shared memory");
         }
     }
-    ~unidirectional_simple_wires() noexcept {
+    ~unidirectional_simple_wires() {
         if (reserved_ != nullptr) {
             managed_shm_ptr_->deallocate(reserved_);
         }
@@ -916,7 +916,7 @@ public:
 
     class element {
     public:
-        element() = default;
+        element() noexcept = default;
         ~element() = default;
 
         /**

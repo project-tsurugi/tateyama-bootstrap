@@ -19,6 +19,7 @@
 #include <iostream>
 #include <chrono>
 #include <csignal>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
 #include <gflags/gflags.h>
@@ -40,7 +41,6 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "server.h"
 #include "utils.h"
-// #include "monitor/monitor.h"
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
