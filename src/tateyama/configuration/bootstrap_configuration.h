@@ -20,6 +20,7 @@
 #include <exception>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
 
 #include <boost/filesystem/path.hpp>
 
@@ -98,7 +99,6 @@ private:
         if (env_home != nullptr) {
             configuration_->base_path(std::filesystem::path(env_home));
         }
-
         std::string directory{DEFAULT_PID_DIR};
         if (auto system_config = configuration_->get_section("system"); system_config) {
             if (auto pid_dir = system_config->get<std::string>("pid_directory"); pid_dir) {
