@@ -928,9 +928,9 @@ public:
          * @brief Copy and move constructers.
          */
         element(element const& elm) = delete;
-        element(element&& elm) noexcept : session_id_(elm.session_id_) {}  // for v_requested_.resize(n);
+        element(element&& elm) = delete;
         element& operator = (element const&) = delete;
-        element& operator = (element&& elm) noexcept { session_id_ = elm.session_id_; return *this; }
+        element& operator = (element&& elm) = delete;
 
         void accept(std::size_t session_id) {
             session_id_ = session_id;
@@ -976,8 +976,7 @@ public:
     /**
      * @brief Construct a new object.
      */
-    connection_queue(std::size_t n, boost::interprocess::managed_shared_memory::segment_manager* mgr) : q_free_(n, mgr), q_requested_(n, mgr), v_requested_(mgr) {
-        v_requested_.resize(n);
+    connection_queue(std::size_t n, boost::interprocess::managed_shared_memory::segment_manager* mgr) : q_free_(n, mgr), q_requested_(n, mgr), v_requested_(n, mgr) {
         q_free_.fill();
     }
     ~connection_queue() = default;
