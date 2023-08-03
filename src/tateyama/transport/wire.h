@@ -916,7 +916,7 @@ public:
 
     class element {
     public:
-        element() noexcept = default;
+        element() = default;
         ~element() = default;
 
         /**
