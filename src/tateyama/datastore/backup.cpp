@@ -30,6 +30,7 @@
 
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/authentication/authentication.h"
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS  // FIXME (to retain the current behavior)
 #include "tateyama/transport/transport.h"
 #include "tateyama/monitor/monitor.h"
 #include "backup.h"
