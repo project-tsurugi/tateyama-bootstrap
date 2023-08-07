@@ -47,15 +47,15 @@ public:
     std::optional<T> send(::tateyama::proto::datastore::request::Request& request) {
         auto& response_wire = wire_.get_response_wire();
 
-        std::stringstream ss{};
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(ss)); ! res) {
+        std::stringstream sst{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
         request.set_message_version(MESSAGE_VERSION);
-        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(ss)); ! res) {
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
-        wire_.write(ss.str());
+        wire_.write(sst.str());
 
         while (true) {
             try {
@@ -73,12 +73,12 @@ public:
         res_message.resize(response_wire.get_length());
         response_wire.read(res_message.data());
         ::tateyama::proto::framework::response::Header header{};
-        google::protobuf::io::ArrayInputStream in{res_message.data(), static_cast<int>(res_message.length())};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
+        google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
             return std::nullopt;
         }
         std::string_view payload{};
-        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
         T response{};

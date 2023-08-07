@@ -19,6 +19,7 @@
 #include <iostream>
 #include <chrono>
 #include <csignal>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
 #include <gflags/gflags.h>
@@ -40,7 +41,6 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "server.h"
 #include "utils.h"
-// #include "monitor/monitor.h"
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -64,7 +64,7 @@ struct endpoint_context {
 
 // for diagnostic resource
 static std::shared_ptr<tateyama::diagnostic::resource::diagnostic_resource> diagnostic_resource_body{};  // NOLINT
-static void sighup_handler(int) {
+static void sighup_handler([[maybe_unused]] int sig) {
     if (diagnostic_resource_body) {
         diagnostic_resource_body->print_diagnostics(std::cerr);
     }
@@ -114,7 +114,7 @@ int backend_main(int argc, char **argv) {
         }
     }
 
-    framework::boot_mode mode;
+    framework::boot_mode mode{};
     if (FLAGS_maintenance_server) {
         mode = framework::boot_mode::maintenance_server;
         FLAGS_load = false;
@@ -124,22 +124,22 @@ int backend_main(int argc, char **argv) {
     } else {
         mode = framework::boot_mode::database_server;
     }
-    framework::server sv{mode, conf};
-    framework::add_core_components(sv);
-    sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
+    framework::server tgsv{mode, conf};
+    framework::add_core_components(tgsv);
+    tgsv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
-    sv.add_service(sqlsvc);
+    tgsv.add_service(sqlsvc);
 
 #ifdef OGAWAYAMA
     // ogawayama bridge
-    sv.add_service(std::make_shared<ogawayama::bridge::service>());
+    tgsv.add_service(std::make_shared<ogawayama::bridge::service>());
     LOG(INFO) << "ogawayama bridge created";
 #endif
 
     // status_info
-    auto status_info = sv.find_resource<tateyama::status_info::resource::bridge>();
+    auto status_info = tgsv.find_resource<tateyama::status_info::resource::bridge>();
 
-    if (!sv.setup()) {
+    if (!tgsv.setup()) {
         // detailed message must have been logged in the components where setup error occurs
         LOG(ERROR) << "Starting server failed due to errors in setting up server application framework.";
         exit(1);
@@ -147,22 +147,22 @@ int backend_main(int argc, char **argv) {
     // should do after setup()
     status_info->mutex_file(mutex_file.string());
 
-    auto* db = sqlsvc->database();
-    if (db) {
+    auto* tgdb = sqlsvc->database();
+    if (tgdb) {
         if (tpch_mode) {
-            db->config()->prepare_analytics_benchmark_tables(true);
+            tgdb->config()->prepare_analytics_benchmark_tables(true);
         }
     }
     status_info->whole(tateyama::status_info::state::ready);
 
-    if (!sv.start()) {
+    if (!tgsv.start()) {
         // detailed message must have been logged in the components where start error occurs
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
         exit(1);
     }
 
     // diagnostic
-    diagnostic_resource_body = sv.find_resource<tateyama::diagnostic::resource::diagnostic_resource>();
+    diagnostic_resource_body = tgsv.find_resource<tateyama::diagnostic::resource::diagnostic_resource>();
     diagnostic_resource_body->add_print_callback("sharksfin", sharksfin::print_diagnostics);
     if (signal(SIGHUP, sighup_handler) == SIG_ERR) {  // NOLINT  #define SIG_ERR  ((__sighandler_t) -1) in a system header file
         LOG(ERROR) << "cannot register signal handler";
@@ -173,7 +173,7 @@ int backend_main(int argc, char **argv) {
             // load tpc-h tables
             LOG(INFO) << "TPC-H data load begin";
             try {
-                jogasaki::utils::load_tpch(*db, FLAGS_location);
+                jogasaki::utils::load_tpch(*tgdb, FLAGS_location);
             } catch (std::exception& e) {
                 LOG(ERROR) << " [" << __FILE__ << ":" <<  __LINE__ << "] " << e.what();
                 std::abort();
@@ -190,7 +190,7 @@ int backend_main(int argc, char **argv) {
     // termination process
     LOG(INFO) << "exiting";
     status_info->whole(tateyama::status_info::state::deactivating);
-    sv.shutdown();
+    tgsv.shutdown();
     status_info->whole(tateyama::status_info::state::deactivated);
     return 0;
 }
@@ -199,5 +199,9 @@ int backend_main(int argc, char **argv) {
 
 
 int main(int argc, char **argv) {
-    return tateyama::server::backend_main(argc, argv);
+    try {
+        return tateyama::server::backend_main(argc, argv);
+    } catch (std::exception &e) {
+        LOG(WARNING) << e.what();
+    }
 }

@@ -73,8 +73,8 @@ public:
     [[nodiscard]] bool alive() {
         return resource_status_memory_->alive();
     }
-    void apply_shm_entry(std::function<void(std::string_view)> f) {
-        resource_status_memory_->apply_shm_entry(std::move(f));
+    void apply_shm_entry(std::function<void(std::string_view)> fname) {
+        resource_status_memory_->apply_shm_entry(std::move(fname));
     }
     void force_delete() {
         if (!status_file_name_.empty()) {

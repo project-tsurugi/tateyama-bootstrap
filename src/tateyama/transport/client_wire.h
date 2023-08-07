@@ -47,15 +47,15 @@ public:
             }
             if (current_wire_ != nullptr) {
                 std::string_view extrusion{};
-                auto rv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
+                auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
                 if (extrusion.length() == 0) {
-                    return rv;
+                    return rtnv;
                 }
-                wrap_around_ = rv;
+                wrap_around_ = rtnv;
                 wrap_around_ += extrusion;
                 return wrap_around_;
             }
-            return std::string_view(nullptr, 0);
+            return {nullptr, 0};
         }
         void dispose() {
             if (current_wire_ != nullptr) {
@@ -68,7 +68,7 @@ public:
         bool is_eor() noexcept {
             return shm_resultset_wires_->is_eor();
         }
-        void set_closed() noexcept {
+        void set_closed() {
             shm_resultset_wires_->set_closed();
         }
         session_wire_container* get_envelope() noexcept {
@@ -96,8 +96,8 @@ public:
         message_header peep(bool wait = false) {
             return wire_->peep(bip_buffer_, wait);
         }
-        void write(const std::string& s, message_header::index_type index) {
-            wire_->write(bip_buffer_, s.data(), message_header(index, s.length()));
+        void write(const std::string& data, message_header::index_type index) {
+            wire_->write(bip_buffer_, data.data(), message_header(index, data.length()));
         }
         void disconnect() {
             wire_->write(bip_buffer_, nullptr, message_header(message_header::not_use, 0));
@@ -124,8 +124,8 @@ public:
         [[nodiscard]] response_header::msg_type get_type() const noexcept {
             return wire_->get_type();
         }
-        void read(char* to) {
-            wire_->read(to, bip_buffer_);
+        void read(char* top) {
+            wire_->read(top, bip_buffer_);
         }
         void close() {
             wire_->close();
@@ -166,8 +166,8 @@ public:
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
 
-    void write(const std::string& s) {
-        request_wire_.write(s, index_);
+    void write(const std::string& data) {
+        request_wire_.write(data, index_);
     }
     response_wire_container& get_response_wire() noexcept {
         return response_wire_;
@@ -181,8 +181,8 @@ public:
         container = nullptr;
     }
     static void remove_shm_entry(std::string_view name) {
-        std::string n(name);
-        boost::interprocess::shared_memory_object::remove(n.c_str());
+        std::string sname(name);
+        boost::interprocess::shared_memory_object::remove(sname.c_str());
     }
 
 private:
@@ -215,13 +215,13 @@ public:
     }
 
     std::string connect() {
-        auto& q = get_connection_queue();
-        auto id = q.request();  // connect
-        auto session_id = q.wait(id);  // wait
-        std::string sn{db_name_};
-        sn += "-";
-        sn += std::to_string(session_id);
-        return sn;
+        auto& que = get_connection_queue();
+        auto rid = que.request();  // connect
+        auto session_id = que.wait(rid);  // wait
+        std::string name{db_name_};
+        name += "-";
+        name += std::to_string(session_id);
+        return name;
     }
     
 private:

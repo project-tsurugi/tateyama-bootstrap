@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* CMake `>= 3.10`
+* CMake `>= 3.16`
 * C++ Compiler `>= C++17`
 * access to installed dependent modules: 
   * tateyama
@@ -24,14 +24,14 @@ git submodule update --init --recursive
 ### Dockerfile
 
 ```dockerfile
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libssl-dev
 ```
 
 optional packages:
 
-* `clang-tidy-8`
+* `clang-tidy-14`
 
 ## How to build
 

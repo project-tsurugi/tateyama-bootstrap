@@ -86,14 +86,14 @@ public:
         }
         strm_.flush();
     }
-    void progress(float r) {
+    void progress(float ratio) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_PROGRESS << ", " << PROGRESS << r << " }" << std::endl;
+              << KIND_PROGRESS << ", " << PROGRESS << ratio << " }" << std::endl;
         strm_.flush();
     }
-    void status(status s) {
+    void status(status stat) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(s) << "\" }" << std::endl;
+              << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(stat) << "\" }" << std::endl;
         strm_.flush();
     }
 
