@@ -99,7 +99,7 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
     }
 }
 
-tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) {
+tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) { //NOLINT(readability-function-cognitive-complexity)
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty() && need_check) {
