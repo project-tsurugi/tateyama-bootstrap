@@ -139,7 +139,6 @@ int backend_main(int argc, char **argv) {
 #endif
     tgsv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
     tgsv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
-    LOG(INFO) << "remotekvs bridge created";
 
     // status_info
     auto status_info = tgsv.find_resource<tateyama::status_info::resource::bridge>();
