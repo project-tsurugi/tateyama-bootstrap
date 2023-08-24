@@ -137,8 +137,8 @@ int backend_main(int argc, char **argv) {
     tgsv.add_service(std::make_shared<ogawayama::bridge::service>());
     LOG(INFO) << "ogawayama bridge created";
 #endif
-    sv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
-    sv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
+    tgsv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
+    tgsv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
     LOG(INFO) << "remotekvs bridge created";
 
     // status_info
