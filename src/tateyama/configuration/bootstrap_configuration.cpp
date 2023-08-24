@@ -32,6 +32,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "tasked_write=true\n"
         "lightweight_job_level=0\n"
         "enable_hybrid_scheduler=true\n"
+        "busy_worker=true\n"
+        "watcher_interval=1000\n"
+        "worker_try_count=1000\n"
+        "worker_suspend_timeout=1000000\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
