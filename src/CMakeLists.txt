@@ -45,9 +45,6 @@ if (OGAWAYAMA)
             )
     target_compile_definitions(server PUBLIC OGAWAYAMA)
 endif()
-if (REMOTEKVS)
-    target_compile_definitions(server PUBLIC REMOTEKVS)
-endif()
 
 if (ENABLE_JEMALLOC)
     target_link_libraries(server
