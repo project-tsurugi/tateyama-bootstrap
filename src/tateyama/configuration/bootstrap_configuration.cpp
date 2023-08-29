@@ -60,7 +60,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "epoch_duration=40000\n"
 
     "[system]\n"
-        "pid_directory = /tmp\n"
+        "pid_directory = /var/lock\n"
 
 };
 
