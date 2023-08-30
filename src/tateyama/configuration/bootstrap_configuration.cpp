@@ -58,6 +58,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[cc]\n"
         "epoch_duration=40000\n"
+        "waiting_resolver_threads=2\n"
 
     "[system]\n"
         "pid_directory = /var/lock\n"
