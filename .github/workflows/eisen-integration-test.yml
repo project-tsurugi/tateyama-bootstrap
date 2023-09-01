@@ -33,8 +33,6 @@ jobs:
       TG_IT_EISEN_PATH: itest/eisen
 
       TG_IT_DBNAME: eisen-${{ github.run_id }}
-      TG_IT_COMMON_CMAKE_OPTIONS: '-- -j'
-
       GPR_USER: ${{ github.repository_owner }}
       GPR_KEY: ${{ secrets.GHCR_PAT }}
 
@@ -147,7 +145,6 @@ jobs:
 
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          MATRIX_CONTEXT: ${{ toJson(matrix) }}
         with:
           kind: 'job-result'
           channel: 'tsurugi-build'
