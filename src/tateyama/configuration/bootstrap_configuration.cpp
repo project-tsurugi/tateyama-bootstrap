@@ -48,10 +48,6 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "port=12345\n"
         "threads=104\n"
 
-    "[fdw]\n"
-        "name=tsurugi\n"
-        "threads=104\n"
-
     "[datastore]\n"
         "log_location=\n"
         "logging_max_parallelism=112\n"
@@ -61,8 +57,13 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "waiting_resolver_threads=2\n"
 
     "[system]\n"
-        "pid_directory = /var/lock\n"
+        "pid_directory=/var/lock\n"
 
+    "[glog]\n"
+        "logtostderr=false\n"
+        "minloglevel=0\n"
+        "log_dir=\n"
+        "v=0\n"
 };
 
 } // namespace details

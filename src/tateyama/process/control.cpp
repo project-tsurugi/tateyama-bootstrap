@@ -18,11 +18,10 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error
+#include <filesystem>
 
 #include <gflags/gflags.h>
 
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/process.hpp>
 
 #include <tateyama/logging.h>
@@ -130,13 +129,13 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         }
 
         std::string server_name(server_name_string);
-        boost::filesystem::path path_for_this{};
-        if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
-            path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
+        std::filesystem::path path_for_this{};
+        if (auto a0f = std::filesystem::path(argv0); a0f.is_absolute()) {
+            path_for_this = std::filesystem::canonical(a0f);
         } else{
-            path_for_this = boost::filesystem::canonical(a0f);
+            path_for_this = std::filesystem::canonical(std::filesystem::path(boost::process::search_path(argv0).string()));
         }
-        if (!boost::filesystem::exists(path_for_this)) {
+        if (!std::filesystem::exists(path_for_this)) {
             std::cerr << "cannot find " << server_name_string << std::endl;
             return tgctl::return_code::err;
         }
@@ -162,17 +161,17 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         *static_cast<pid_t*>(shm_data) = 0;
 
         if (fork() == 0) {
-            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-            auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+            auto base = std::filesystem::canonical(path_for_this).parent_path().parent_path();
+            auto exec = base / std::filesystem::path("libexec") / std::filesystem::path(server_name);
             std::vector<std::string> args{};
             build_args(args, mode);
-            boost::process::child cld(exec, boost::process::args (args));
+            boost::process::child cld(exec.string(), boost::process::args (args));
             pid_t child_pid = cld.id();
             *static_cast<pid_t*>(shm_data) = child_pid;
             cld.detach();
 
             std::string undertaker_name(undertaker_name_string);
-            auto undertaker = base / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
+            auto undertaker = base / std::filesystem::path("libexec") / std::filesystem::path(undertaker_name);
             execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);  // NOLINT
             exit(-1);  // should not reach here
         }

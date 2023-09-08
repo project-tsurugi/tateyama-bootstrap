@@ -19,10 +19,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error
-
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include <filesystem>
+#include <fstream>
 
 namespace tateyama::process {
 
@@ -35,9 +33,9 @@ class proc_mutex {
         error,
     };
     
-    explicit proc_mutex(boost::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
+    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
         : lock_file_(std::move(lock_file)), create_file_(create_file) {
-        if (!create_file_ && throw_exception && !boost::filesystem::exists(lock_file_)) {
+        if (!create_file_ && throw_exception && !std::filesystem::exists(lock_file_)) {
             throw std::runtime_error("the lock file does not exist");
         }
     }
@@ -81,12 +79,12 @@ class proc_mutex {
         return lock_file_.generic_string();
     }
     [[nodiscard]] lock_state check() {
-        boost::system::error_code error;
-        const bool result = boost::filesystem::exists(lock_file_, error);
+        std::error_code error;
+        const bool result = std::filesystem::exists(lock_file_, error);
         if (!result || error) {
             return lock_state::no_file;
         }
-        if (!boost::filesystem::is_regular_file(lock_file_)) {
+        if (!std::filesystem::is_regular_file(lock_file_)) {
             return lock_state::error;            
         }
         if (fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY); fd_ < 0) {  // NOLINT
@@ -118,7 +116,7 @@ class proc_mutex {
     }
     
 private:
-    boost::filesystem::path lock_file_;
+    std::filesystem::path lock_file_;
     int fd_{};
     const bool create_file_;
 
@@ -126,9 +124,9 @@ private:
         if (do_check && check() != lock_state::locked) {
             return false;
         }
-        auto size = static_cast<std::size_t>(boost::filesystem::file_size(lock_file_));
+        auto size = static_cast<std::size_t>(std::filesystem::file_size(lock_file_));
         str.resize(size, '\0');
-        boost::filesystem::ifstream file(lock_file_);
+        std::ifstream file(lock_file_);
         file.read(str.data(), static_cast<std::streamsize>(size));
         return true;
     }

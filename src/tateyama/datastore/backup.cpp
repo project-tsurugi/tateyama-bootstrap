@@ -19,11 +19,9 @@
 #include <cstring>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <filesystem>
 
 #include <gflags/gflags.h>
-
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
 
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
@@ -146,22 +144,22 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
         if (rtnv == tgctl::return_code::ok) {
             auto backup_id = static_cast<std::int64_t>(rbgn.success().id());
 
-            auto location = boost::filesystem::path(path_to_backup);
+            auto location = std::filesystem::path(path_to_backup);
 
             std::size_t total_bytes = 0;
             if(!FLAGS_monitor.empty()) {
                 for (auto&& file : rbgn.success().simple_source().files()) {
-                    auto src = boost::filesystem::path(file);
-                    total_bytes += boost::filesystem::file_size(src);
+                    auto src = std::filesystem::path(file);
+                    total_bytes += std::filesystem::file_size(src);
                 }
             }
 
             std::size_t completed_bytes = 0;
             for (auto&& file : rbgn.success().simple_source().files()) {
-                auto src = boost::filesystem::path(file);
-                boost::filesystem::copy_file(src, location / src.filename());
+                auto src = std::filesystem::path(file);
+                std::filesystem::copy_file(src, location / src.filename());
                 if(!FLAGS_monitor.empty()) {
-                    completed_bytes += boost::filesystem::file_size(src);
+                    completed_bytes += std::filesystem::file_size(src);
                     if (total_bytes > 0) {
                         monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
                     } else {

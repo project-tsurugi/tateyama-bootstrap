@@ -21,9 +21,6 @@
 
 #include "gflags/gflags.h"
 
-#include "boost/filesystem/path.hpp"
-#include "boost/filesystem/operations.hpp"
-
 DEFINE_int32(dump_batch_size, 1024, "Batch size for dump");  //NOLINT
 DEFINE_int32(load_batch_size, 1024, "Batch size for load");  //NOLINT
 
@@ -42,11 +39,11 @@ namespace jogasaki::utils {
         "STOCK"
     };
 
-    boost::filesystem::path prepare(std::string location) {
-        boost::filesystem::path dir(location);
+    std::filesystem::path prepare(const std::string& location) {
+        std::filesystem::path dir(location);
         dir = dir / "dump";
-        if (!boost::filesystem::exists(dir)) {
-            if (!boost::filesystem::create_directories(dir)) {
+        if (!std::filesystem::exists(dir)) {
+            if (!std::filesystem::create_directories(dir)) {
                 throw std::ios_base::failure("Failed to create directory.");
             }
         }
@@ -56,7 +53,7 @@ namespace jogasaki::utils {
     void
     dump([[maybe_unused]] jogasaki::api::database& tgdb, std::string &location)
     {
-        boost::filesystem::path dir = prepare(location);
+        std::filesystem::path dir = prepare(location);
         for (auto& table : tables) {
             std::ofstream ofs((dir / (table+".tbldmp")).c_str());
             if (ofs.fail()) {
@@ -69,7 +66,7 @@ namespace jogasaki::utils {
     void
     load([[maybe_unused]] jogasaki::api::database& tgdb, std::string &location)
     {
-        boost::filesystem::path dir = prepare(location);
+        std::filesystem::path dir = prepare(location);
         for (auto& table : tables) {
             std::ifstream ifs((dir / (table+".tbldmp")).c_str());
             if (ifs.fail()) {
@@ -94,7 +91,7 @@ namespace jogasaki::utils {
     void
     dump_tpch(jogasaki::api::database& tgdb, std::string &location)
     {
-        boost::filesystem::path dir = prepare(location);
+        std::filesystem::path dir = prepare(location);
         for (auto& table : tpch_tables) {
             std::ofstream ofs((dir / (table+".tbldmp")).c_str());
             if (ofs.fail()) {
@@ -107,7 +104,7 @@ namespace jogasaki::utils {
     void
     load_tpch(jogasaki::api::database& tgdb, std::string &location)
     {
-        boost::filesystem::path dir = prepare(location);
+        std::filesystem::path dir = prepare(location);
         for (auto& table : tpch_tables) {
             std::ifstream ifs((dir / (table+".tbldmp")).c_str());
             if (ifs.fail()) {
