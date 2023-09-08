@@ -15,12 +15,10 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 #include <gflags/gflags.h>
-
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
 
 #include <tateyama/logging.h>
 
@@ -67,9 +65,9 @@ void auth_options() {
 #endif
         return;
     }
-    const auto pre_defined_auth_file = boost::filesystem::path(std::string(pre_defined_auth_file_name));
-    if (boost::filesystem::exists(pre_defined_auth_file)) {
-        boost::filesystem::ifstream istrm{};
+    const auto pre_defined_auth_file = std::filesystem::path(std::string(pre_defined_auth_file_name));
+    if (std::filesystem::exists(pre_defined_auth_file)) {
+        std::ifstream istrm{};
         istrm.open(pre_defined_auth_file, std::ios_base::in);
          
         istrm.seekg( 0, std::ios_base::end );

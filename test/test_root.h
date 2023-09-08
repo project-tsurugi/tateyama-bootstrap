@@ -21,10 +21,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/property_tree/ptree.hpp>
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>
@@ -151,10 +149,10 @@ private:
     std::ofstream strm_;
 };
 
-static bool validate_json(boost::filesystem::path file)
+static bool validate_json(std::filesystem::path file)
 {
     bool result = true;
-    boost::filesystem::ifstream strm;
+    std::ifstream strm;
     std::stringstream ss;
     std::string line;
 

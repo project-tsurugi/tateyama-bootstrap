@@ -22,8 +22,6 @@
 #include <sstream>
 #include <filesystem>
 
-#include <boost/filesystem/path.hpp>
-
 #include <tateyama/api/configuration.h>
 
 namespace tateyama::configuration {
@@ -32,7 +30,7 @@ static const std::string_view DEFAULT_PID_DIR = "/tmp";  // NOLINT and obsolete
 static const std::string_view PID_FILE_PREFIX = "tsurugi";
 static const char *ENV_CONF = "TSURUGI_CONF";  // NOLINT
 static const char *ENV_HOME = "TSURUGI_HOME";  // NOLINT
-static const boost::filesystem::path HOME_CONF_FILE = boost::filesystem::path("var/etc/tsurugi.ini");  // NOLINT
+static const std::filesystem::path HOME_CONF_FILE = std::filesystem::path("var/etc/tsurugi.ini");  // NOLINT
 std::string_view default_property_for_bootstrap();
 
 class bootstrap_configuration {
@@ -47,22 +45,22 @@ public:
     std::shared_ptr<tateyama::api::configuration::whole> get_configuration() {
         return configuration_;
     }
-    [[nodiscard]] boost::filesystem::path lock_file() const {
+    [[nodiscard]] std::filesystem::path lock_file() const {
         return lock_file_;
     }
     [[nodiscard]] std::string digest() {
-        return digest(boost::filesystem::canonical(conf_file_).string());
+        return digest(std::filesystem::canonical(conf_file_).string());
     }
     [[nodiscard]] bool valid() const {
         return valid_;
     }
-    [[nodiscard]] boost::filesystem::path conf_file() const {  // for test purpose
+    [[nodiscard]] std::filesystem::path conf_file() const {  // for test purpose
         return conf_file_;
     }
 
 private:
-    boost::filesystem::path conf_file_;
-    boost::filesystem::path lock_file_;
+    std::filesystem::path conf_file_;
+    std::filesystem::path lock_file_;
     std::shared_ptr<tateyama::api::configuration::whole> configuration_{};
     bool valid_{};
 
@@ -73,25 +71,25 @@ private:
 
         // tsurugi.ini
         if (!fname.empty()) {
-            conf_file_ = boost::filesystem::path(std::string(fname));
+            conf_file_ = std::filesystem::path(std::string(fname));
         } else {
             if (auto env_conf = getenv(ENV_CONF); env_conf != nullptr) {
-                conf_file_ = boost::filesystem::path(env_conf);
+                conf_file_ = std::filesystem::path(env_conf);
             } else {
                 if (env_home != nullptr) {
-                    conf_file_ = boost::filesystem::path(env_home) / HOME_CONF_FILE;
+                    conf_file_ = std::filesystem::path(env_home) / HOME_CONF_FILE;
                 } else {
                     throw std::runtime_error("no configuration file specified");
                 }
             }
         }
         // do sanity check for conf_file_
-        boost::system::error_code error;
-        const bool result = boost::filesystem::exists(conf_file_, error);
+        std::error_code error;
+        const bool result = std::filesystem::exists(conf_file_, error);
         if (!result || error) {
             throw std::runtime_error(std::string("cannot find configuration file: ") + conf_file_.string());
         }
-        if (boost::filesystem::is_directory(conf_file_)) {
+        if (std::filesystem::is_directory(conf_file_)) {
             throw std::runtime_error(conf_file_.string() + " is a directory");
         }
         configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
@@ -107,9 +105,9 @@ private:
         }
         std::string pid_file_name(PID_FILE_PREFIX);
         pid_file_name += "-";
-        pid_file_name += digest(boost::filesystem::canonical(conf_file_).string());
+        pid_file_name += digest(std::filesystem::canonical(conf_file_).string());
         pid_file_name += ".pid";
-        lock_file_ = boost::filesystem::path(std::string(directory)) / boost::filesystem::path(pid_file_name);
+        lock_file_ = std::filesystem::path(std::string(directory)) / std::filesystem::path(pid_file_name);
         valid_ = true;
     }
     std::string digest(const std::string& path_string) {
