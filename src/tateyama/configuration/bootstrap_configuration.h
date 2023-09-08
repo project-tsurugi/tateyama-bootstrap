@@ -26,7 +26,6 @@
 
 namespace tateyama::configuration {
 
-static const std::string_view DEFAULT_PID_DIR = "/tmp";  // NOLINT and obsolete
 static const std::string_view PID_FILE_PREFIX = "tsurugi";
 static const char *ENV_CONF = "TSURUGI_CONF";  // NOLINT
 static const char *ENV_HOME = "TSURUGI_HOME";  // NOLINT
@@ -97,18 +96,20 @@ private:
         if (env_home != nullptr) {
             configuration_->base_path(std::filesystem::path(env_home));
         }
-        std::string directory{DEFAULT_PID_DIR};
         if (auto system_config = configuration_->get_section("system"); system_config) {
-            if (auto pid_dir = system_config->get<std::string>("pid_directory"); pid_dir) {
-                directory = pid_dir.value();
+            if (auto pid_dir = system_config->get<std::filesystem::path>("pid_directory"); pid_dir) {
+                std::filesystem::path directory = pid_dir.value();
+
+                std::string pid_file_name(PID_FILE_PREFIX);
+                pid_file_name += "-";
+                pid_file_name += digest(std::filesystem::canonical(conf_file_).string());
+                pid_file_name += ".pid";
+                lock_file_ = directory / std::filesystem::path(pid_file_name);
+                valid_ = true;
+                return;
             }
         }
-        std::string pid_file_name(PID_FILE_PREFIX);
-        pid_file_name += "-";
-        pid_file_name += digest(std::filesystem::canonical(conf_file_).string());
-        pid_file_name += ".pid";
-        lock_file_ = std::filesystem::path(std::string(directory)) / std::filesystem::path(pid_file_name);
-        valid_ = true;
+        throw std::runtime_error("error in lock file location");
     }
     std::string digest(const std::string& path_string) {
         auto hash = std::hash<std::string>{}(path_string);
