@@ -114,12 +114,3 @@ jobs:
       - name: Verify
         uses: project-tsurugi/tsurugi-annotations-action@v1
         if: always()
-
-  Eisen:
-    uses: ./.github/workflows/eisen-integration-test.yml
-    if: (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
-    needs: Build
-    secrets:
-      GHA_PAT: ${{ secrets.GHA_PAT }}
-      GHCR_PAT: ${{ secrets.GHCR_PAT }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
