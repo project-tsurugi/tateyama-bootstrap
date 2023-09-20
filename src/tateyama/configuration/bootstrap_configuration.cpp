@@ -37,6 +37,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "watcher_interval=1000\n"
         "worker_try_count=1000\n"
         "worker_suspend_timeout=1000000\n"
+        "commit_response=AVAILABLE\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
