@@ -52,6 +52,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
     "[datastore]\n"
         "log_location=\n"
         "logging_max_parallelism=112\n"
+        "recover_max_parallelism=8\n"
 
     "[cc]\n"
         "epoch_duration=40000\n"
