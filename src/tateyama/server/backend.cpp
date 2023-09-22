@@ -19,6 +19,7 @@
 #include <iostream>
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
@@ -85,7 +86,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
 
     // stderrthreshold
     if (auto stderrthreshold_env = getenv("GLOG_stderrthreshold"); stderrthreshold_env ) {
-        FLAGS_stderrthreshold = atoi(stderrthreshold_env);
+        FLAGS_stderrthreshold = static_cast<::google::int32>(strtol(stderrthreshold_env, nullptr, 10));
     } else {
         auto stderrthreshold = glog_section->get<int>("stderrthreshold");
         if (stderrthreshold) {
@@ -95,7 +96,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
 
     // minloglevel
     if (auto minloglevel_env = getenv("GLOG_minloglevel"); minloglevel_env ) {
-        FLAGS_minloglevel = atoi(minloglevel_env);
+        FLAGS_minloglevel = static_cast<::google::int32>(strtol(minloglevel_env, nullptr, 10));
     } else {
         auto minloglevel = glog_section->get<int>("minloglevel");
         if (minloglevel) {
@@ -109,13 +110,13 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     } else {
         auto log_dir = glog_section->get<std::filesystem::path>("log_dir");
         if (log_dir) {
-            FLAGS_log_dir=log_dir.value().string().c_str();
+            FLAGS_log_dir=log_dir.value().string();
         }
     }
 
     // max_log_size
     if (auto max_log_size_env = getenv("GLOG_max_log_size"); max_log_size_env ) {
-        FLAGS_max_log_size = atoi(max_log_size_env);
+        FLAGS_max_log_size = static_cast<::google::int32>(strtol(max_log_size_env, nullptr, 10));
     } else {
         auto max_log_size = glog_section->get<int>("max_log_size");
         if (max_log_size) {
@@ -125,7 +126,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
 
     // v
     if (auto v_env = getenv("GLOG_v"); v_env ) {
-        FLAGS_v = atoi(v_env);
+        FLAGS_v = static_cast<::google::int32>(strtol(v_env, nullptr, 10));
     } else {
         auto v = glog_section->get<int>("v");
         if (v) {
