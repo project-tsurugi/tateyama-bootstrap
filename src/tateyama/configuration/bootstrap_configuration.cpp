@@ -62,10 +62,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "pid_directory=/var/lock\n"
 
     "[glog]\n"
-        "logtostderr=false\n"
-        "minloglevel=0\n"
-        "log_dir=\n"
-        "v=0\n"
+        "dummy=\n"  // just for retain glog section in default configuration
 };
 
 } // namespace details
