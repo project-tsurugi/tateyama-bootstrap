@@ -90,13 +90,6 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
     if (FLAGS_tpch) {
         args.emplace_back("--tpch");
     }
-    if (FLAGS_v != 0) {
-        args.emplace_back("--v");
-        args.emplace_back(std::to_string(FLAGS_v));
-    }
-    if (FLAGS_logtostderr) {
-        args.emplace_back("--logtostderr");
-    }
 }
 
 tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) { //NOLINT(readability-function-cognitive-complexity)
