@@ -19,6 +19,7 @@
 #include <iostream>
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
@@ -72,10 +73,72 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
-int backend_main(int argc, char **argv) {
+void setup_glog(tateyama::api::configuration::section *glog_section) {
+    // logtostderr
+    if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env ) {
+        FLAGS_logtostderr = true;
+    } else {
+        auto logtostderr = glog_section->get<bool>("logtostderr");
+        if (logtostderr) {
+            FLAGS_logtostderr = logtostderr.value();
+        }
+    }
+
+    // stderrthreshold
+    if (auto stderrthreshold_env = getenv("GLOG_stderrthreshold"); stderrthreshold_env ) {
+        FLAGS_stderrthreshold = static_cast<::google::int32>(strtol(stderrthreshold_env, nullptr, 10));
+    } else {
+        auto stderrthreshold = glog_section->get<int>("stderrthreshold");
+        if (stderrthreshold) {
+            FLAGS_stderrthreshold = stderrthreshold.value();
+        }
+    }
+
+    // minloglevel
+    if (auto minloglevel_env = getenv("GLOG_minloglevel"); minloglevel_env ) {
+        FLAGS_minloglevel = static_cast<::google::int32>(strtol(minloglevel_env, nullptr, 10));
+    } else {
+        auto minloglevel = glog_section->get<int>("minloglevel");
+        if (minloglevel) {
+            FLAGS_minloglevel = minloglevel.value();
+        }
+    }
+
+    // log_dir
+    if (auto log_dir_env = getenv("GLOG_log_dir"); log_dir_env ) {
+        FLAGS_log_dir=log_dir_env;
+    } else {
+        auto log_dir = glog_section->get<std::filesystem::path>("log_dir");
+        if (log_dir) {
+            FLAGS_log_dir=log_dir.value().string();
+        }
+    }
+
+    // max_log_size
+    if (auto max_log_size_env = getenv("GLOG_max_log_size"); max_log_size_env ) {
+        FLAGS_max_log_size = static_cast<::google::int32>(strtol(max_log_size_env, nullptr, 10));
+    } else {
+        auto max_log_size = glog_section->get<int>("max_log_size");
+        if (max_log_size) {
+            FLAGS_max_log_size = max_log_size.value();
+        }
+    }
+
+    // v
+    if (auto v_env = getenv("GLOG_v"); v_env ) {
+        FLAGS_v = static_cast<::google::int32>(strtol(v_env, nullptr, 10));
+    } else {
+        auto v = glog_section->get<int>("v");
+        if (v) {
+            FLAGS_v = v.value();
+        }
+    }
+
     google::InitGoogleLogging("tsurugidb");
     google::InstallFailureSignalHandler();
+}
 
+int backend_main(int argc, char **argv) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -100,6 +163,7 @@ int backend_main(int argc, char **argv) {
     } catch (boost::property_tree::json_parser_error& e) {
         LOG(ERROR) << e.what();
     }
+    setup_glog(conf->get_section("glog"));
 
     // mutex
     auto mutex_file = bst_conf.lock_file();
