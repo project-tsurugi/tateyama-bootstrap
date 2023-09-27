@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include "test_root.h"
 
-#include "datastore/file_list.h"
+#include "tateyama/datastore/file_list.h"
 
 namespace tateyama::testing {
 

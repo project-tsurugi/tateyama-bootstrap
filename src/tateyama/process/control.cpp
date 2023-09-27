@@ -23,7 +23,6 @@
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/process.hpp>
 
 #include <tateyama/logging.h>
 
@@ -122,18 +121,6 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             }
         }
 
-        std::string server_name(server_name_string);
-        boost::filesystem::path path_for_this{};
-        if (auto a0f = boost::filesystem::path(argv0); a0f.parent_path().string().empty()) {
-            path_for_this = boost::filesystem::canonical(boost::process::search_path(a0f));
-        } else{
-            path_for_this = boost::filesystem::canonical(a0f);
-        }
-        if (!boost::filesystem::exists(path_for_this)) {
-            std::cerr << "cannot find " << server_name_string << std::endl;
-            return tgctl::return_code::err;
-        }
-
         int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
         // Shared memory create a new with IPC_CREATE
         if (shm_id == -1) {
@@ -154,9 +141,17 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         }
         *static_cast<pid_t*>(shm_data) = 0;
 
+        boost::filesystem::path base_path{};
+        try {
+            base_path = get_base_path(argv0);
+        } catch (std::runtime_error &e) {
+            std::cerr << e.what() << std::endl;
+            return tgctl::return_code::err;
+        }
+
         if (fork() == 0) {
-            auto base = boost::filesystem::canonical(path_for_this).parent_path().parent_path();
-            auto exec = base / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+            std::string server_name(server_name_string);
+            auto exec = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
             std::vector<std::string> args{};
             build_args(args, mode);
             boost::process::child cld(exec, boost::process::args (args));
@@ -165,7 +160,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             cld.detach();
 
             std::string undertaker_name(undertaker_name_string);
-            auto undertaker = base / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
+            auto undertaker = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
             execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);  // NOLINT
             exit(-1);  // should not reach here
         }

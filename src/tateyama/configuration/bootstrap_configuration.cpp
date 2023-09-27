@@ -23,7 +23,6 @@ namespace details {
 static constexpr std::string_view default_configuration {  // NOLINT
     "[sql]\n"
         "thread_pool_size=\n"
-        "lazy_worker=false\n"
         "enable_index_join=false\n"
         "stealing_enabled=true\n"
         "default_partitions=5\n"
@@ -33,11 +32,11 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "lightweight_job_level=0\n"
         "enable_hybrid_scheduler=true\n"
         "busy_worker=false\n"
-        "enable_watcher=true\n"
         "watcher_interval=1000\n"
         "worker_try_count=1000\n"
         "worker_suspend_timeout=1000000\n"
         "commit_response=AVAILABLE\n"
+        "dev_update_skips_deletion=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"

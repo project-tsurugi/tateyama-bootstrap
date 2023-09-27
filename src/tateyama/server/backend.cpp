@@ -44,6 +44,7 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "server.h"
 #include "utils.h"
+#include "logging.h"
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -136,6 +137,27 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
 
     google::InitGoogleLogging("tsurugidb");
     google::InstallFailureSignalHandler();
+
+    // output configuration to be used
+    LOG(INFO) << glog_config_prefix
+              << std::boolalpha
+              << "logtostderr: " << FLAGS_logtostderr << ", "
+              << "logtostderr for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "stderrthreshold: " << FLAGS_stderrthreshold << ", "
+              << "stderrthreshold for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "minloglevel: " << FLAGS_minloglevel << ", "
+              << "minloglevel for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "log_dir: " << "\"" << FLAGS_log_dir << "\", "
+              << "log_dir for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "max_log_size: " << FLAGS_max_log_size << ", "
+              << "max_log_size for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "v: " << FLAGS_v << ", "
+              << "v for glog.";
 }
 
 int backend_main(int argc, char **argv) {

@@ -21,6 +21,7 @@
 #include "tateyama/process/process.h"
 #include "tateyama/datastore/backup.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
+#include "tateyama/version/version.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
@@ -110,6 +111,9 @@ int tgctl_main(const std::vector<std::string>& args) {
     }
     if (args.at(1) == "quiesce") {
         return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
+    }
+    if (args.at(1) == "version") {
+        return tateyama::version::show_version(args.at(0));
     }
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return -1;
