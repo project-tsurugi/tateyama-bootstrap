@@ -30,7 +30,7 @@ option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" 
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
-option(OGAWAYAMA "activate ogawayama brigde" OFF)
+option(OGAWAYAMA "activate ogawayama brigde" ON)
 option(ENABLE_JEMALLOC "use jemalloc instead of default malloc" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
