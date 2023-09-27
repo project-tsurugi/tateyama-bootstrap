@@ -38,6 +38,7 @@ DECLARE_bool(quiesce);  // NOLINT
 DECLARE_bool(maintenance_server);  // NOLINT
 DECLARE_string(start_mode);  // NOLINT
 DECLARE_int32(timeout); // NOLINT
+DECLARE_bool(quiet);  // NOLINT
 
 DECLARE_string(location);  // NOLINT
 DECLARE_bool(load);  // NOLINT
@@ -56,6 +57,74 @@ const std::size_t check_count_shutdown = 300;  // 300S (use sleep_time_unit_shut
 const std::size_t check_count_status = 10;     // 200mS
 const std::size_t check_count_kill = 500;      // 10S
 const std::size_t sleep_time_unit_mutex = 50;
+
+enum status_check_result {
+    undefined = 0,
+    error_in_conf_file_name,
+    error_in_create_conf,
+    no_file,
+    not_locked,
+    initial,
+    ready,
+    activated,
+    deactivating,
+    deactivated,
+    status_check_count_over,
+    error_in_file_mutex_check
+};
+
+static status_check_result status_check_internal(tateyama::configuration::bootstrap_configuration& bst_conf) {
+    if (!bst_conf.valid()) {
+        return status_check_result::error_in_conf_file_name;
+    }
+    if (auto conf = bst_conf.get_configuration(); conf == nullptr) {
+        return status_check_result::error_in_create_conf;
+    }
+    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
+    using state = proc_mutex::lock_state;
+    switch (file_mutex->check()) {
+    case state::no_file:
+        return status_check_result::no_file;
+    case state::not_locked:
+        return status_check_result::not_locked;
+    case state::locked:
+    {
+        for (std::size_t i = 0; i < check_count_status; i++) {
+            std::unique_ptr<server::status_info_bridge> status_info{};
+            try {
+                status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
+
+                switch(status_info->whole()) {
+                case tateyama::status_info::state::initial:
+                    return status_check_result::initial;
+                case tateyama::status_info::state::ready:
+                    return status_check_result::ready;
+                case tateyama::status_info::state::activated:
+                    return status_check_result::activated;
+                case tateyama::status_info::state::deactivating:
+                    return status_check_result::deactivating;
+                case tateyama::status_info::state::deactivated:
+                    return status_check_result::deactivated;
+                }
+            } catch (std::exception& e) {
+                if (i < (check_count_status - 1)) {
+                    usleep(sleep_time_unit_regular * 1000);
+                } else {
+                    return status_check_result::status_check_count_over;
+                }
+            }
+        }
+        return status_check_result::status_check_count_over;
+    }
+    case state::error:
+        return status_check_result::error_in_file_mutex_check;
+    }
+    return status_check_result::undefined;
+}
+static status_check_result status_check_internal() {
+    auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    return status_check_internal(bst_conf);
+}
 
 void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
     switch (mode) {
@@ -121,10 +190,27 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             }
         }
 
+        auto state = status_check_internal(bst_conf);
+        if (state == status_check_result::initial ||
+            state == status_check_result::ready ||
+            state == status_check_result::activated) {
+            if (!FLAGS_quiet) {
+                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "another " << server_name_string << " is already running" << std::endl;
+            }
+            if (monitor_output) {
+                monitor_output->finish(true);
+            }
+            return tgctl::return_code::ok;
+        }
+
         int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
         // Shared memory create a new with IPC_CREATE
         if (shm_id == -1) {
-            std::cerr << "error in shmget()" << std::endl;
+            if (!FLAGS_quiet) {
+                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "error in shmget()" << std::endl;
+            }
             if (monitor_output) {
                 monitor_output->finish(false);
             }
@@ -133,7 +219,10 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         // Shared memory attach and convert char address
         auto *shm_data = shmat(shm_id, nullptr, 0);
         if (reinterpret_cast<std::uintptr_t>(shm_data) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
-            std::cerr << "error in shmat()" << std::endl;
+            if (!FLAGS_quiet) {
+                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "error in shmat()" << std::endl;
+            }
             if (monitor_output) {
                 monitor_output->finish(false);
             }
@@ -251,38 +340,56 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                         usleep(sleep_time_unit_regular * 1000);
                                     }
                                 }
+                                if (!FLAGS_quiet) {
+                                    std::cout << "successfully launched tsurugidb" << std::endl;
+                                }
                                 return tgctl::return_code::ok;
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
-                            std::cerr << "The pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
+                            if (!FLAGS_quiet) {
+                                std::cout << "failed to confirm tsurugidb launch within the specified time, as ";
+                                std::cout << "the pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
+                            }
                             rtnv = tgctl::return_code::err;
                             checked_status_info = true;
                             break;
                         }
                     }
                     if (!checked_status_info) {
-                        std::cerr << "cannot confirm the server process within the specified time" << std::endl;
+                        if (!FLAGS_quiet) {
+                            std::cout << "failed to confirm tsurugidb launch within the specified time" << std::endl;
+                        }
                         rtnv = tgctl::return_code::err;
                     }
                 } else if (check_result == another) {
-                    std::cerr << "another " << server_name_string_for_status << " is running" << std::endl;
+                    if (!FLAGS_quiet) {
+                        std::cout << "another " << server_name_string << " is already running" << std::endl;
+                    }
                     if (auto krv = kill(pid_in_file_mutex, 0); krv != 0) {  // the process (pid_in_file_mutex) is not alive
                         rtnv = tgctl::return_code::err;
                     }
                     // does not change the return code when the process is alive
                 } else {  // case in which check_result == init
-                    std::cerr << "cannot invoke a server process" << std::endl;
+                    if (!FLAGS_quiet) {
+                        std::cout << "failed to confirm tsurugidb launch within the specified time" << std::endl;
+                    }
                     rtnv = tgctl::return_code::err;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
-                std::cerr << "cannot find the configuration file" << std::endl;
+                if (!FLAGS_quiet) {
+                    std::cout << "could not launch tsurugidb, as ";
+                    std::cout << "cannot find the configuration file" << std::endl;
+                }
                 rtnv = tgctl::return_code::err;
             }
         } else {  // case in which need_check is false
             return tgctl::return_code::ok;
         }
     } else {
-        std::cerr << "cannot find any valid configuration file" << std::endl;
+        if (!FLAGS_quiet) {
+            std::cout << "could not launch tsurugidb, as ";
+            std::cout << "cannot find any valid configuration file" << std::endl;
+        }
         rtnv = tgctl::return_code::err;
     }
 
@@ -291,71 +398,6 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         monitor_output->finish(rtnv == tgctl::return_code::ok);
     }
     return rtnv;
-}
-
-enum status_check_result {
-    undefined = 0,
-    error_in_conf_file_name,
-    error_in_create_conf,
-    no_file,
-    not_locked,
-    initial,
-    ready,
-    activated,
-    deactivating,
-    deactivated,
-    status_check_count_over,
-    error_in_file_mutex_check
-};
-
-static status_check_result status_check_internal() {
-    auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
-    if (!bst_conf.valid()) {
-        return status_check_result::error_in_conf_file_name;
-    }
-    if (auto conf = bst_conf.get_configuration(); conf == nullptr) {
-        return status_check_result::error_in_create_conf;
-    }
-    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
-    using state = proc_mutex::lock_state;
-    switch (file_mutex->check()) {
-    case state::no_file:
-        return status_check_result::no_file;
-    case state::not_locked:
-        return status_check_result::not_locked;
-    case state::locked:
-    {
-        for (std::size_t i = 0; i < check_count_status; i++) {
-            std::unique_ptr<server::status_info_bridge> status_info{};
-            try {
-                status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
-                
-                switch(status_info->whole()) {
-                case tateyama::status_info::state::initial:
-                    return status_check_result::initial;
-                case tateyama::status_info::state::ready:
-                    return status_check_result::ready;
-                case tateyama::status_info::state::activated:
-                    return status_check_result::activated;
-                case tateyama::status_info::state::deactivating:
-                    return status_check_result::deactivating;
-                case tateyama::status_info::state::deactivated:
-                    return status_check_result::deactivated;
-                }
-            } catch (std::exception& e) {
-                if (i < (check_count_status - 1)) {
-                    usleep(sleep_time_unit_regular * 1000);
-                } else {
-                    return status_check_result::status_check_count_over;
-                }
-            }
-        }
-        return status_check_result::status_check_count_over;
-    }
-    case state::error:
-        return status_check_result::error_in_file_mutex_check;
-    }
-    return status_check_result::undefined;
 }
 
 tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_configuration& bst_conf) {
@@ -378,6 +420,9 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
                 auto status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
                 status_info->apply_shm_entry(tateyama::common::wire::session_wire_container::remove_shm_entry);
                 status_info->force_delete();
+                if (!FLAGS_quiet) {
+                    std::cout << "successfully killed tsurugidb" << std::endl;
+                }
                 return rtnv;
             }
             default:
@@ -385,10 +430,14 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
             }
             usleep(sleep_time_unit * 1000);
         }
-        std::cerr << "cannot kill the " << server_name_string << " process within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
+        if (!FLAGS_quiet) {
+            std::cout << "failed to confirm " << server_name_string << " termination within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
+        }
         return tgctl::return_code::err;
     }
-    std::cerr << "contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
+    if (!FLAGS_quiet) {
+            std::cerr << " could not kill " << server_name_string << ", as contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
+    }
     return tgctl::return_code::err;
 }
 
@@ -414,6 +463,9 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
             if (dot) {
                 std::cout << std::endl;
             }
+            if (!FLAGS_quiet) {
+                std::cout << "successfully shutdown " << server_name_string << std::endl;
+            }
             return rtnv;
         }
         usleep(sleep_time_unit * 1000);
@@ -423,11 +475,13 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     if (dot) {
         std::cout << std::endl;
     }
-    std::cerr << "shutdown operation is still in progress, check it after some time" << std::endl;
+    if (!FLAGS_quiet) {
+        std::cout << "failed to confirm " << server_name_string << " termination within " << (sleep_time_unit * check_count) / 1000 << " seconds" << std::endl;
+    }
     return tgctl::return_code::err;
 }
 
-tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) {
+tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLINT(readability-function-cognitive-complexity)
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty() && status_output) {
@@ -460,20 +514,36 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) {
                             return rtnv;
                         }
                     } else {
-                        std::cerr << "another shutdown is being conducted" << std::endl;
+                        if (!FLAGS_quiet) {
+                            std::cout << "shutdown was not performed, as ";
+                            std::cout << "another shutdown is being conducted" << std::endl;
+                        }
                         rtnv = tgctl::return_code::err;
                     }
                 }
             } catch (std::runtime_error &e) {
-                std::cerr << e.what() << std::endl;
+                if (!FLAGS_quiet) {
+                    if (std::string("the lock file does not exist") == e.what()) {
+                        std::cout << (force ? "kill" : "shutdown") << " was not performed, as no tsurugidb was running" << std::endl;
+                    } else {
+                        std::cout << (force ? "kill" : "shutdown") << " was not performed, as ";
+                        std::cout << e.what() << std::endl;
+                    }
+                }
                 rtnv = tgctl::return_code::err;
             }
         } else {
-            std::cerr << "error in create_configuration" << std::endl;
+            if (!FLAGS_quiet) {
+                std::cout << (force ? "kill" : "shutdown") << " was not performed, as ";
+                std::cout << "error in create_configuration" << std::endl;
+            }
             rtnv = tgctl::return_code::err;
         }
     } else {
-        std::cerr << "cannot find any valid configuration file" << std::endl;
+        if (!FLAGS_quiet) {
+            std::cout << (force ? "kill" : "shutdown") << " was not performed, as ";
+            std::cout << "cannot find any valid configuration file" << std::endl;
+        }
         rtnv = tgctl::return_code::err;
     }
 
