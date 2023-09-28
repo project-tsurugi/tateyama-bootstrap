@@ -75,7 +75,7 @@ static void sighup_handler([[maybe_unused]] int sig) {
 
 void setup_glog(tateyama::api::configuration::section *glog_section) {
     // logtostderr
-    if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env ) {
+    if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env) {
         FLAGS_logtostderr = true;
     } else {
         auto logtostderr = glog_section->get<bool>("logtostderr");
@@ -85,7 +85,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     }
 
     // stderrthreshold
-    if (auto stderrthreshold_env = getenv("GLOG_stderrthreshold"); stderrthreshold_env ) {
+    if (auto stderrthreshold_env = getenv("GLOG_stderrthreshold"); stderrthreshold_env) {
         FLAGS_stderrthreshold = static_cast<::google::int32>(strtol(stderrthreshold_env, nullptr, 10));
     } else {
         auto stderrthreshold = glog_section->get<int>("stderrthreshold");
@@ -95,7 +95,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     }
 
     // minloglevel
-    if (auto minloglevel_env = getenv("GLOG_minloglevel"); minloglevel_env ) {
+    if (auto minloglevel_env = getenv("GLOG_minloglevel"); minloglevel_env) {
         FLAGS_minloglevel = static_cast<::google::int32>(strtol(minloglevel_env, nullptr, 10));
     } else {
         auto minloglevel = glog_section->get<int>("minloglevel");
@@ -105,7 +105,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     }
 
     // log_dir
-    if (auto log_dir_env = getenv("GLOG_log_dir"); log_dir_env ) {
+    if (auto log_dir_env = getenv("GLOG_log_dir"); log_dir_env) {
         FLAGS_log_dir=log_dir_env;
     } else {
         auto log_dir = glog_section->get<std::filesystem::path>("log_dir");
@@ -115,7 +115,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     }
 
     // max_log_size
-    if (auto max_log_size_env = getenv("GLOG_max_log_size"); max_log_size_env ) {
+    if (auto max_log_size_env = getenv("GLOG_max_log_size"); max_log_size_env) {
         FLAGS_max_log_size = static_cast<::google::int32>(strtol(max_log_size_env, nullptr, 10));
     } else {
         auto max_log_size = glog_section->get<int>("max_log_size");
@@ -125,7 +125,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     }
 
     // v
-    if (auto v_env = getenv("GLOG_v"); v_env ) {
+    if (auto v_env = getenv("GLOG_v"); v_env) {
         FLAGS_v = static_cast<::google::int32>(strtol(v_env, nullptr, 10));
     } else {
         auto v = glog_section->get<int>("v");
@@ -146,7 +146,7 @@ int backend_main(int argc, char **argv) {
     // configuration
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (!bst_conf.valid()) {
-        LOG(ERROR) << "error in create_configuration";
+        LOG(ERROR) << "error in create_bootstrap_configuration";
         exit(1);
     }
     auto conf = bst_conf.get_configuration();
@@ -154,6 +154,7 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
+    setup_glog(conf->get_section("glog"));
     try {
         std::ostringstream oss;
         boost::property_tree::json_parser::write_json(oss, conf->get_ptree());
@@ -163,7 +164,6 @@ int backend_main(int argc, char **argv) {
     } catch (boost::property_tree::json_parser_error& e) {
         LOG(ERROR) << e.what();
     }
-    setup_glog(conf->get_section("glog"));
 
     // mutex
     auto mutex_file = bst_conf.lock_file();
