@@ -96,10 +96,6 @@ std::string_view default_property_for_bootstrap() {
         "port=12345\n"
         "threads=104\n"
 
-    "[fdw]\n"
-        "name=tsurugi\n"
-        "threads=104\n"
-
     "[datastore]\n"
         "log_location=\n"
         "logging_max_parallelism=112\n"

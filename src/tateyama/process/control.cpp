@@ -446,6 +446,10 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     bool dot = false;
 
     if (!status_info->request_shutdown()) {
+        if (!FLAGS_quiet) {
+            std::cout << "shutdown was not performed, as ";
+            std::cout << "another shutdown is already requested" << std::endl;
+        }
         return  tgctl::return_code::err;
     }
     usleep(sleep_time_unit_mutex * 1000);
@@ -494,6 +498,19 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             try {
+                auto state = status_check_internal(bst_conf);
+                if (state == status_check_result::no_file ||
+                    state == status_check_result::not_locked ||
+                    state == status_check_result::deactivated) {
+                    if (!FLAGS_quiet) {
+                        std::cout << (force ? "kill " : "shutdown ") << "was not performed, as ";
+                        std::cout << "was not performed, as no tsurugidb was running" << std::endl;
+                    }
+                    if (monitor_output) {
+                        monitor_output->finish(true);
+                    }
+                    return tgctl::return_code::ok;
+                }
                 auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
                 if (force) {
                     rtnv = tgctl_kill(file_mutex.get(), bst_conf);
