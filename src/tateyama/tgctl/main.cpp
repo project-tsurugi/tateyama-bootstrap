@@ -15,6 +15,7 @@
  */
 #include <iostream>
 #include <string>
+#include <exception>
 
 #include <gflags/gflags.h>
 
@@ -131,7 +132,11 @@ int main(int argc, char* argv[]) {
         gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-        return static_cast<int>(tateyama::tgctl::tgctl_main(args));
+        try {
+            return static_cast<int>(tateyama::tgctl::tgctl_main(args));
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
     std::cerr << "no arguments" << std::endl;
     return -1;
