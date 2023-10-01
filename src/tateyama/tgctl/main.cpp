@@ -15,12 +15,14 @@
  */
 #include <iostream>
 #include <string>
+#include <exception>
 
 #include <gflags/gflags.h>
 
 #include "tateyama/process/process.h"
 #include "tateyama/datastore/backup.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
+#include "tateyama/version/version.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
@@ -111,6 +113,9 @@ int tgctl_main(const std::vector<std::string>& args) {
     if (args.at(1) == "quiesce") {
         return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
     }
+    if (args.at(1) == "version") {
+        return tateyama::version::show_version(args.at(0));
+    }
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return -1;
 }
@@ -127,7 +132,11 @@ int main(int argc, char* argv[]) {
         gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineFlags(&argc, &argv, false);
 
-        return static_cast<int>(tateyama::tgctl::tgctl_main(args));
+        try {
+            return static_cast<int>(tateyama::tgctl::tgctl_main(args));
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
     std::cerr << "no arguments" << std::endl;
     return -1;

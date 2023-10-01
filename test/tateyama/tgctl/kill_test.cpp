@@ -19,7 +19,7 @@
 
 #include "test_root.h"
 
-#include "transport/client_wire.h"
+#include "tateyama/transport/client_wire.h"
 
 namespace tateyama::testing {
 

@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "test_root.h"
-#include "configuration/bootstrap_configuration.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 
 namespace tateyama::testing {
 
