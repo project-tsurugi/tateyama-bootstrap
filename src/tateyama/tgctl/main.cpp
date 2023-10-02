@@ -34,6 +34,8 @@ DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
 DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for tgctl_start() invoked from start_maintenance_server()
 DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for tgctl_start()
 DEFINE_int32(timeout, -1, "timeout for tgctl shutdown, no timeout control takes place if 0 is specified");  // NOLINT for tgctl_start()
+DEFINE_bool(q, false, "do not display command execution results on the console");  // NOLINT
+DEFINE_bool(quiet, false, "do not display command execution results on the console");  // NOLINT
 
 // for backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
@@ -49,6 +51,8 @@ DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOL
 namespace tateyama::tgctl {
 
 int tgctl_main(const std::vector<std::string>& args) {
+    FLAGS_quiet |= FLAGS_q;
+
     if (args.at(1) == "start") {
         return tateyama::process::tgctl_start(args.at(0), true);
     }
