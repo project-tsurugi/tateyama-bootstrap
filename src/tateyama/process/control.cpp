@@ -196,7 +196,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             state == status_check_result::activated) {
             if (!FLAGS_quiet) {
                 std::cout << "could not launch tsurugidb, as ";
-                std::cout << "another " << server_name_string << " is already running" << std::endl;
+                std::cout << server_name_string << " is already running" << std::endl;
             }
             if (monitor_output) {
                 monitor_output->finish(true);
@@ -363,7 +363,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     }
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
-                        std::cout << "another " << server_name_string << " is already running" << std::endl;
+                        std::cout << server_name_string << " is already running" << std::endl;
                     }
                     if (auto krv = kill(pid_in_file_mutex, 0); krv != 0) {  // the process (pid_in_file_mutex) is not alive
                         rtnv = tgctl::return_code::err;
@@ -448,7 +448,7 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     if (!status_info->request_shutdown()) {
         if (!FLAGS_quiet) {
             std::cout << "shutdown was not performed, as ";
-            std::cout << "another shutdown is already requested" << std::endl;
+            std::cout << "shutdown is already requested" << std::endl;
         }
         return  tgctl::return_code::err;
     }
@@ -533,7 +533,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                     } else {
                         if (!FLAGS_quiet) {
                             std::cout << "shutdown was not performed, as ";
-                            std::cout << "another shutdown is being conducted" << std::endl;
+                            std::cout << "shutdown is being conducted" << std::endl;
                         }
                         rtnv = tgctl::return_code::err;
                     }
