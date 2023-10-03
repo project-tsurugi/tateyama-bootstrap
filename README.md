@@ -4,16 +4,7 @@
 
 * CMake `>= 3.16`
 * C++ Compiler `>= C++17`
-* access to installed dependent modules: 
-  * tateyama
-  * jogasaki
-  * ogawayama (when -DOGAWAYAMA=ON is specified in cmake)
-  * sharksfin
-  * takatori
-  * yugawara
-  * mizugaki
-  * shakujo (until dependency is removed)
-  * mpdecimal (see [jogasaki](https://github.com/project-tsurugi/jogasaki#install-steps-for-mpdecimal) for installation instruction.
+* and see *Dockerfile* section
 * and see *Dockerfile* section
 
 ```sh
@@ -32,6 +23,21 @@ RUN apt update -y && apt install -y git build-essential cmake ninja-build libboo
 optional packages:
 
 * `clang-tidy-14`
+
+### Install modules
+
+#### tsurugidb modules
+
+This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) modules to be installed.
+
+* [tateyama](https://github.com/project-tsurugi/tateyama)
+* [jogasaki](https://github.com/project-tsurugi/jogasaki)
+* [ogawayama](https://github.com/project-tsurugi/ogawayama)  (when -DOGAWAYAMA=ON is specified in cmake)
+* [shirakami](https://github.com/project-tsurugi/shirakami)
+* [limestone](https://github.com/project-tsurugi/limestone)
+* [takatori](https://github.com/project-tsurugi/takatori)
+* [yugawara](https://github.com/project-tsurugi/yugawara)
+* [sharksfin](https://github.com/project-tsurugi/sharksfin)
 
 ## How to build
 
@@ -61,11 +67,18 @@ available options:
 cmake --build . --target install
 ```
 
+### run tests
+
+Execute the test as below:
+```sh
+ctest -V
+```
+
 ### Customize logging setting 
 You can customize logging in the same way as sharksfin. See sharksfin [README.md](https://github.com/project-tsurugi/sharksfin/blob/master/README.md#customize-logging-setting) for more details.
 
 ```sh
-GLOG_minloglevel=0 ./tateyama-server 
+GLOG_minloglevel=0 tgctl start
 ```
 
 ## License
