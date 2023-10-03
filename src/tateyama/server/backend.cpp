@@ -189,6 +189,10 @@ int backend_main(int argc, char **argv) {
 
     // mutex
     auto mutex_file = bst_conf.lock_file();
+    // output configuration to be used
+    LOG(INFO) << system_config_prefix
+              << "pid_directory: " << mutex_file.parent_path().string() << ", "
+              << "location of pid file.";
     auto mutex = std::make_unique<process::proc_mutex>(mutex_file);
     if (!mutex->lock()) {
         exit(1);
