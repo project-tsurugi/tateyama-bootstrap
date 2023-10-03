@@ -19,4 +19,6 @@ namespace tateyama::server {
 
 static constexpr std::string_view glog_config_prefix = "/:glog:config: ";
 
+static constexpr std::string_view system_config_prefix = "/:system:config: ";
+
 } // namespace
