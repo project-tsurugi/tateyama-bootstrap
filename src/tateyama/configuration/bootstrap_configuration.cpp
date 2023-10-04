@@ -35,7 +35,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "watcher_interval=1000\n"
         "worker_try_count=1000\n"
         "worker_suspend_timeout=1000000\n"
-        "commit_response=AVAILABLE\n"
+        "commit_response=STORED\n"
         "dev_update_skips_deletion=false\n"
 
     "[ipc_endpoint]\n"
