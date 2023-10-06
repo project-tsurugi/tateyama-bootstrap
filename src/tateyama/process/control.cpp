@@ -193,9 +193,10 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         auto state = status_check_internal(bst_conf);
         if (state == status_check_result::initial ||
             state == status_check_result::ready ||
-            state == status_check_result::activated) {
+            state == status_check_result::activated ||
+            state == status_check_result::deactivating) {
             if (!FLAGS_quiet) {
-                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "could not launch " << server_name_string << ", as ";
                 std::cout << server_name_string << " is already running" << std::endl;
             }
             if (monitor_output) {
@@ -208,7 +209,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         // Shared memory create a new with IPC_CREATE
         if (shm_id == -1) {
             if (!FLAGS_quiet) {
-                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "could not launch " << server_name_string << ", as ";
                 std::cout << "error in shmget()" << std::endl;
             }
             if (monitor_output) {
@@ -220,7 +221,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         auto *shm_data = shmat(shm_id, nullptr, 0);
         if (reinterpret_cast<std::uintptr_t>(shm_data) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
             if (!FLAGS_quiet) {
-                std::cout << "could not launch tsurugidb, as ";
+                std::cout << "could not launch " << server_name_string << ", as ";
                 std::cout << "error in shmat()" << std::endl;
             }
             if (monitor_output) {
@@ -297,14 +298,20 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             continue;
                         }
                     }
-                    if (file_mutex->check() == proc_mutex::lock_state::locked) {
-                        pid_in_file_mutex = file_mutex->pid();
-                        if (pid_in_file_mutex == 0) {
-                            continue;
+                    if (file_mutex->check() != proc_mutex::lock_state::no_file) {
+                        pid_in_file_mutex = file_mutex->pid(false);
+                        if (pid_in_file_mutex != 0) {
+                            if (child_pid == pid_in_file_mutex) {
+                                check_result = ok;
+                                chkn = i;
+                                break;
+                            }
+                            if (auto krv = kill(pid_in_file_mutex, 0); krv == 0) {  // the process (pid_in_file_mutex) is alive
+                                check_result = another;
+                                chkn = i;
+                                break;
+                            }
                         }
-                        check_result = (child_pid == pid_in_file_mutex) ? ok : another;
-                        chkn = i;
-                        break;
                     }
                     usleep(sleep_time_unit_regular * 1000);
                 }
@@ -330,24 +337,33 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 continue;
                             }
                             // observed that pid has been stored in the status_info
-                            if (child_pid == pid_in_status_info) {  // case in which 'tgctl start' command terminates successfully
-                                if (monitor_output) {
-                                    monitor_output->finish(true);
-                                }
-                                // wait for the server running when boot mode is maintenance_server (work around)
-                                if (mode == tateyama::framework::boot_mode::maintenance_server) {
-                                    while (status_info->whole() != tateyama::status_info::state::activated) {
-                                        usleep(sleep_time_unit_regular * 1000);
+                            if (child_pid == pid_in_status_info) {  // case in which 'tsurugi db is booting up
+                                switch (status_info->whole()) {
+                                case tateyama::status_info::state::activated:
+                                    if (monitor_output) {
+                                        monitor_output->finish(true);
                                     }
+                                    if (!FLAGS_quiet) {
+                                        std::cout << "successfully launched " << server_name_string << std::endl;
+                                    }
+                                    return tgctl::return_code::ok;
+                                case tateyama::status_info::state::deactivated:
+                                    if (monitor_output) {
+                                        monitor_output->finish(false);
+                                    }
+                                    if (!FLAGS_quiet) {
+                                        std::cout << "could not launch " << server_name_string << ", as ";
+                                        std::cout << server_name_string << " exited due to some error." << std::endl;
+                                    }
+                                    return tgctl::return_code::err;
+                                default:
+                                    usleep(sleep_time_unit_regular * 1000);
+                                    continue;
                                 }
-                                if (!FLAGS_quiet) {
-                                    std::cout << "successfully launched tsurugidb" << std::endl;
-                                }
-                                return tgctl::return_code::ok;
                             }
                             // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
                             if (!FLAGS_quiet) {
-                                std::cout << "failed to confirm tsurugidb launch within the specified time, as ";
+                                std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, as ";
                                 std::cout << "the pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
                             }
                             rtnv = tgctl::return_code::err;
@@ -357,7 +373,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     }
                     if (!checked_status_info) {
                         if (!FLAGS_quiet) {
-                            std::cout << "failed to confirm tsurugidb launch within the specified time" << std::endl;
+                            std::cout << "could not launch " << server_name_string << " within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, launch is still in progres" << std::endl;
                         }
                         rtnv = tgctl::return_code::err;
                     }
@@ -365,19 +381,16 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     if (!FLAGS_quiet) {
                         std::cout << server_name_string << " is already running" << std::endl;
                     }
-                    if (auto krv = kill(pid_in_file_mutex, 0); krv != 0) {  // the process (pid_in_file_mutex) is not alive
-                        rtnv = tgctl::return_code::err;
-                    }
                     // does not change the return code when the process is alive
-                } else {  // case in which check_result == init
+                } else {  // case in which check_result == init, meaning status check error
                     if (!FLAGS_quiet) {
-                        std::cout << "failed to confirm tsurugidb launch within the specified time" << std::endl;
+                        std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
                     }
                     rtnv = tgctl::return_code::err;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
                 if (!FLAGS_quiet) {
-                    std::cout << "could not launch tsurugidb, as ";
+                    std::cout << "could not launch " << server_name_string << ", as ";
                     std::cout << "cannot find the configuration file" << std::endl;
                 }
                 rtnv = tgctl::return_code::err;
@@ -387,7 +400,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         }
     } else {
         if (!FLAGS_quiet) {
-            std::cout << "could not launch tsurugidb, as ";
+            std::cout << "could not launch " << server_name_string << ", as ";
             std::cout << "cannot find any valid configuration file" << std::endl;
         }
         rtnv = tgctl::return_code::err;
@@ -406,12 +419,12 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
     if (pid != 0) {
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
+        int sleep_time_unit = sleep_time_unit_regular;
         if (FLAGS_timeout > 0) {
-            check_count = (1000L * FLAGS_timeout) / sleep_time_unit_regular;  // in mS
+            check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in mS
         } else if(FLAGS_timeout == 0) {
             check_count = INT64_MAX;  // practically infinite time
         }
-        int sleep_time_unit = sleep_time_unit_regular;
         for (size_t i = 0; i < check_count; i++) {
             switch(status_check_internal()) {
             case status_check_result::not_locked:
@@ -421,7 +434,7 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
                 status_info->apply_shm_entry(tateyama::common::wire::session_wire_container::remove_shm_entry);
                 status_info->force_delete();
                 if (!FLAGS_quiet) {
-                    std::cout << "successfully killed tsurugidb" << std::endl;
+                    std::cout << "successfully killed " << server_name_string << std::endl;
                 }
                 return rtnv;
             }
@@ -431,12 +444,12 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
             usleep(sleep_time_unit * 1000);
         }
         if (!FLAGS_quiet) {
-            std::cout << "failed to confirm " << server_name_string << " termination within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds" << std::endl;
+            std::cout << "could not kill " << server_name_string << " within " << (sleep_time_unit * check_count) / 1000 << " seconds, kill is still in progress" << std::endl;
         }
         return tgctl::return_code::err;
     }
     if (!FLAGS_quiet) {
-            std::cerr << " could not kill " << server_name_string << ", as contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
+        std::cerr << "could not kill " << server_name_string << ", as contents of the file (" << file_mutex->name() << ") cannot be used" << std::endl;
     }
     return tgctl::return_code::err;
 }
@@ -455,14 +468,13 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     usleep(sleep_time_unit_mutex * 1000);
 
     std::size_t check_count = check_count_shutdown;
-    std::size_t sleep_time_unit = sleep_time_unit_shutdown;
-    size_t timeout = 1000L * check_count * sleep_time_unit;  // in uS
+    int sleep_time_unit = sleep_time_unit_shutdown;
     if (FLAGS_timeout > 0) {
-        timeout = 1000000L * FLAGS_timeout;  // in uS
+        check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in uS
     } else if(FLAGS_timeout == 0) {
-        timeout = INT64_MAX;  // practically infinite time
+        check_count = INT64_MAX;  // practically infinite time
     }
-    for (size_t i = 0; i < timeout; i += sleep_time_unit * 1000) {
+    for (size_t i = 0; i < check_count; i++) {
         if (file_mutex->check() == proc_mutex::lock_state::no_file) {
             if (dot) {
                 std::cout << std::endl;
@@ -480,7 +492,7 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
         std::cout << std::endl;
     }
     if (!FLAGS_quiet) {
-        std::cout << "failed to confirm " << server_name_string << " termination within " << (sleep_time_unit * check_count) / 1000 << " seconds" << std::endl;
+        std::cout << "could not shutdown " << server_name_string << " within " << (sleep_time_unit * check_count) / 1000 << " seconds, shutdown is still in progress" << std::endl;
     }
     return tgctl::return_code::err;
 }
@@ -504,7 +516,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                     state == status_check_result::deactivated) {
                     if (!FLAGS_quiet) {
                         std::cout << (force ? "kill " : "shutdown ") << "was not performed, as ";
-                        std::cout << "was not performed, as no tsurugidb was running" << std::endl;
+                        std::cout << "was not performed, as no " << server_name_string << " was running" << std::endl;
                     }
                     if (monitor_output) {
                         monitor_output->finish(true);
@@ -541,7 +553,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
             } catch (std::runtime_error &e) {
                 if (!FLAGS_quiet) {
                     if (std::string("the lock file does not exist") == e.what()) {
-                        std::cout << (force ? "kill" : "shutdown") << " was not performed, as no tsurugidb was running" << std::endl;
+                        std::cout << (force ? "kill" : "shutdown") << " was not performed, as no " << server_name_string << " was running" << std::endl;
                     } else {
                         std::cout << (force ? "kill" : "shutdown") << " was not performed, as ";
                         std::cout << e.what() << std::endl;
@@ -607,7 +619,7 @@ tgctl::return_code tgctl_status() {
             monitor_output->status(monitor::status::deactivating);
             break;
         }
-        std::cout << server_name_string_for_status << " is  SHUTTING_DOWN" << std::endl;
+        std::cout << server_name_string_for_status << " is SHUTTING_DOWN" << std::endl;
         break;
     case status_check_result::deactivated:
         if (monitor_output) {
