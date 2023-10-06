@@ -20,6 +20,8 @@
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
+#include <stdexcept>
+
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
 
@@ -194,7 +196,10 @@ int backend_main(int argc, char **argv) {
               << "pid_directory: " << mutex_file.parent_path().string() << ", "
               << "location of pid file.";
     auto mutex = std::make_unique<process::proc_mutex>(mutex_file);
-    if (!mutex->lock()) {
+    try {
+        mutex->lock();
+    } catch (std::runtime_error& e) {
+        LOG(ERROR) << e.what() << " on " << mutex_file.string();
         exit(1);
     }
 
