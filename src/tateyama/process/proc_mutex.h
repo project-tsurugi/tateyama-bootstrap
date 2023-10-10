@@ -51,26 +51,23 @@ class proc_mutex {
     proc_mutex(proc_mutex&& other) noexcept = delete;
     proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
 
-    [[nodiscard]] bool lock() {
+    void lock() {
         if (create_file_) {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {  // NOLINT
-                perror("open");
-                exit(-1);
+                throw std::runtime_error("open error");
             }
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             if (ftruncate(fd_, 0) < 0) {
-                perror("ftruncate");
-                exit(-1);
+                throw std::runtime_error("ftruncate error");
             }
             std::string pid = std::to_string(getpid());
             if (write(fd_, pid.data(), pid.length()) < 0) {
-                perror("write");
-                exit(-1);
+                throw std::runtime_error("write error");
             }
-            return true;
+            return;
         }
-        return false;
+        throw std::runtime_error("lock error");
     }
     void unlock() const {
         flock(fd_, LOCK_UN);
@@ -99,7 +96,11 @@ class proc_mutex {
     [[nodiscard]] int pid(bool do_check = true) {
         std::string str;
         if (contents(str, do_check)) {
-            return stoi(str);
+            try {
+                return stoi(str);
+            } catch (std::invalid_argument& e) {
+                return 0;
+            }
         }
         return 0;
     }
