@@ -306,7 +306,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         chkn = i;
                         break;
                     }
-                    usleep(sleep_time_unit_regular * 5 * 1000);
+                    usleep(sleep_time_unit_regular * 1000);
                 }
                 if (check_result == ok) {  // case in which child_pid matches the pid recorded in file_mutex
                     auto status_info = std::make_unique<server::status_info_bridge>();
