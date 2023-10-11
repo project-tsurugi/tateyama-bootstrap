@@ -37,6 +37,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "worker_suspend_timeout=1000000\n"
         "commit_response=STORED\n"
         "dev_update_skips_deletion=false\n"
+        "dev_profile_commits=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
