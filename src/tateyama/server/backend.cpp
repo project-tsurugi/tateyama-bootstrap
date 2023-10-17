@@ -137,6 +137,16 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
         }
     }
 
+    // logbuflevel
+    if (auto logbuflevel_env = getenv("GLOG_logbuflevel"); logbuflevel_env) {
+        FLAGS_logbuflevel = static_cast<::google::int32>(strtol(logbuflevel_env, nullptr, 10));
+    } else {
+        auto logbuflevel = glog_section->get<int>("logbuflevel");
+        if (logbuflevel) {
+            FLAGS_logbuflevel = logbuflevel.value();
+        }
+    }
+
     google::InitGoogleLogging("tsurugidb");
     google::InstallFailureSignalHandler();
 
@@ -160,6 +170,9 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
     LOG(INFO) << glog_config_prefix
               << "v: " << FLAGS_v << ", "
               << "v for glog.";
+    LOG(INFO) << glog_config_prefix
+              << "logbuflevel: " << FLAGS_logbuflevel << ", "
+              << "logbuflevel for glog.";
 }
 
 int backend_main(int argc, char **argv) {
