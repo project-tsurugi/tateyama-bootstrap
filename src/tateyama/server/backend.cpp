@@ -76,6 +76,8 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
+framework::server* tgsvptr{};  // NOLINT
+
 void setup_glog(tateyama::api::configuration::section *glog_section) {
     // logtostderr
     if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env) {
@@ -235,6 +237,7 @@ int backend_main(int argc, char **argv) {
         mode = framework::boot_mode::database_server;
     }
     framework::server tgsv{mode, conf};
+    tgsvptr = &tgsv;
     framework::add_core_components(tgsv);
     tgsv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
