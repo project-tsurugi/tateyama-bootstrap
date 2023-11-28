@@ -55,7 +55,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "recover_max_parallelism=8\n"
 
     "[cc]\n"
-        "epoch_duration=40000\n"
+        "epoch_duration=3000\n"
         "waiting_resolver_threads=2\n"
 
     "[system]\n"
