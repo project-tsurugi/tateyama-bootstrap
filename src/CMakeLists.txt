@@ -20,6 +20,7 @@ set_target_properties(server
         )
 
 target_include_directories(server
+        PRIVATE ${CMAKE_BINARY_DIR}/src
         PRIVATE .
         )
 
@@ -65,6 +66,10 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/common.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/transaction.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/data.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/diagnostics.proto
         )
 
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.

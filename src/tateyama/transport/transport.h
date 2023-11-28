@@ -30,7 +30,10 @@
 
 namespace tateyama::bootstrap::wire {
 
-constexpr static std::size_t MESSAGE_VERSION = 1;
+constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
+constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
+constexpr static std::size_t DATASTORE_MESSAGE_VERSION_MAJOR = 0;
+constexpr static std::size_t DATASTORE_MESSAGE_VERSION_MINOR = 0;
 
 class transport {
 public:
@@ -38,7 +41,8 @@ public:
 
     transport(std::string_view name, std::string_view digest, tateyama::framework::component::id_type type) :
         wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(name).connect())) {
-        header_.set_message_version(MESSAGE_VERSION);
+        header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(type);
         status_info_ = std::make_unique<server::status_info_bridge>(std::string(digest));
     }
@@ -51,7 +55,8 @@ public:
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
-        request.set_message_version(MESSAGE_VERSION);
+        request.set_service_message_version_major(DATASTORE_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(DATASTORE_MESSAGE_VERSION_MINOR);
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
