@@ -395,8 +395,8 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     } else {
                         if (!FLAGS_quiet) {
                             std::cout << "could not launch " << server_name_string << " within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, launch is still in progres" << std::endl;
-                            rtnv = tgctl::return_code::err;
                         }
+                        rtnv = tgctl::return_code::err;
                     }
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
