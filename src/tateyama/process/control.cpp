@@ -349,7 +349,6 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     return tgctl::return_code::ok;
 
                                 case status_check_result::not_locked:
-                                case status_check_result::initial:
                                     if (monitor_output) {
                                         monitor_output->finish(false);
                                     }
@@ -360,6 +359,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     return tgctl::return_code::err;
 
                                 case status_check_result::no_file:
+                                case status_check_result::initial:
                                     usleep(sleep_time_unit_regular * 1000);
                                     continue;
 
