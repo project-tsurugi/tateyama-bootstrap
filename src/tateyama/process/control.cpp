@@ -60,17 +60,17 @@ const std::size_t sleep_time_unit_mutex = 50;
 
 enum status_check_result {
     undefined = 0,
-    error_in_conf_file_name,
-    error_in_create_conf,
-    no_file,
-    not_locked,
-    initial,
-    ready,
-    activated,
-    deactivating,
-    deactivated,
-    status_check_count_over,
-    error_in_file_mutex_check
+    error_in_conf_file_name,     // bst_conf is not valid
+    error_in_create_conf,        // bst_conf.get_configuration() returns nullptr
+    no_file,                     // mutex file: x
+    not_locked,                  // mutex file: o, mutex file lock: x
+    initial,                     // mutex file: o, mutex file lock: o, status info: initial
+    ready,                       // mutex file: o, mutex file lock: o, status info: ready
+    activated,                   // mutex file: o, mutex file lock: o, status info: activated (no longer used)
+    deactivating,                // mutex file: o, mutex file lock: o, status info: deactivating
+    deactivated,                 // mutex file: o, mutex file lock: o, status info: deactivated
+    status_check_count_over,     // mutex file: o, mutex file lock: o, status info check has resulted in time over
+    error_in_file_mutex_check    // mutex file: o, mutex file lock: ?
 };
 
 static status_check_result status_check_internal(tateyama::configuration::bootstrap_configuration& bst_conf) {
@@ -318,18 +318,17 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                 if (check_result == ok) {  // case in which child_pid matches the pid recorded in file_mutex
                     auto status_info = std::make_unique<server::status_info_bridge>();
                     // wait for creation of shared memory for status info
-                    bool checked_status_info = false;
+                    bool status_info_ready = false;
                     for (size_t i = chkn; i < check_count; i++) {
                         if (status_info->attach(bst_conf.digest())) {
                             chkn = i;
-                            checked_status_info = true;
+                            status_info_ready = true;
                             break;
                         }
                         usleep(sleep_time_unit_regular * 1000);
                     }
-                    if (checked_status_info) {
+                    if (status_info_ready) {
                         // wait until pid is stored in the status_info
-                        checked_status_info = false;
                         for (size_t i = chkn; i < check_count; i++) {
                             auto pid_in_status_info = status_info->pid();
                             if (pid_in_status_info == 0) {
@@ -338,8 +337,9 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             }
                             // observed that pid has been stored in the status_info
                             if (child_pid == pid_in_status_info) {  // case in which 'tsurugi db is booting up
-                                switch (status_info->whole()) {
-                                case tateyama::status_info::state::activated:
+                                switch (status_check_internal(bst_conf)) {
+                                case status_check_result::ready:
+                                case status_check_result::activated:
                                     if (monitor_output) {
                                         monitor_output->finish(true);
                                     }
@@ -347,7 +347,9 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                         std::cout << "successfully launched " << server_name_string << std::endl;
                                     }
                                     return tgctl::return_code::ok;
-                                case tateyama::status_info::state::deactivated:
+
+                                case status_check_result::not_locked:
+                                case status_check_result::initial:
                                     if (monitor_output) {
                                         monitor_output->finish(false);
                                     }
@@ -356,26 +358,45 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                         std::cout << server_name_string << " exited due to some error." << std::endl;
                                     }
                                     return tgctl::return_code::err;
-                                default:
+
+                                case status_check_result::no_file:
                                     usleep(sleep_time_unit_regular * 1000);
                                     continue;
+
+                                case status_check_result::deactivating:
+                                case status_check_result::deactivated:
+                                    if (!FLAGS_quiet) {
+                                        std::cout << "shutdown procedure for " << server_name_string << " is taking place now";
+                                    }
+                                    rtnv = tgctl::return_code::err;
+                                    break;
+
+                                case status_check_result::undefined:
+                                case status_check_result::error_in_conf_file_name:
+                                case status_check_result::error_in_create_conf:
+                                case status_check_result::status_check_count_over:
+                                case status_check_result::error_in_file_mutex_check:
+                                    if (!FLAGS_quiet) {
+                                        std::cout << "error ino confirming " << server_name_string << " launch, because the status information is inconsistent";
+                                    }
+                                    rtnv = tgctl::return_code::err;
+                                    break;
                                 }
+                            } else {
+                                // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
+                                if (!FLAGS_quiet) {
+                                    std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, as ";
+                                    std::cout << "the pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
+                                }
+                                rtnv = tgctl::return_code::err;
                             }
-                            // case in which child_pid (== pid_in_file_mutex) != pid_in_status_info, which must be some serious error
-                            if (!FLAGS_quiet) {
-                                std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, as ";
-                                std::cout << "the pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match" << std::endl;
-                            }
-                            rtnv = tgctl::return_code::err;
-                            checked_status_info = true;
                             break;
                         }
-                    }
-                    if (!checked_status_info) {
+                    } else {
                         if (!FLAGS_quiet) {
                             std::cout << "could not launch " << server_name_string << " within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, launch is still in progres" << std::endl;
+                            rtnv = tgctl::return_code::err;
                         }
-                        rtnv = tgctl::return_code::err;
                     }
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
