@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 Project Tsurugi.
+ * Copyright 2018-2023 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ class message_header {
 public:
     using length_type = std::uint32_t;
     using index_type = std::uint16_t;
-    static constexpr index_type not_use = 0xffff;
+    static constexpr index_type termination_request = 0xffff;
 
     static constexpr std::size_t size = sizeof(length_type) + sizeof(index_type);
 
@@ -360,6 +360,12 @@ static constexpr std::int64_t MAX_TIMEOUT = 10L * 365L * 24L * 3600L * 1000L * 1
 inline static std::int64_t u_cap(std::int64_t timeout) {
     return (timeout > MAX_TIMEOUT) ? MAX_TIMEOUT : timeout;
 }
+inline static std::int64_t u_round(std::int64_t timeout) {
+    if (timeout == 0) {
+        return timeout;
+    }
+    return (((timeout-500)/1000)+1) * 1000;
+}
 inline static std::int64_t n_cap(std::int64_t timeout) {
     return (timeout > (MAX_TIMEOUT * 1000)) ? (MAX_TIMEOUT * 1000) : timeout;
 }
@@ -374,22 +380,48 @@ public:
      */
     message_header peep(const char* base, bool wait_flag = false) {
         while (true) {
-            if(stored() >= message_header::size) {
+            if(stored() >= message_header::size || termination_requested_.load()) {
                 break;
             }
             if (wait_flag) {
                 boost::interprocess::scoped_lock lock(m_mutex_);
                 wait_for_read_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
-                c_empty_.wait(lock, [this](){ return stored() >= message_header::size; });
+                c_empty_.wait(lock, [this](){ return (stored() >= message_header::size) || termination_requested_.load(); });
                 wait_for_read_ = false;
             } else {
                 if (stored() < message_header::size) { return {}; }
             }
         }
-        copy_header(base);
+        if (!termination_requested_.load()) {
+            copy_header(base);
+        } else {
+            header_received_ = message_header(message_header::termination_request, 0);
+        }
         return header_received_;
     }
+
+    /**
+     * @brief wake up the worker thread waiting for request arrival, supposed to be used in server termination.
+     */
+    void terminate() {
+        termination_requested_.store(true);
+        std::atomic_thread_fence(std::memory_order_acq_rel);
+        if (wait_for_read_) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            c_empty_.notify_one();
+        }
+    }
+    /**
+     * @brief check if an termination request has been made
+     * @retrun true if terminate request has been made
+     */
+    [[nodiscard]] bool terminate_requested() {
+        return termination_requested_.load();
+    }
+
+private:
+    std::atomic_bool termination_requested_{};
 };
 
 
@@ -420,7 +452,7 @@ public:
                 wait_for_read_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
 
-                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(timeout)), [this](){ return (stored() >= response_header::size) || closed_.load(); })) {
+                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))), [this](){ return (stored() >= response_header::size) || closed_.load(); })) {
                     wait_for_read_ = false;
                     throw std::runtime_error("response has not been received within the specified time");
                 }
@@ -465,6 +497,7 @@ private:
 
 // for resultset
 class unidirectional_simple_wires {
+    constexpr static std::size_t watch_interval = 5;
 public:
 
     class unidirectional_simple_wire : public simple_wire<length_header> {
@@ -595,6 +628,9 @@ public:
         }
 
         void write(char* base, const char* from, std::size_t length) {
+            if (length > room()) {
+                wait_to_resultset_write(length);
+            }
             write_in_buffer(base, buffer_address(base, pushed_.load()), from, length);
             pushed_.fetch_add(length);
         }
@@ -716,6 +752,10 @@ public:
      *  used by clinet
      */
     unidirectional_simple_wire* active_wire(std::int64_t timeout = 0) {
+        if (timeout == 0) {
+            timeout = watch_interval * 1000 * 1000;
+        }
+
         do {
             for (auto&& wire: unidirectional_simple_wires_) {
                 if(wire.has_record()) {
@@ -727,35 +767,23 @@ public:
                 wait_for_record_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
                 unidirectional_simple_wire* active_wire = nullptr;
-                if (timeout <= 0) {
-                    c_record_.wait(lock,
-                                   [this, &active_wire](){
-                                       for (auto&& wire: unidirectional_simple_wires_) {
-                                           if (wire.has_record()) {
-                                               active_wire = &wire;
-                                               return true;
-                                           }
-                                       }
-                                       return is_eor();
-                                   });
-                } else {
-                    if (!c_record_.timed_wait(lock,
+                if (!c_record_.timed_wait(lock,
 #ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
-                                              boost::get_system_time() + boost::posix_time::nanoseconds(n_cap(timeout)),
+                                          boost::get_system_time() + boost::posix_time::nanoseconds(n_cap(timeout)),
 #else
-                                              boost::get_system_time() + boost::posix_time::microseconds(u_cap(((timeout-500)/1000)+1)),
+                                          boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))),
 #endif
-                                              [this, &active_wire](){
-                                                  for (auto&& wire: unidirectional_simple_wires_) {
-                                                      if (wire.has_record()) {
-                                                          active_wire = &wire;
-                                                          return true;
-                                                      }
+                                          [this, &active_wire](){
+                                              for (auto&& wire: unidirectional_simple_wires_) {
+                                                  if (wire.has_record()) {
+                                                      active_wire = &wire;
+                                                      return true;
                                                   }
-                                                  return is_eor();
-                                              })) {
-                        throw std::runtime_error("record has not been received within the specified time");
-                    }
+                                              }
+                                              return is_eor();
+                                          })) {
+                    wait_for_record_ = false;
+                    throw std::runtime_error("record has not been received within the specified time");
                 }
                 wait_for_record_ = false;
                 if (active_wire != nullptr) {
@@ -936,6 +964,11 @@ public:
         void notify() {
             condition_.notify_one();
         }
+
+        // for diagnostic
+        [[nodiscard]] std::size_t size() const {
+            return pushed_.load() - poped_.load();
+        }
     private:
         boost::interprocess::vector<std::size_t, long_allocator> queue_;
         std::size_t capacity_;
@@ -980,7 +1013,7 @@ public:
 #ifdef BOOST_DATE_TIME_HAS_NANOSECONDS
                                         boost::get_system_time() + boost::posix_time::nanoseconds(n_cap(timeout)),
 #else
-                                        boost::get_system_time() + boost::posix_time::microseconds(u_cap(((timeout-500)/1000)+1)),
+                                        boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))),
 #endif
                                         [this](){ return (session_id_ != 0); })) {
                     throw std::runtime_error("connection response has not been accepted within the specified time");
@@ -1056,6 +1089,14 @@ public:
     }
     bool is_terminated() noexcept { return terminate_; }
     void confirm_terminated() { s_terminated_.post(); }
+
+    // for diagnostic
+    [[nodiscard]] std::size_t pending_requests() const {
+        return q_requested_.size();
+    }
+    [[nodiscard]] std::size_t session_id_accepted() const {
+        return session_id_;
+    }
 
 private:
     index_queue q_free_;
