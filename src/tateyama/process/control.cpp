@@ -46,8 +46,10 @@ DECLARE_bool(tpch);  // NOLINT
 
 namespace tateyama::process {
 
+constexpr static int data_size = sizeof(pid_t);
 constexpr std::string_view server_name_string = "tsurugidb";
 constexpr std::string_view server_name_string_for_status = "Tsurugi OLTP database";
+constexpr std::string_view undertaker_name_string = "tgundertaker";
 const std::size_t sleep_time_unit_regular = 20;
 const std::size_t sleep_time_unit_shutdown = 1000;
 const std::size_t check_count_startup = 500;   // 10S
@@ -203,6 +205,32 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             return tgctl::return_code::ok;
         }
 
+        int shm_id = shmget(IPC_PRIVATE, data_size, IPC_CREAT|0666);  // NOLINT
+        // Shared memory create a new with IPC_CREATE
+        if (shm_id == -1) {
+            if (!FLAGS_quiet) {
+                std::cout << "could not launch " << server_name_string << ", as ";
+                std::cout << "error in shmget()" << std::endl;
+            }
+            if (monitor_output) {
+                monitor_output->finish(false);
+            }
+            return tgctl::return_code::err;
+        }
+        // Shared memory attach and convert char address
+        auto *shm_data = shmat(shm_id, nullptr, 0);
+        if (reinterpret_cast<std::uintptr_t>(shm_data) == static_cast<std::uintptr_t>(-1)) {  // NOLINT
+            if (!FLAGS_quiet) {
+                std::cout << "could not launch " << server_name_string << ", as ";
+                std::cout << "error in shmat()" << std::endl;
+            }
+            if (monitor_output) {
+                monitor_output->finish(false);
+            }
+            return tgctl::return_code::err;
+        }
+        *static_cast<pid_t*>(shm_data) = 0;
+
         boost::filesystem::path base_path{};
         try {
             base_path = get_base_path(argv0);
@@ -211,13 +239,36 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             return tgctl::return_code::err;
         }
 
-        std::string server_name(server_name_string);
-        auto exec = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
-        std::vector<std::string> args{};
-        build_args(args, mode);
-        boost::process::child cld(exec, boost::process::args (args));
-        pid_t child_pid = cld.id();
-        cld.detach();
+        if (fork() == 0) {
+            std::string server_name(server_name_string);
+            auto exec = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
+            std::vector<std::string> args{};
+            build_args(args, mode);
+            boost::process::child cld(exec, boost::process::args (args));
+            pid_t child_pid = cld.id();
+            *static_cast<pid_t*>(shm_data) = child_pid;
+            cld.detach();
+
+            std::string undertaker_name(undertaker_name_string);
+            auto undertaker = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(undertaker_name);
+            execl(undertaker.string().c_str(), undertaker.string().c_str(), std::to_string(child_pid).c_str(), nullptr);  // NOLINT
+            exit(-1);  // should not reach here
+        }
+
+        pid_t child_pid{};
+        do {
+            usleep(sleep_time_unit_regular * 1000);
+            child_pid = *static_cast<pid_t*>(shm_data);
+        } while (child_pid == 0);
+
+        // Detach shred memory
+        if (shmdt(shm_data) == -1) {
+            std::cerr << "error in shmdt()" << std::endl;
+        }
+        // Remove shred memory
+        if (shmctl(shm_id, IPC_RMID, nullptr)==-1) {
+            std::cerr << "error in shctl()" << std::endl;
+        }
 
         rtnv = tgctl::return_code::ok;
         if (need_check) {

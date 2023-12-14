@@ -129,3 +129,32 @@ target_link_libraries(tgctl
 set_compile_options(tgctl)
 
 install_custom(tgctl ${export_name})
+
+
+#############
+# undertaker
+#############
+file(GLOB UNDERTAKER_SOURCES
+        "tateyama/undertaker/*.cpp"
+        )
+
+add_executable(undertaker
+        ${UNDERTAKER_SOURCES}
+        )
+
+set_target_properties(undertaker
+        PROPERTIES
+        RUNTIME_OUTPUT_NAME "tgundertaker"
+        )
+
+target_include_directories(undertaker
+        PRIVATE .
+        )
+
+target_link_libraries(undertaker
+        PRIVATE api
+        )
+
+set_compile_options(undertaker)
+
+install_libexec(undertaker ${export_name})
