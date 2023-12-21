@@ -61,9 +61,14 @@ install_libexec(server ${export_name})
 # tgctl
 #############
 set(ProtoFiles
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/common.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/common.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/endpoint/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/endpoint/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/response.proto
