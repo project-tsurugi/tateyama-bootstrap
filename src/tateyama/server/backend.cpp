@@ -76,7 +76,9 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
-void setup_glog(tateyama::api::configuration::section *glog_section) {
+void setup_glog(tateyama::api::configuration::whole* conf) {
+    auto* glog_section = conf->get_section("glog");
+
     // logtostderr
     if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env) {
         FLAGS_logtostderr = true;
@@ -149,6 +151,7 @@ void setup_glog(tateyama::api::configuration::section *glog_section) {
 
     google::InitGoogleLogging("tsurugidb");
     google::InstallFailureSignalHandler();
+    conf->show_vlog_info_message();
 
     // output configuration to be used
     LOG(INFO) << glog_config_prefix
@@ -191,7 +194,7 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "error in create_configuration";
         exit(1);
     }
-    setup_glog(conf->get_section("glog"));
+    setup_glog(conf.get());
     try {
         std::ostringstream oss;
         boost::property_tree::json_parser::write_json(oss, conf->get_ptree());
