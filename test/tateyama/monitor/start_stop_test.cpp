@@ -100,11 +100,11 @@ TEST_F(start_stop_test, start_twice) {  // issue_109
     command += " --monitor ";
     command += helper_->abs_path("test/start_twice.log");
     std::cout << command << std::endl;
-    EXPECT_EQ(system(command.c_str()), 0);
+    EXPECT_NE(system(command.c_str()), 0);
     EXPECT_TRUE(validate_json(helper_->abs_path("test/start_twice.log")));
     
     FILE *fp;
-    command = "grep success ";
+    command = "grep fail ";
     command += helper_->abs_path("test/start_twice.log");
     command += " | wc -l";
     std::cout << command << std::endl;
