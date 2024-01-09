@@ -316,7 +316,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::deactivated:
                                     if (!FLAGS_quiet) {
                                         std::cout << "could not launch " << server_name_string << ", as "
-                                                  << "shutdown procedure for " << server_name_string << " is taking place now";
+                                                  << "shutdown procedure for " << server_name_string << " is taking place now" << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
                                     break;
@@ -328,7 +328,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::error_in_file_mutex_check:
                                     if (!FLAGS_quiet) {
                                         std::cout << "failed to confirm " << server_name_string
-                                                  << " launch within the specified time, because the status information is inconsistent";
+                                                  << " launch within the specified time, because the status information is inconsistent" << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
                                     break;
