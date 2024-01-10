@@ -256,7 +256,7 @@ int backend_main(int argc, char **argv) {
     auto status_info = tgsv.find_resource<tateyama::status_info::resource::bridge>();
 
     if (!tgsv.setup()) {
-        status_info->whole(tateyama::status_info::state::deactivated);
+        status_info->whole(tateyama::status_info::state::boot_error);
         // detailed message must have been logged in the components where setup error occurs
         LOG(ERROR) << "Starting server failed due to errors in setting up server application framework.";
         exit(1);
@@ -273,7 +273,7 @@ int backend_main(int argc, char **argv) {
     status_info->whole(tateyama::status_info::state::ready);
 
     if (!tgsv.start()) {
-        status_info->whole(tateyama::status_info::state::deactivated);
+        status_info->whole(tateyama::status_info::state::boot_error);
         // detailed message must have been logged in the components where start error occurs
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
         exit(1);

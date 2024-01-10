@@ -27,6 +27,7 @@ enum class status : std::int64_t {
     activated = 2,
     deactivating = 3,
     deactivated = 4,
+    boot_error = 10,
 
     unknown = -1,
 };
@@ -44,6 +45,7 @@ enum class status : std::int64_t {
     case status::activated: return "running"sv;
     case status::deactivating: return "shutdown"sv;
     case status::deactivated: return "shutdown"sv;
+    case status::boot_error: return "boot_error"sv;
     case status::unknown: return "disconnected"sv;
     }
     std::abort();
