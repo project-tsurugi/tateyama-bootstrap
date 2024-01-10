@@ -67,7 +67,8 @@ enum status_check_result {
     activated,                   // mutex file: o, mutex file lock: o, status info: activated (no longer used)
     deactivating,                // mutex file: o, mutex file lock: o, status info: deactivating
     deactivated,                 // mutex file: o, mutex file lock: o, status info: deactivated
-    status_check_count_over,     // mutex file: o, mutex file lock: o, status info check has resulted in time over
+    boot_error,                  // mutex file: o, mutex file lock: o, status info: boot_error
+    status_check_count_over,     // mutex file: o, mutex file lock: o, status info: check has resulted in time over
     error_in_file_mutex_check    // mutex file: o, mutex file lock: ?
 };
 
@@ -103,6 +104,8 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
                     return status_check_result::deactivating;
                 case tateyama::status_info::state::deactivated:
                     return status_check_result::deactivated;
+                case tateyama::status_info::state::boot_error:
+                    return status_check_result::boot_error;
                 }
             } catch (std::exception& e) {
                 if (i < (check_count_status - 1)) {
@@ -298,6 +301,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     return tgctl::return_code::ok;
 
                                 case status_check_result::not_locked:
+                                case status_check_result::boot_error:
                                     if (monitor_output) {
                                         monitor_output->finish(false);
                                     }
@@ -316,7 +320,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::deactivated:
                                     if (!FLAGS_quiet) {
                                         std::cout << "could not launch " << server_name_string << ", as "
-                                                  << "shutdown procedure for " << server_name_string << " is taking place now";
+                                                  << "shutdown procedure for " << server_name_string << " is taking place now" << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
                                     break;
@@ -328,7 +332,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::error_in_file_mutex_check:
                                     if (!FLAGS_quiet) {
                                         std::cout << "failed to confirm " << server_name_string
-                                                  << " launch within the specified time, because the status information is inconsistent";
+                                                  << " launch within the specified time, because the status information is inconsistent" << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
                                     break;
