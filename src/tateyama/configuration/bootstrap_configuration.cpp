@@ -38,6 +38,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_update_skips_deletion=false\n"
         "dev_profile_commits=false\n"
         "dev_return_os_pages=false\n"
+        "dev_omit_task_when_idle=true\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
