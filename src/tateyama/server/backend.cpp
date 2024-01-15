@@ -47,6 +47,10 @@
 #include "server.h"
 #include "utils.h"
 #include "logging.h"
+#ifdef ALTIMETER
+#include <altimeter/logger.h>
+#include "tateyama/altimeter/altimeter_helper.h"
+#endif
 
 DEFINE_string(conf, "", "the configuration file");  // NOLINT
 DEFINE_string(location, "./db", "database location on file system");  // NOLINT
@@ -195,6 +199,10 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
     setup_glog(conf.get());
+#ifdef ALTIMETER
+    auto altimeter_object = std::make_unique<tateyama::altimeter::altimeter_helper>(conf.get());
+    altimeter_object->start();
+#endif
     try {
         std::ostringstream oss;
         boost::property_tree::json_parser::write_json(oss, conf->get_ptree());

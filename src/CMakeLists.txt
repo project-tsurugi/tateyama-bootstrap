@@ -9,6 +9,9 @@ file(GLOB SERVER_SOURCES
         "tateyama/server/*.cpp"
         "tateyama/configuration/*.cpp"
         )
+if (ENABLE_ALTIMETER)
+        set(SERVER_SOURCES ${SERVER_SOURCES} "tateyama/altimeter/altimeter_helper.cpp")
+endif ()
 
 add_executable(server
         ${SERVER_SOURCES}
@@ -43,7 +46,7 @@ target_link_libraries(server
 if (OGAWAYAMA)
     target_link_libraries(server
             PRIVATE ${ogawayama_bridge}
-            )
+    )
     target_compile_definitions(server PUBLIC OGAWAYAMA)
 endif()
 
@@ -51,6 +54,16 @@ if (ENABLE_JEMALLOC)
     target_link_libraries(server
             PRIVATE jemalloc::jemalloc)
 endif (ENABLE_JEMALLOC)
+
+if (ENABLE_ALTIMETER)
+    target_link_libraries(server
+        PUBLIC altimeter
+        PUBLIC Boost::container
+        PUBLIC fmt::fmt
+        PUBLIC Threads::Threads
+    )
+    target_compile_definitions(server PUBLIC ALTIMETER)
+endif()
 
 set_compile_options(server)
 
@@ -125,6 +138,13 @@ target_link_libraries(tgctl
         PRIVATE crypto
         PRIVATE rt
         )
+
+if (ENABLE_ALTIMETER)
+        target_include_directories(tgctl
+                PRIVATE altimeter
+        )
+        target_compile_definitions(tgctl PUBLIC ALTIMETER)
+endif()
 
 set_compile_options(tgctl)
 

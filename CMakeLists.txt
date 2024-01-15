@@ -32,6 +32,7 @@ option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
 option(OGAWAYAMA "activate ogawayama brigde" ON)
 option(ENABLE_JEMALLOC "use jemalloc instead of default malloc" OFF)
+option(ENABLE_ALTIMETER "enable altimeter logging" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
@@ -74,6 +75,16 @@ find_package(mpdecpp REQUIRED)
 if (ENABLE_JEMALLOC)
     find_package(jemalloc REQUIRED)
 endif (ENABLE_JEMALLOC)
+
+if (ENABLE_ALTIMETER)
+    find_package(altimeter REQUIRED)
+    find_package(Boost
+        COMPONENTS container
+        REQUIRED
+    )
+    find_package(fmt REQUIRED)
+    find_package(Threads REQUIRED)
+endif()
 
 if (BUILD_TESTS)
   add_subdirectory(third_party) # should be before enable_testing()
