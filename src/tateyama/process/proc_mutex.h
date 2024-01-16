@@ -40,7 +40,9 @@ class proc_mutex {
         }
     }
     ~proc_mutex() {
-        close(fd_);
+        if (fd_ != not_opened) {
+            close(fd_);
+        }
         if (create_file_) {
             unlink(lock_file_.generic_string().c_str());
         }
@@ -118,8 +120,9 @@ class proc_mutex {
     
 private:
     std::filesystem::path lock_file_;
-    int fd_{};
+    int fd_{not_opened};
     const bool create_file_;
+    static constexpr int not_opened = -1;
 
     [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
         if (do_check && check() != lock_state::locked) {
