@@ -90,6 +90,7 @@ int tgctl_main(const std::vector<std::string>& args) {
             std::cerr << "timeout option cannot be specified to restore subcommand" << std::endl;
         }
         FLAGS_timeout = 0;  // no timeout for 'tgctl restore xxx'
+        FLAGS_quiet = true;
         tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
 
         int rtnv{};
