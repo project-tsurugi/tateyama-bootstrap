@@ -24,7 +24,7 @@
 
 namespace tateyama::process {
 
-class proc_mutex {
+class file_mutex {
   public:
     enum class lock_state : std::int32_t {
         no_file = 0,
@@ -32,14 +32,13 @@ class proc_mutex {
         locked,
         error,
     };
-    
-    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
-        : lock_file_(std::move(lock_file)), create_file_(create_file) {
-        if (!create_file_ && throw_exception && !std::filesystem::exists(lock_file_)) {
+
+    file_mutex(std::filesystem::path lock_file, bool create_file) : lock_file_(std::move(lock_file)), create_file_(create_file) {
+        if (!create_file_ && !std::filesystem::exists(lock_file_)) {
             throw std::runtime_error("the lock file does not exist");
         }
     }
-    ~proc_mutex() {
+    ~file_mutex() {
         if (fd_ != not_opened) {
             close(fd_);
         }
@@ -48,10 +47,10 @@ class proc_mutex {
         }
     }
 
-    proc_mutex(proc_mutex const& other) = delete;
-    proc_mutex& operator=(proc_mutex const& other) = delete;
-    proc_mutex(proc_mutex&& other) noexcept = delete;
-    proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
+    file_mutex(file_mutex const& other) = delete;
+    file_mutex& operator=(file_mutex const& other) = delete;
+    file_mutex(file_mutex&& other) noexcept = delete;
+    file_mutex& operator=(file_mutex&& other) noexcept = delete;
 
     void lock() {
         if (create_file_) {
@@ -74,9 +73,6 @@ class proc_mutex {
     void unlock() const {
         flock(fd_, LOCK_UN);
     }
-    [[nodiscard]] inline std::string name() const {
-        return lock_file_.generic_string();
-    }
     [[nodiscard]] lock_state check() {
         std::error_code error;
         const bool result = std::filesystem::exists(lock_file_, error);
@@ -94,6 +90,25 @@ class proc_mutex {
             return lock_state::not_locked;
         }
         return lock_state::locked;
+    }
+
+protected:
+    std::filesystem::path lock_file_;  // NOLINT
+    int fd_{};                         // NOLINT
+    const bool create_file_;           // NOLINT
+
+private:
+    static constexpr int not_opened = -1;
+};
+
+
+class proc_mutex : public file_mutex {
+public:
+    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true) : file_mutex(std::move(lock_file), create_file) {
+    }
+
+    [[nodiscard]] inline std::string name() const {
+        return lock_file_.generic_string();
     }
     [[nodiscard]] int pid(bool do_check = true) {
         std::string str;
@@ -119,11 +134,6 @@ class proc_mutex {
     }
     
 private:
-    std::filesystem::path lock_file_;
-    int fd_{not_opened};
-    const bool create_file_;
-    static constexpr int not_opened = -1;
-
     [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
         if (do_check && check() != lock_state::locked) {
             return false;

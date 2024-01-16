@@ -79,7 +79,7 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
     if (auto conf = bst_conf.get_configuration(); conf == nullptr) {
         return status_check_result::error_in_create_conf;
     }
-    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
+    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
     using state = proc_mutex::lock_state;
     switch (file_mutex->check()) {
     case state::no_file:
