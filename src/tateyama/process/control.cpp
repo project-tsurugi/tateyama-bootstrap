@@ -79,7 +79,7 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
     if (auto conf = bst_conf.get_configuration(); conf == nullptr) {
         return status_check_result::error_in_create_conf;
     }
-    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
+    auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false, false);
     using state = proc_mutex::lock_state;
     switch (file_mutex->check()) {
     case state::no_file:
@@ -349,8 +349,13 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         }
                     } else {
                         if (!FLAGS_quiet) {
-                            std::cout << "could not launch " << server_name_string
-                                      << ", because launch is still in progres" << std::endl;
+                            if (file_mutex->check() == proc_mutex::lock_state::locked) {
+                                std::cout << "could not launch " << server_name_string
+                                          << ", because launch is still in progres" << std::endl;
+                            } else {    // if the lock is not held by the tsurugidb process,  this means that the tsurugidb boot has failed.
+                                std::cout << "could not launch " << server_name_string << ", as "
+                                          << server_name_string << " exited due to some error." << std::endl;
+                            }
                         }
                         rtnv = tgctl::return_code::err;
                     }
