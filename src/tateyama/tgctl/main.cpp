@@ -91,32 +91,35 @@ int tgctl_main(const std::vector<std::string>& args) {
         }
         FLAGS_timeout = 0;  // no timeout for 'tgctl restore xxx'
         FLAGS_quiet = true;
-        tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server);
-
         int rtnv{};
-        if (args.at(2) == "backup") {
-            if (args.size() > 3) {
-                const auto& arg = args.at(3);
-                if (!FLAGS_use_file_list.empty()) {
-                    rtnv = tateyama::datastore::tgctl_restore_backup_use_file_list(arg);
+        if (tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server) == tgctl::return_code::ok) {
+            if (args.at(2) == "backup") {
+                if (args.size() > 3) {
+                    const auto& arg = args.at(3);
+                    if (!FLAGS_use_file_list.empty()) {
+                        rtnv = tateyama::datastore::tgctl_restore_backup_use_file_list(arg);
+                    } else {
+                        rtnv = tateyama::datastore::tgctl_restore_backup(args.at(3));
+                    }
                 } else {
-                    rtnv = tateyama::datastore::tgctl_restore_backup(args.at(3));
+                    std::cerr << "directory is not specficed" << std::endl;
+                }
+            } else if (args.at(2) == "tag") {
+                if (args.size() > 3) {
+                    rtnv = tateyama::datastore::tgctl_restore_tag(args.at(3));
+                } else {
+                    std::cerr << "tag is not specficed" << std::endl;
                 }
             } else {
-                std::cerr << "directory is not specficed" << std::endl;
+                std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
+                rtnv = -1;
             }
-        } else if (args.at(2) == "tag") {
-            if (args.size() > 3) {
-                rtnv = tateyama::datastore::tgctl_restore_tag(args.at(3));
-            } else {
-                std::cerr << "tag is not specficed" << std::endl;
-            }
+
+            tateyama::process::tgctl_shutdown_kill(false, false);
         } else {
-            std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
+            std::cerr << "failed to boot tsurugidb in maintenance_server mode" << std::endl;
             rtnv = -1;
         }
-
-        tateyama::process::tgctl_shutdown_kill(false, false);
         return rtnv;
     }
     if (args.at(1) == "quiesce") {
