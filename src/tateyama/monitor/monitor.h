@@ -48,7 +48,7 @@ enum class status : std::int64_t {
     case status::boot_error: return "boot_error"sv;
     case status::unknown: return "disconnected"sv;
     }
-    std::abort();
+    return "illegal state"sv;
 }
 
 class monitor {

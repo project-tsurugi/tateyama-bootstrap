@@ -21,10 +21,11 @@
 #include <stdexcept> // std::runtime_error
 #include <filesystem>
 #include <fstream>
+#include <functional>
 
 namespace tateyama::process {
 
-class proc_mutex {
+class file_mutex {
   public:
     enum class lock_state : std::int32_t {
         no_file = 0,
@@ -32,50 +33,49 @@ class proc_mutex {
         locked,
         error,
     };
-    
-    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
-        : lock_file_(std::move(lock_file)), create_file_(create_file) {
-        if (!create_file_ && throw_exception && !std::filesystem::exists(lock_file_)) {
-            throw std::runtime_error("the lock file does not exist");
+
+    file_mutex(std::filesystem::path lock_file, bool create_file, bool throw_exception) : lock_file_(std::move(lock_file)) {
+        if (create_file) {
+            if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {  // NOLINT
+                if (throw_exception) {
+                    throw std::runtime_error("the lock file already exist");
+                }
+            }
+        } else {
+            if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR)) < 0) {  // NOLINT
+                if (throw_exception) {
+                    throw std::runtime_error("the lock file does not exist");
+                }
+            }
         }
     }
-    ~proc_mutex() {
-        if (fd_ != not_opened) {
+    ~file_mutex() {
+        if (fd_ >= 0) {
             close(fd_);
         }
-        if (create_file_) {
+        if (owner_) {
             unlink(lock_file_.generic_string().c_str());
         }
     }
 
-    proc_mutex(proc_mutex const& other) = delete;
-    proc_mutex& operator=(proc_mutex const& other) = delete;
-    proc_mutex(proc_mutex&& other) noexcept = delete;
-    proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
+    file_mutex(file_mutex const& other) = delete;
+    file_mutex& operator=(file_mutex const& other) = delete;
+    file_mutex(file_mutex&& other) noexcept = delete;
+    file_mutex& operator=(file_mutex&& other) noexcept = delete;
 
-    void lock() {
-        if (create_file_) {
-            if ((fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {  // NOLINT
-                throw std::runtime_error("open error");
-            }
-        }
+    [[nodiscard]] inline std::string name() const {
+        return lock_file_.generic_string();
+    }
+    void lock(const std::function<void(void)>& fill_contents = []{}) {
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
-            if (ftruncate(fd_, 0) < 0) {
-                throw std::runtime_error("ftruncate error");
-            }
-            std::string pid = std::to_string(getpid());
-            if (write(fd_, pid.data(), pid.length()) < 0) {
-                throw std::runtime_error("write error");
-            }
+            fill_contents();
+            owner_ = true;
             return;
         }
         throw std::runtime_error("lock error");
     }
     void unlock() const {
         flock(fd_, LOCK_UN);
-    }
-    [[nodiscard]] inline std::string name() const {
-        return lock_file_.generic_string();
     }
     [[nodiscard]] lock_state check() {
         std::error_code error;
@@ -86,7 +86,7 @@ class proc_mutex {
         if (!std::filesystem::is_regular_file(lock_file_)) {
             return lock_state::error;            
         }
-        if (fd_ = open(lock_file_.generic_string().c_str(), O_WRONLY); fd_ < 0) {  // NOLINT
+        if (fd_ = open(lock_file_.generic_string().c_str(), O_RDWR); fd_ < 0) {  // NOLINT
             return lock_state::error;
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
@@ -95,6 +95,45 @@ class proc_mutex {
         }
         return lock_state::locked;
     }
+    [[nodiscard]] inline constexpr std::string_view to_string_view(lock_state value) noexcept {
+        using namespace std::string_view_literals;
+        switch (value) {
+        case lock_state::no_file: return "no_file"sv;
+        case lock_state::not_locked: return "not_locked"sv;
+        case lock_state::locked: return "locked"sv;
+        case lock_state::error: return "error"sv;
+        }
+        return "illegal lock state"sv;
+    }
+
+protected:
+    std::filesystem::path lock_file_;  // NOLINT
+    int fd_{not_opened};               // NOLINT
+
+private:
+    bool owner_{};
+    static constexpr int not_opened = -1;
+};
+
+
+class proc_mutex : public file_mutex {
+public:
+    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
+        : file_mutex(std::move(lock_file), create_file, throw_exception) {
+    }
+
+    void lock() {
+        file_mutex::lock([this]{
+            if (ftruncate(fd_, 0) < 0) {
+                throw std::runtime_error("ftruncate error");
+            }
+            std::string pid = std::to_string(getpid());
+            if (write(fd_, pid.data(), pid.length()) < 0) {
+                throw std::runtime_error("write error");
+            }
+        });
+    }
+
     [[nodiscard]] int pid(bool do_check = true) {
         std::string str;
         if (contents(str, do_check)) {
@@ -106,24 +145,8 @@ class proc_mutex {
         }
         return 0;
     }
-    [[nodiscard]] inline constexpr std::string_view to_string_view(lock_state value) noexcept {
-        using namespace std::string_view_literals;
-        using state = lock_state;
-        switch (value) {
-        case state::no_file: return "no_file"sv;
-        case state::not_locked: return "not_locked"sv;
-        case state::locked: return "locked"sv;
-        case state::error: return "error"sv;
-        }
-        std::abort();
-    }
     
 private:
-    std::filesystem::path lock_file_;
-    int fd_{not_opened};
-    const bool create_file_;
-    static constexpr int not_opened = -1;
-
     [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
         if (do_check && check() != lock_state::locked) {
             return false;
@@ -134,6 +157,30 @@ private:
         file.read(str.data(), static_cast<std::streamsize>(size));
         return true;
     }
+};
+
+class shm_mutex {
+public:
+    explicit shm_mutex(std::filesystem::path lock_file) {
+        try {
+            shm_mutex_ = std::make_unique<file_mutex>(std::move(lock_file), true, true);
+            shm_mutex_->lock();
+            return;
+        } catch (std::runtime_error &ex) {
+            shm_mutex_ = std::make_unique<file_mutex>(std::move(lock_file), false, true);
+            shm_mutex_->lock();
+            return;
+        }
+    }
+    static std::filesystem::path lock_file_name(std::string_view dbname) {
+        std::string str = "tsurugi-";
+        str += dbname;
+        str += ".lock";
+        return {str};
+    }
+
+private:
+    std::unique_ptr<file_mutex> shm_mutex_{};
 };
 
 }  // tateyama::process

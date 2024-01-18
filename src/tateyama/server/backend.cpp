@@ -47,6 +47,7 @@
 #include "server.h"
 #include "utils.h"
 #include "logging.h"
+#include "glog_helper.h"
 #ifdef ALTIMETER
 #include <altimeter/logger.h>
 #include "tateyama/altimeter/altimeter_helper.h"
@@ -80,108 +81,6 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
-void setup_glog(tateyama::api::configuration::whole* conf) {
-    auto* glog_section = conf->get_section("glog");
-
-    // logtostderr
-    if (auto logtostderr_env = getenv("GLOG_logtostderr"); logtostderr_env) {
-        FLAGS_logtostderr = true;
-    } else {
-        auto logtostderr = glog_section->get<bool>("logtostderr");
-        if (logtostderr) {
-            FLAGS_logtostderr = logtostderr.value();
-        }
-    }
-
-    // stderrthreshold
-    if (auto stderrthreshold_env = getenv("GLOG_stderrthreshold"); stderrthreshold_env) {
-        FLAGS_stderrthreshold = static_cast<::google::int32>(strtol(stderrthreshold_env, nullptr, 10));
-    } else {
-        auto stderrthreshold = glog_section->get<int>("stderrthreshold");
-        if (stderrthreshold) {
-            FLAGS_stderrthreshold = stderrthreshold.value();
-        }
-    }
-
-    // minloglevel
-    if (auto minloglevel_env = getenv("GLOG_minloglevel"); minloglevel_env) {
-        FLAGS_minloglevel = static_cast<::google::int32>(strtol(minloglevel_env, nullptr, 10));
-    } else {
-        auto minloglevel = glog_section->get<int>("minloglevel");
-        if (minloglevel) {
-            FLAGS_minloglevel = minloglevel.value();
-        }
-    }
-
-    // log_dir
-    if (auto log_dir_env = getenv("GLOG_log_dir"); log_dir_env) {
-        FLAGS_log_dir=log_dir_env;
-    } else {
-        auto log_dir = glog_section->get<std::filesystem::path>("log_dir");
-        if (log_dir) {
-            FLAGS_log_dir=log_dir.value().string();
-        }
-    }
-
-    // max_log_size
-    if (auto max_log_size_env = getenv("GLOG_max_log_size"); max_log_size_env) {
-        FLAGS_max_log_size = static_cast<::google::int32>(strtol(max_log_size_env, nullptr, 10));
-    } else {
-        auto max_log_size = glog_section->get<int>("max_log_size");
-        if (max_log_size) {
-            FLAGS_max_log_size = max_log_size.value();
-        }
-    }
-
-    // v
-    if (auto v_env = getenv("GLOG_v"); v_env) {
-        FLAGS_v = static_cast<::google::int32>(strtol(v_env, nullptr, 10));
-    } else {
-        auto v = glog_section->get<int>("v");
-        if (v) {
-            FLAGS_v = v.value();
-        }
-    }
-
-    // logbuflevel
-    if (auto logbuflevel_env = getenv("GLOG_logbuflevel"); logbuflevel_env) {
-        FLAGS_logbuflevel = static_cast<::google::int32>(strtol(logbuflevel_env, nullptr, 10));
-    } else {
-        auto logbuflevel = glog_section->get<int>("logbuflevel");
-        if (logbuflevel) {
-            FLAGS_logbuflevel = logbuflevel.value();
-        }
-    }
-
-    google::InitGoogleLogging("tsurugidb");
-    google::InstallFailureSignalHandler();
-    conf->show_vlog_info_message();
-
-    // output configuration to be used
-    LOG(INFO) << glog_config_prefix
-              << std::boolalpha
-              << "logtostderr: " << FLAGS_logtostderr << ", "
-              << "logtostderr for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "stderrthreshold: " << FLAGS_stderrthreshold << ", "
-              << "stderrthreshold for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "minloglevel: " << FLAGS_minloglevel << ", "
-              << "minloglevel for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "log_dir: " << "\"" << FLAGS_log_dir << "\", "
-              << "log_dir for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "max_log_size: " << FLAGS_max_log_size << ", "
-              << "max_log_size for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "v: " << FLAGS_v << ", "
-              << "v for glog.";
-    LOG(INFO) << glog_config_prefix
-              << "logbuflevel: " << FLAGS_logbuflevel << ", "
-              << "logbuflevel for glog.";
-}
-
 int backend_main(int argc, char **argv) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
@@ -211,9 +110,10 @@ int backend_main(int argc, char **argv) {
         LOG(INFO) << "==== configuration end ====";
     } catch (boost::property_tree::json_parser_error& e) {
         LOG(ERROR) << e.what();
+        exit(1);
     }
 
-    // mutex
+    // process mutex
     auto mutex_file = bst_conf.lock_file();
     // output configuration to be used
     LOG(INFO) << system_config_prefix
@@ -227,6 +127,7 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
 
+    // obsolete
     bool tpch_mode = false;
     if (FLAGS_load) {
         tpch_mode = false;
@@ -269,8 +170,26 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "Starting server failed due to errors in setting up server application framework.";
         exit(1);
     }
+
     // should do after setup()
     status_info->mutex_file(mutex_file.string());
+
+    // shm mutex
+    std::unique_ptr<tateyama::process::shm_mutex> shm_mutex{};
+    if (auto database_name_opt = conf->get_section("ipc_endpoint")->get<std::string>("database_name"); database_name_opt) {
+        try {
+            shm_mutex = std::make_unique<tateyama::process::shm_mutex>(
+                // ensured that pid_directoy in system section always exists, see src/tateyama/configuration/bootstrap_configuration.cpp
+                conf->get_section("system")->get<std::filesystem::path>("pid_directory").value() /
+                tateyama::process::shm_mutex::lock_file_name(database_name_opt.value())
+            );
+        } catch (std::runtime_error &ex) {
+            status_info->whole(tateyama::status_info::state::boot_error);
+            LOG(ERROR) << "A tsurugidb process is already running using the same database name (" << database_name_opt.value() << ")";
+            tgsv.shutdown();
+            exit(1);
+        }
+    } // when database_name in ipc_endpointipc section doex not exist, ipc_endpoint is inactive. Thus this check is unnecessary.
 
     auto* tgdb = sqlsvc->database();
     if (tgdb) {
@@ -284,6 +203,7 @@ int backend_main(int argc, char **argv) {
         status_info->whole(tateyama::status_info::state::boot_error);
         // detailed message must have been logged in the components where start error occurs
         LOG(ERROR) << "Starting server failed due to errors in starting server application framework.";
+        tgsv.shutdown();
         exit(1);
     }
 

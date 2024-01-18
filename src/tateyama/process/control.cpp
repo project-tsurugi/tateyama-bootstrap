@@ -349,8 +349,13 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         }
                     } else {
                         if (!FLAGS_quiet) {
-                            std::cout << "could not launch " << server_name_string
-                                      << ", because launch is still in progres" << std::endl;
+                            if (file_mutex->check() == proc_mutex::lock_state::locked) {
+                                std::cout << "could not launch " << server_name_string
+                                          << ", because launch is still in progres" << std::endl;
+                            } else {    // if the lock is not held by the tsurugidb process,  this means that the tsurugidb boot has failed.
+                                std::cout << "could not launch " << server_name_string << ", as "
+                                          << server_name_string << " exited due to some error." << std::endl;
+                            }
                         }
                         rtnv = tgctl::return_code::err;
                     }
