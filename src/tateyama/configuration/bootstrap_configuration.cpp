@@ -64,6 +64,31 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[glog]\n"
         "dummy=\n"  // just for retain glog section in default configuration
+
+#ifdef ALTIMETER
+    "[event_log]\n"
+        "output=true\n"
+        "directory=/var/log/altimeter/event\n"
+        "level=50\n"
+        "file_number=10\n"
+        "sync=false\n"
+        "buffer_size=52428800\n"
+        "flush_interval=10000\n"
+        "flush_file_size=1048576\n"
+        "max_file_size=1073741824\n"
+
+    "[audit_log]\n"
+        "output=true\n"
+        "directory=/var/log/altimeter/audit\n"
+        "level=50\n"
+        "file_number=10\n"
+        "sync=true\n"
+        "buffer_size=0\n"
+        "flush_interval=0\n"
+        "flush_file_size=0\n"
+        "max_file_size=1073741824\n"
+#endif
+
 };
 
 } // namespace details
