@@ -45,20 +45,35 @@ namespace tateyama::datastore {
 
 static bool prompt(std::string_view msg)
 {
-    struct termios io_conf{};
+    struct termios oldt{};
+    int oldf;
 
-    memset(&io_conf, 0x00, sizeof(struct termios));
-    tcgetattr(0, &io_conf);
-    io_conf.c_lflag &= ~(ECHO);  // disabled echo  // NOLINT
-    io_conf.c_lflag &= ~(ICANON);  // disabled canonical  // NOLINT
-    io_conf.c_cc[VMIN]  = 1;
-    io_conf.c_cc[VTIME] = 1;
-    tcsetattr( 0 , TCSAFLUSH , &io_conf );
+    memset(&oldt, 0x00, sizeof(struct termios));
+    if (tcgetattr(STDIN_FILENO, &oldt) == -1) {
+        throw std::runtime_error("error tcgetattr");
+    }
 
-    std::cout << msg;
+    auto newt = oldt;
+    newt.c_iflag = ~( BRKINT | ISTRIP | IXON  );
+    newt.c_lflag = ~( ICANON | IEXTEN | ECHO | ECHOE | ECHOK | ECHONL );
+    newt.c_cc[VTIME] = 0;
+    newt.c_cc[VMIN]  = 1;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) == -1) {
+        throw std::runtime_error("error tcsetattr");
+    }
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (oldf<0) {
+        throw std::runtime_error("error fcntl");
+    }
+    if (fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK) < 0) {
+        throw std::runtime_error("error fcntl");
+    }
+
+    std::cout << msg << std::flush;
     bool rtnv{};
     while(true) {
-        int chr = getc(stdin);
+        int chr = getchar();
         if ((chr == 'y' ) || (chr == 'Y' )) {
             std::cout << "yes" << std::endl;
             rtnv = true;
@@ -71,14 +86,12 @@ static bool prompt(std::string_view msg)
         }
     }
 
-    memset(&io_conf, 0x00, sizeof(struct termios));
-    tcgetattr(0, &io_conf);
-    io_conf.c_lflag |= ECHO;  // enable echo  // NOLINT
-    io_conf.c_lflag |= ICANON;  // enable canonical  // NOLINT
-    io_conf.c_cc[VMIN]  = 1;
-    io_conf.c_cc[VTIME] = 1;
-    tcsetattr( 0 , TCSAFLUSH , &io_conf );
-
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &oldt) == -1) {
+        throw std::runtime_error("error tcsetattr");
+    }
+    if (fcntl(STDIN_FILENO, F_SETFL, oldf) < 0) {
+        throw std::runtime_error("error fcntl");
+    }
     return rtnv;
 }
 
@@ -111,7 +124,7 @@ static std::string digest() {
 tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -147,7 +160,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
             auto location = std::filesystem::path(path_to_backup);
 
             std::size_t total_bytes = 0;
-            if(!FLAGS_monitor.empty()) {
+            if (!FLAGS_monitor.empty()) {
                 for (auto&& file : rbgn.success().simple_source().files()) {
                     auto src = std::filesystem::path(file);
                     total_bytes += std::filesystem::file_size(src);
@@ -158,7 +171,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
             for (auto&& file : rbgn.success().simple_source().files()) {
                 auto src = std::filesystem::path(file);
                 std::filesystem::copy_file(src, location / src.filename());
-                if(!FLAGS_monitor.empty()) {
+                if (!FLAGS_monitor.empty()) {
                     completed_bytes += std::filesystem::file_size(src);
                     if (total_bytes > 0) {
                         monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
@@ -213,7 +226,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
 tgctl::return_code tgctl_backup_estimate() {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -263,14 +276,19 @@ tgctl::return_code tgctl_backup_estimate() {
 tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
-    if(!FLAGS_force) {
-        if (!prompt("continue? (press y or n) : ")) {
-            std::cout << "restore backup has been canceled." << std::endl;
+    if (!FLAGS_force) {
+        try {
+            if (!prompt("continue? (press y or n) : ")) {
+                std::cout << "restore backup has been canceled." << std::endl;
+                return tgctl::return_code::err;
+            }
+        } catch (std::runtime_error &ex) {
+            std::cerr << "prompt fail, cause: " << ex.what() << std::endl;
             return tgctl::return_code::err;
         }
     }
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -324,14 +342,19 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
 tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to_backup) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
-    if(!FLAGS_force) {
-        if (!prompt("continue? (press y or n) : ")) {
-            std::cout << "restore backup has been canceled." << std::endl;
+    if (!FLAGS_force) {
+        try {
+            if (!prompt("continue? (press y or n) : ")) {
+                std::cout << "restore backup has been canceled." << std::endl;
+                return tgctl::return_code::err;
+            }
+        } catch (std::runtime_error &ex) {
+            std::cerr << "prompt fail, cause: " << ex.what() << std::endl;
             return tgctl::return_code::err;
         }
     }
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
@@ -406,7 +429,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
 tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
-    if(!FLAGS_monitor.empty()) {
+    if (!FLAGS_monitor.empty()) {
         monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
         monitor_output->start();
     }
