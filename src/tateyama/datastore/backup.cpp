@@ -46,7 +46,6 @@ namespace tateyama::datastore {
 static bool prompt(std::string_view msg)
 {
     struct termios oldt{};
-    int oldf;
 
     memset(&oldt, 0x00, sizeof(struct termios));
     if (tcgetattr(STDIN_FILENO, &oldt) == -1) {
@@ -54,19 +53,19 @@ static bool prompt(std::string_view msg)
     }
 
     auto newt = oldt;
-    newt.c_iflag = ~( BRKINT | ISTRIP | IXON  );
-    newt.c_lflag = ~( ICANON | IEXTEN | ECHO | ECHOE | ECHOK | ECHONL );
+    newt.c_iflag = ~( BRKINT | ISTRIP | IXON  );                          // NOLINT
+    newt.c_lflag = ~( ICANON | IEXTEN | ECHO | ECHOE | ECHOK | ECHONL );  // NOLINT
     newt.c_cc[VTIME] = 0;
     newt.c_cc[VMIN]  = 1;
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) == -1) {
         throw std::runtime_error("error tcsetattr");
     }
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    if (oldf<0) {
+    int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (oldf < 0) {
         throw std::runtime_error("error fcntl");
     }
-    if (fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK) < 0) {
+    if (fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK) < 0) {  // NOLINT
         throw std::runtime_error("error fcntl");
     }
 
@@ -89,7 +88,7 @@ static bool prompt(std::string_view msg)
     if (tcsetattr(STDIN_FILENO, TCSANOW, &oldt) == -1) {
         throw std::runtime_error("error tcsetattr");
     }
-    if (fcntl(STDIN_FILENO, F_SETFL, oldf) < 0) {
+    if (fcntl(STDIN_FILENO, F_SETFL, oldf) < 0) {  // NOLINT
         throw std::runtime_error("error fcntl");
     }
     return rtnv;
