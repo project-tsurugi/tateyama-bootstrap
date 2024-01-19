@@ -65,7 +65,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
     "[glog]\n"
         "dummy=\n"  // just for retain glog section in default configuration
 
-#ifdef ALTIMETER
+#ifdef ENABLE_ALTIMETER
     "[event_log]\n"
         "output=true\n"
         "directory=/var/log/altimeter/event\n"

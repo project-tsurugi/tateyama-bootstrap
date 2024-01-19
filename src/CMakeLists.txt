@@ -57,12 +57,11 @@ endif (ENABLE_JEMALLOC)
 
 if (ENABLE_ALTIMETER)
     target_link_libraries(server
-        PUBLIC altimeter
-        PUBLIC Boost::container
-        PUBLIC fmt::fmt
-        PUBLIC Threads::Threads
+        PRIVATE altimeter
+        PRIVATE Boost::container
+        PRIVATE fmt::fmt
+        PRIVATE Threads::Threads
     )
-    target_compile_definitions(server PUBLIC ALTIMETER)
 endif()
 
 set_compile_options(server)
@@ -143,13 +142,6 @@ target_link_libraries(tgctl
         PRIVATE crypto
         PRIVATE rt
         )
-
-if (ENABLE_ALTIMETER)
-        target_include_directories(tgctl
-                PRIVATE altimeter
-        )
-        target_compile_definitions(tgctl PUBLIC ALTIMETER)
-endif()
 
 set_compile_options(tgctl)
 
