@@ -31,3 +31,9 @@ function(set_compile_options target_name)
     target_compile_options(${target_name}
         PRIVATE -Wall -Wextra -Werror)
 endfunction(set_compile_options)
+
+if(ENABLE_ALTIMETER)
+    message("altimeter enabled")
+    add_definitions(-DENABLE_ALTIMETER)
+endif()
+  

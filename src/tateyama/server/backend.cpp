@@ -48,7 +48,7 @@
 #include "utils.h"
 #include "logging.h"
 #include "glog_helper.h"
-#ifdef ALTIMETER
+#ifdef ENABLE_ALTIMETER
 #include <altimeter/logger.h>
 #include "tateyama/altimeter/altimeter_helper.h"
 #endif
@@ -98,7 +98,7 @@ int backend_main(int argc, char **argv) {
         exit(1);
     }
     setup_glog(conf.get());
-#ifdef ALTIMETER
+#ifdef ENABLE_ALTIMETER
     auto altimeter_object = std::make_unique<tateyama::altimeter::altimeter_helper>(conf.get());
     altimeter_object->start();
 #endif
@@ -237,6 +237,9 @@ int backend_main(int argc, char **argv) {
     LOG(INFO) << "exiting";
     status_info->whole(tateyama::status_info::state::deactivating);
     tgsv.shutdown();
+#ifdef ENABLE_ALTIMETER
+    altimeter_object->shutdown();
+#endif
     status_info->whole(tateyama::status_info::state::deactivated);
     return 0;
 }
