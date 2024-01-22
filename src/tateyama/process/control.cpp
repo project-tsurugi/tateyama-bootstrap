@@ -127,6 +127,10 @@ static status_check_result status_check_internal() {
     return status_check_internal(bst_conf);
 }
 
+bool is_running() {
+    return status_check_internal() == status_check_result::activated;
+}
+
 void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
     switch (mode) {
     case tateyama::framework::boot_mode::database_server:
