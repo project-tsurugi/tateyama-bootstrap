@@ -32,6 +32,7 @@ namespace tateyama::process {
     tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output = true);
     tgctl::return_code tgctl_diagnostic();
     tgctl::return_code tgctl_pid();
+    bool is_running();
 
     static boost::filesystem::path get_base_path(const std::string& argv0) {
         boost::filesystem::path path_for_this{};

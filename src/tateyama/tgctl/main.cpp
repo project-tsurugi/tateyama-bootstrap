@@ -50,7 +50,7 @@ DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOL
 
 namespace tateyama::tgctl {
 
-int tgctl_main(const std::vector<std::string>& args) {
+int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-function-cognitive-complexity)
     FLAGS_quiet |= FLAGS_q;
 
     if (args.at(1) == "start") {
@@ -77,7 +77,32 @@ int tgctl_main(const std::vector<std::string>& args) {
                 std::cerr << "need to specify path/to/backup" << std::endl;
                 return 4;
             }
-            return tateyama::datastore::tgctl_backup_create(args.at(3));
+            bool is_running = tateyama::process::is_running();
+            if (!is_running) {
+                auto FLAGS_quiet_previous = FLAGS_quiet;
+                auto FLAGS_monitor_previous = FLAGS_monitor;
+                FLAGS_quiet = true;
+                FLAGS_monitor = "";
+                if (tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server) != tgctl::return_code::ok) {
+                    if (!tateyama::process::is_running()) {
+                        LOG_LP(ERROR) << "failed to start tsurugidb in maintenance_server mode";
+                        return tgctl::return_code::err;
+                    }
+                    is_running = true;  // somebody else has invoked tsurugidb between confirmation and activation!!
+                }
+                FLAGS_quiet = FLAGS_quiet_previous;
+                FLAGS_monitor = FLAGS_monitor_previous;
+            }
+            auto rv = tateyama::datastore::tgctl_backup_create(args.at(3));
+            if (!is_running) {
+                FLAGS_quiet = true;
+                FLAGS_monitor = "";
+                if (tateyama::process::tgctl_shutdown_kill(false) != tgctl::return_code::ok) {
+                    LOG_LP(ERROR) << "failed to shutdown tsurugidb in maintenance_server mode, thus kill the tsurugidb";
+                    tateyama::process::tgctl_shutdown_kill(true);
+                }
+            }
+            return rv;
         }
         if (args.at(2) == "estimate") {
             return tateyama::datastore::tgctl_backup_estimate();
