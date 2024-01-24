@@ -502,8 +502,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                     state == status_check_result::not_locked ||
                     state == status_check_result::deactivated) {
                     if (!FLAGS_quiet) {
-                        std::cout << (force ? "kill " : "shutdown ") << "was not performed, as ";
-                        std::cout << server_name_string << " was running" << std::endl;
+                        std::cout << (force ? "kill " : "shutdown ") << "was not performed, as no " << server_name_string << " was running" << std::endl;
                     }
                     if (monitor_output) {
                         monitor_output->finish(true);
