@@ -23,6 +23,8 @@
 #include "tateyama/datastore/backup.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/version/version.h"
+#include "tateyama/session/session.h"
+#include "tateyama/statistics/statistics.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
@@ -153,6 +155,44 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
     if (args.at(1) == "version") {
         return tateyama::version::show_version(args.at(0));
     }
+    if (args.at(1) == "session") {
+        if (args.size() < 2) {
+            std::cerr << "need to specify session subcommand" << std::endl;
+            return 4;
+        }
+        if (args.at(2) == "list") {
+            return tateyama::session::list();
+        }
+        if (args.at(2) == "show") {
+            if (args.size() < 3) {
+                std::cerr << "need to specify session-ref" << std::endl;
+                return 4;
+            }
+            return tateyama::session::show(args.at(3));
+        }
+        if (args.at(2) == "kill") {
+            if (args.size() < 3) {
+                std::cerr << "need to specify session-ref(s)" << std::endl;
+                return 4;
+            }
+            return tateyama::session::kill(std::vector<std::string>(args.begin() + 3, args.begin() + args.size()));
+        }
+        if (args.at(2) == "switch") {
+            if (args.size() < 5) {
+                std::cerr << "need to specify session-ref, switch-key, and switch-value" << std::endl;
+                return 4;
+            }
+            return tateyama::session::swtch(args.at(3), args.at(4), args.at(5));
+        }
+    }
+    if (args.at(1) == "dbstats") {
+        if (args.at(2) == "list") {
+            return tateyama::statistics::list();
+        }
+        if (args.at(2) == "show") {
+            return tateyama::statistics::show();
+        }
+    }
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return -1;
 }
@@ -162,12 +202,12 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
 
 int main(int argc, char* argv[]) {
     if (argc > 1) {
-        // copy argv to args
-        std::vector<std::string> args(argv, argv + argc);
-
         // command arguments (must conduct after the argment copy)
         gflags::SetUsageMessage("tateyama database server CLI");
-        gflags::ParseCommandLineFlags(&argc, &argv, false);
+        gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+        // copy argv to args
+        std::vector<std::string> args(argv, argv + argc);
 
         try {
             return static_cast<int>(tateyama::tgctl::tgctl_main(args));

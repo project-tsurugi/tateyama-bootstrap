@@ -58,8 +58,19 @@ class monitor {
     constexpr static std::string_view KIND_PROGRESS = R"("kind": "progress")";
     constexpr static std::string_view KIND_DATA = R"("kind": "data")";
     constexpr static std::string_view PROGRESS = R"("progress": )";
-    constexpr static std::string_view FORMAT_STATUS = R"("format" : "status")";
+    // status
+    constexpr static std::string_view FORMAT_STATUS = R"("format": "status")";
     constexpr static std::string_view STATUS = R"("status": ")";
+    // session info
+    constexpr static std::string_view FORMAT_SESSION_INFO = R"("format": "session-info")";
+    constexpr static std::string_view SESSION_ID = R"("session_id": ":)";
+    constexpr static std::string_view LABEL = R"("label": ")";
+    constexpr static std::string_view APPLICATION = R"("application": ")";
+    constexpr static std::string_view USER = R"("user": ")";
+    constexpr static std::string_view START_AT = R"("start_at": ")";
+    constexpr static std::string_view CONNECTION_TYPE = R"("connection_type": ")";
+    constexpr static std::string_view CONNECTION_INFO = R"("connection_info": ")";
+
 public:
     explicit monitor(std::string& file_name) {
         strm_.open(file_name, std::ios_base::out | std::ios_base::trunc);
@@ -96,6 +107,24 @@ public:
     void status(status stat) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
               << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(stat) << "\" }" << std::endl;
+        strm_.flush();
+    }
+    void session_info(std::string_view session_id,
+                      std::string_view label,
+                      std::string_view application,
+                      std::string_view  user,
+                      std::string_view start_at,
+                      std::string_view connection_type,
+                      std::string_view connection_info) {
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_DATA << ", " << FORMAT_SESSION_INFO << ", "
+              << SESSION_ID << session_id << "\", "
+              << LABEL << label << "\", "
+              << APPLICATION << application << "\", "
+              << USER << user << "\", "
+              << START_AT << start_at << "\", "
+              << CONNECTION_TYPE << connection_type << "\", "
+              << CONNECTION_INFO << connection_info << "\" }" << std::endl;
         strm_.flush();
     }
 
