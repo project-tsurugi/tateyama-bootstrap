@@ -26,7 +26,7 @@ DECLARE_string(monitor);  // NOLINT
 
 namespace tateyama::session {
 
-std::vector<session_list_entry> sessoin_list = {
+const std::vector<session_list_entry> sessoin_list = {  // NOLINT as it is used for mock purpose only
     { "1", "belayer-dump-1", "belayer", "arakawa", "2022-06-20T12:34:56Z", "ipc", "6502" },
     { "2", "example-1", "tgsql", "arakawa", "2022-06-20T12:34:50Z", "tcp", "192.168.1.23:10000" },
     { "3", "example-2", "tgsql", "kurosawa", "2022-06-20T12:34:53Z", "tcp", "192.168.1.78:10000" },
@@ -41,7 +41,13 @@ tgctl::return_code list() {
         monitor_output->start();
     }
 
-    std::size_t id_max{2}, label_max{5}, application_max{11}, user_max{4}, start_max{5}, type_max{4}, remote_max{6};
+    std::size_t id_max{2};
+    std::size_t label_max{5};
+    std::size_t application_max{11};
+    std::size_t user_max{4};
+    std::size_t start_max{5};
+    std::size_t type_max{4};
+    std::size_t remote_max{6};
     for( auto& e : sessoin_list ) {
         if (id_max < e.id.length()) {
             id_max = e.id.length();
@@ -74,23 +80,23 @@ tgctl::return_code list() {
     remote_max += 2;
 
     std::cout << std::left;
-    std::cout << std::setw(id_max + 1) << "id";
-    std::cout << std::setw(label_max) << "label";
-    std::cout << std::setw(application_max) << "application";
-    std::cout << std::setw(user_max) << "user";
-    std::cout << std::setw(start_max) << "start";
-    std::cout << std::setw(type_max) << "type";
-    std::cout << std::setw(remote_max) << "remote";
+    std::cout << std::setw(static_cast<int>(id_max + 1)) << "id";
+    std::cout << std::setw(static_cast<int>(label_max)) << "label";
+    std::cout << std::setw(static_cast<int>(application_max)) << "application";
+    std::cout << std::setw(static_cast<int>(user_max)) << "user";
+    std::cout << std::setw(static_cast<int>(start_max)) << "start";
+    std::cout << std::setw(static_cast<int>(type_max)) << "type";
+    std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
     std::cout << std::endl;
 
     for( auto& e : sessoin_list ) {
-        std::cout << ":" << std::setw(id_max) << e.id;
-        std::cout << std::setw(label_max) << e.label;
-        std::cout << std::setw(application_max) << e.application;
-        std::cout << std::setw(user_max) << e.user;
-        std::cout << std::setw(start_max) << e.start;
-        std::cout << std::setw(type_max) << e.type;
-        std::cout << std::setw(remote_max) << e.remote;
+        std::cout << ":" << std::setw(static_cast<int>(id_max)) << e.id;
+        std::cout << std::setw(static_cast<int>(label_max)) << e.label;
+        std::cout << std::setw(static_cast<int>(application_max)) << e.application;
+        std::cout << std::setw(static_cast<int>(user_max)) << e.user;
+        std::cout << std::setw(static_cast<int>(start_max)) << e.start;
+        std::cout << std::setw(static_cast<int>(type_max)) << e.type;
+        std::cout << std::setw(static_cast<int>(remote_max)) << e.remote;
         std::cout << std::endl;
         if (monitor_output) {
             monitor_output->session_info(e.id, e.label, e.application, e.user, e.start, e.type, e.remote);
@@ -124,13 +130,13 @@ tgctl::return_code show(std::string_view session_ref) {
             }
         }
         std::cout << std::left;
-        std::cout << std::setw(13) << "id" << e.id << std::endl;
-        std::cout << std::setw(13) << "application" << e.application << std::endl;
-        std::cout << std::setw(13) << "label" << e.label << std::endl;
-        std::cout << std::setw(13) << "user" << e.user << std::endl;
-        std::cout << std::setw(13) << "start" << e.start << std::endl;
-        std::cout << std::setw(13) << "type" << e.type << std::endl;
-        std::cout << std::setw(13) << "remote" << e.remote << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "id" << e.id << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "application" << e.application << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "label" << e.label << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "user" << e.user << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "start" << e.start << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "type" << e.type << std::endl;
+        std::cout << std::setw(static_cast<int>(13)) << "remote" << e.remote << std::endl;
         if (monitor_output) {
             monitor_output->session_info(e.id, e.label, e.application, e.user, e.start, e.type, e.remote);
             monitor_output->finish(true);
@@ -168,9 +174,9 @@ tgctl::return_code kill(const std::vector<std::string>&& sesstion_refs) {
                 }
             }
             std::cout << std::left
-                      << std::setw(6) << "kill"
-                      << std::setw(1) << ":"
-                      << std::setw(e.id.length()) << e.id
+                      << std::setw(static_cast<int>(6)) << "kill"
+                      << std::setw(static_cast<int>(1)) << ":"
+                      << std::setw(static_cast<int>(e.id.length())) << e.id
                       << std::endl;
             rv = tateyama::tgctl::return_code::ok;
         }
@@ -200,9 +206,9 @@ tgctl::return_code swtch(std::string_view session_ref, std::string_view set_key,
             }
         }
         std::cout << std::left
-                  << std::setw(8) << "set"
-                  << std::setw(1) << ":"
-                  << std::setw(e.id.length()) << e.id
+                  << std::setw(static_cast<int>(8)) << "set"
+                  << std::setw(static_cast<int>(1)) << ":"
+                  << std::setw(static_cast<int>(e.id.length())) << e.id
                   << "[" << set_key << "] to " << set_value
                   << std::endl;
         if (monitor_output) {

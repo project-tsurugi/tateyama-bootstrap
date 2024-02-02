@@ -177,7 +177,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
                 std::cerr << "need to specify session-ref(s)" << std::endl;
                 return tateyama::tgctl::return_code::err;
             }
-            return tateyama::session::kill(std::vector<std::string>(args.begin() + 3, args.begin() + args.size()));
+            return tateyama::session::kill(std::vector<std::string>(args.begin() + 3, args.begin() + static_cast<std::int64_t>(args.size())));
         }
         if (args.at(2) == "set") {
             if (args.size() < 5) {
