@@ -70,6 +70,10 @@ class monitor {
     constexpr static std::string_view START_AT = R"("start_at": ")";
     constexpr static std::string_view CONNECTION_TYPE = R"("connection_type": ")";
     constexpr static std::string_view CONNECTION_INFO = R"("connection_info": ")";
+    // dbstats
+    constexpr static std::string_view FORMAT_DBSTATS_DESCRIPTION = R"("format": "dbstats_description")";
+    constexpr static std::string_view FORMAT_DBSTATS = R"("format": "dbstats")";
+    constexpr static std::string_view METRICS = R"("metrics": ")";
 
 public:
     explicit monitor(std::string& file_name) {
@@ -125,6 +129,18 @@ public:
               << START_AT << start_at << "\", "
               << CONNECTION_TYPE << connection_type << "\", "
               << CONNECTION_INFO << connection_info << "\" }" << std::endl;
+        strm_.flush();
+    }
+    void dbstats_description(std::string_view data) {
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_DATA << ", " << FORMAT_DBSTATS_DESCRIPTION << ", "
+              << METRICS << data << "\" }" << std::endl;
+        strm_.flush();
+    }
+    void dbstats(std::string_view data) {
+        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+              << KIND_DATA << ", " << FORMAT_DBSTATS << ", "
+              << METRICS << data << "\" }" << std::endl;
         strm_.flush();
     }
 

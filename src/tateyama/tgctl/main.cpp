@@ -49,6 +49,8 @@ DEFINE_string(location, "./db", "database location on file system");  // NOLINT
 DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
 DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
 
+// for dbstats
+DEFINE_string(format, "json", "metrics information display format");  // NOLINT
 
 namespace tateyama::tgctl {
 
@@ -77,7 +79,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         if (args.at(2) == "create") {
             if (args.size() < 4) {
                 std::cerr << "need to specify path/to/backup" << std::endl;
-                return 4;
+                return tateyama::tgctl::return_code::err;
             }
             bool is_running = tateyama::process::is_running();
             if (!is_running) {
@@ -110,7 +112,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             return tateyama::datastore::tgctl_backup_estimate();
         }
         std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
-        return -1;
+        return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "restore") {
         if (FLAGS_timeout != -1) {
@@ -158,7 +160,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
     if (args.at(1) == "session") {
         if (args.size() < 2) {
             std::cerr << "need to specify session subcommand" << std::endl;
-            return 4;
+            return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "list") {
             return tateyama::session::list();
@@ -166,21 +168,21 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         if (args.at(2) == "show") {
             if (args.size() < 3) {
                 std::cerr << "need to specify session-ref" << std::endl;
-                return 4;
+                return tateyama::tgctl::return_code::err;
             }
             return tateyama::session::show(args.at(3));
         }
         if (args.at(2) == "kill") {
             if (args.size() < 3) {
                 std::cerr << "need to specify session-ref(s)" << std::endl;
-                return 4;
+                return tateyama::tgctl::return_code::err;
             }
             return tateyama::session::kill(std::vector<std::string>(args.begin() + 3, args.begin() + args.size()));
         }
-        if (args.at(2) == "switch") {
+        if (args.at(2) == "set") {
             if (args.size() < 5) {
-                std::cerr << "need to specify session-ref, switch-key, and switch-value" << std::endl;
-                return 4;
+                std::cerr << "need to specify session-ref, set-key, and set-value" << std::endl;
+                return tateyama::tgctl::return_code::err;
             }
             return tateyama::session::swtch(args.at(3), args.at(4), args.at(5));
         }
@@ -192,9 +194,11 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         if (args.at(2) == "show") {
             return tateyama::statistics::show();
         }
+        std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'" << std::endl;
+        return tateyama::tgctl::return_code::err;
     }
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
-    return -1;
+    return tateyama::tgctl::return_code::err;
 }
 
 }  // tateyama::tgctl
