@@ -103,6 +103,8 @@ file(GLOB TGCTL_SOURCES
         "tateyama/process/*.cpp"
         "tateyama/configuration/*.cpp"
         "tateyama/utils/*.cpp"
+        "tateyama/session/*.cpp"
+        "tateyama/statistics/*.cpp"
         )
 
 set_source_files_properties(
