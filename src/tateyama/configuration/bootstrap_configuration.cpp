@@ -40,6 +40,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_return_os_pages=false\n"
         "dev_omit_task_when_idle=true\n"
         "external_log_explain=true\n"
+        "dev_try_insert_on_upserting_secondary=true\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
