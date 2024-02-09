@@ -163,29 +163,32 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "list") {
-            return tateyama::session::list();
+            return tateyama::session::session_list();
         }
         if (args.at(2) == "show") {
             if (args.size() < 3) {
                 std::cerr << "need to specify session-ref" << std::endl;
                 return tateyama::tgctl::return_code::err;
             }
-            return tateyama::session::show(args.at(3));
+            return tateyama::session::session_show(args.at(3));
         }
         if (args.at(2) == "kill") {
             if (args.size() < 3) {
                 std::cerr << "need to specify session-ref(s)" << std::endl;
                 return tateyama::tgctl::return_code::err;
             }
-            return tateyama::session::kill(std::vector<std::string>(args.begin() + 3, args.begin() + static_cast<std::int64_t>(args.size())));
+            // return tateyama::session::session_kill(std::vector<std::string>(args.begin() + 3, args.begin() + static_cast<std::int64_t>(args.size()))); // FIXME confirm specification
+            return tateyama::session::session_kill(args.at(3));
         }
         if (args.at(2) == "set") {
             if (args.size() < 5) {
                 std::cerr << "need to specify session-ref, set-key, and set-value" << std::endl;
                 return tateyama::tgctl::return_code::err;
             }
-            return tateyama::session::swtch(args.at(3), args.at(4), args.at(5));
+            return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5));
         }
+        std::cerr << "unknown session sub command '" << args.at(2) << "'" << std::endl;
+        return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "dbstats") {
         if (args.at(2) == "list") {
