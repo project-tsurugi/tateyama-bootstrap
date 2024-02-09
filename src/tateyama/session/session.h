@@ -23,19 +23,9 @@
 
 namespace tateyama::session {
 
-    tgctl::return_code list();
-    tgctl::return_code show(std::string_view session_ref);
-    tgctl::return_code kill(const std::vector<std::string>&& sesstion_refs);
-    tgctl::return_code swtch(std::string_view session_ref, std::string_view set_key, std::string_view set_value);
-
-    struct session_list_entry {
-        std::string id;
-        std::string label;
-        std::string application;
-        std::string user;
-        std::string start;
-        std::string type;
-        std::string remote;
-    };
+    tgctl::return_code session_list();
+    tgctl::return_code session_show(std::string_view session_ref);
+    tgctl::return_code session_kill(std::string_view session_ref);
+    tgctl::return_code session_swtch(std::string_view session_ref, std::string_view set_key, std::string_view set_value);
 
 } //  tateyama::session

@@ -87,6 +87,9 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/transaction.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/data.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/diagnostics.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/diagnostic.proto
         )
 
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
