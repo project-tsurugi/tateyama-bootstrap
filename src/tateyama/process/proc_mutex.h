@@ -86,8 +86,10 @@ class file_mutex {
         if (!std::filesystem::is_regular_file(lock_file_)) {
             return lock_state::error;            
         }
-        if (fd_ = open(lock_file_.generic_string().c_str(), O_RDWR); fd_ < 0) {  // NOLINT
-            return lock_state::error;
+        if (fd_ == not_opened) {
+            if (fd_ = open(lock_file_.generic_string().c_str(), O_RDWR); fd_ < 0) {  // NOLINT
+                return lock_state::error;
+            }
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             unlock();

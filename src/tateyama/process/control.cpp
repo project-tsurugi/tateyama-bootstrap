@@ -110,10 +110,12 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
             } catch (std::exception& e) {
                 if (i < (check_count_status - 1)) {
                     usleep(sleep_time_unit_regular * 1000);
+                    continue;
                 } else {
                     return status_check_result::status_check_count_over;
                 }
             }
+            usleep(sleep_time_unit_regular * 1000);
         }
         return status_check_result::status_check_count_over;
     }
@@ -329,10 +331,13 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     rtnv = tgctl::return_code::err;
                                     break;
 
+                                case status_check_result::status_check_count_over:
+                                    i += check_count_status;
+                                    continue;
+
                                 case status_check_result::undefined:
                                 case status_check_result::error_in_conf_file_name:
                                 case status_check_result::error_in_create_conf:
-                                case status_check_result::status_check_count_over:
                                 case status_check_result::error_in_file_mutex_check:
                                     if (!FLAGS_quiet) {
                                         std::cout << "failed to confirm " << server_name_string
