@@ -111,9 +111,8 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
                 if (i < (check_count_status - 1)) {
                     usleep(sleep_time_unit_regular * 1000);
                     continue;
-                } else {
-                    return status_check_result::status_check_count_over;
                 }
+                return status_check_result::status_check_count_over;
             }
             usleep(sleep_time_unit_regular * 1000);
         }
