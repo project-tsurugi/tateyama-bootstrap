@@ -53,6 +53,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
     "[stream_endpoint]\n"
         "port=12345\n"
         "threads=104\n"
+        "dev_idle_work_interval=1000\n"
 
     "[datastore]\n"
         "log_location=\n"
