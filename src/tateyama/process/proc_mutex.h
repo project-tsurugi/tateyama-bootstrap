@@ -36,7 +36,7 @@ class file_mutex {
 
     file_mutex(std::filesystem::path lock_file, bool create_file, bool throw_exception) : lock_file_(std::move(lock_file)) {
         if (create_file) {
-            if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) < 0) {  // NOLINT
+            if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {  // NOLINT
                 if (throw_exception) {
                     throw std::runtime_error("the lock file already exist");
                 }
