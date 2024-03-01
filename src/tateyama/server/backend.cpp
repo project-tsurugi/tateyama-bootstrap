@@ -100,7 +100,13 @@ int backend_main(int argc, char **argv) {
     setup_glog(conf.get());
 #ifdef ENABLE_ALTIMETER
     auto altimeter_object = std::make_unique<tateyama::altimeter::altimeter_helper>(conf.get());
-    altimeter_object->start();
+    bool altimeter_wellness = true;
+    try {
+        altimeter_object->start();
+    } catch (std::exception &ex) {
+        altimeter_wellness = false;
+        LOG(WARNING) << "failed to initialize altimeter, cause is `" << ex.what() << "'";
+    }
 #endif
     try {
         std::ostringstream oss;
@@ -170,6 +176,13 @@ int backend_main(int argc, char **argv) {
         LOG(ERROR) << "Starting server failed due to errors in setting up server application framework.";
         exit(1);
     }
+#ifdef ENABLE_ALTIMETER
+    if (!altimeter_wellness) {
+        tgsv.shutdown();
+        LOG(ERROR) << "Starting server failed due to an error in initializing altimeter logging subsystem.";
+        exit(1);
+    }
+#endif
 
     // should do after setup()
     status_info->mutex_file(mutex_file.string());
@@ -250,7 +263,7 @@ int backend_main(int argc, char **argv) {
 int main(int argc, char **argv) {
     try {
         return tateyama::server::backend_main(argc, argv);
-    } catch (std::exception &e) {
-        LOG(WARNING) << e.what();
+    } catch (std::exception &ex) {
+        LOG(WARNING) << ex.what();
     }
 }
