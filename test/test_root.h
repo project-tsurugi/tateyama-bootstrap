@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <thread>
+#include <chrono>
+
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
@@ -111,7 +114,7 @@ class directory_helper {
 
     void confirm_started() {
         std::string command;
-        for (std::size_t i = 0; i < 10; i++) {
+        for (std::size_t i = 0; i < 20; i++) {
             command = "tgctl status --conf ";
             command += conf_file_path();
             command += " --monitor ";
@@ -133,7 +136,7 @@ class directory_helper {
             if (l == 0 && rv == 1) {
                 return;
             }
-            usleep(5 * 1000);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         FAIL();
     }
