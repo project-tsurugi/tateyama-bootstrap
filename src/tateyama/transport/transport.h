@@ -61,13 +61,15 @@ public:
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(type);
         status_info_ = std::make_unique<server::status_info_bridge>(digest());
-        auto handshake_response = handshake();
-        if (!handshake_response) {
+        auto handshake_response_opt = handshake();
+        if (!handshake_response_opt) {
             throw std::runtime_error("handshake error");
         }
-        if (handshake_response.value().result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
+        auto& handshake_response = handshake_response_opt.value();
+        if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
             throw std::runtime_error("handshake error");
         }
+        session_id_ = handshake_response.success().session_id();
     }
 
     ~transport() {
@@ -236,6 +238,10 @@ public:
         closed_ = true;
     }
 
+    [[nodiscard]] std::size_t session_id() const noexcept {
+        return session_id_;
+    }
+
     static std::string database_name() {
         auto conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf).get_configuration();
         auto endpoint_config = conf->get_section("ipc_endpoint");
@@ -253,6 +259,7 @@ private:
     tateyama::common::wire::session_wire_container wire_;
     tateyama::proto::framework::request::Header header_{};
     std::unique_ptr<tateyama::server::status_info_bridge> status_info_{};
+    std::size_t session_id_{};
     bool closed_{};
 
     std::string digest() {

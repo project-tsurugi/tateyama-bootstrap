@@ -50,7 +50,7 @@ static std::string to_timepoint_string(std::uint64_t msu) {
     return rv;
 }
 
-tgctl::return_code session_list() {
+tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-complexity)
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty()) {
@@ -66,6 +66,7 @@ tgctl::return_code session_list() {
         (void) request.mutable_session_list();
         auto response_opt = transport->send<::tateyama::proto::session::response::SessionList>(request);
         request.clear_session_list();
+        auto session_id = transport->session_id();
 
         if (response_opt) {
             auto response = response_opt.value();
@@ -135,16 +136,19 @@ tgctl::return_code session_list() {
                 std::cout << std::endl;
 
                 for( auto& e : session_list ) {
-                    std::cout << std::setw(static_cast<int>(id_max)) << e.session_id();
-                    std::cout << std::setw(static_cast<int>(label_max)) << e.label();
-                    std::cout << std::setw(static_cast<int>(application_max)) << e.application();
-                    std::cout << std::setw(static_cast<int>(user_max)) << e.user();
-                    std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
-                    std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
-                    std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
-                    std::cout << std::endl;
-                    if (monitor_output) {
-                        monitor_output->session_info(e.session_id(), e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
+                    auto e_session_id = e.session_id();
+                    if (e_session_id.substr(1) != std::to_string(session_id)) {
+                        std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
+                        std::cout << std::setw(static_cast<int>(label_max)) << e.label();
+                        std::cout << std::setw(static_cast<int>(application_max)) << e.application();
+                        std::cout << std::setw(static_cast<int>(user_max)) << e.user();
+                        std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
+                        std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
+                        std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
+                        std::cout << std::endl;
+                        if (monitor_output) {
+                            monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
+                        }
                     }
                 }
 
