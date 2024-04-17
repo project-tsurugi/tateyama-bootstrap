@@ -104,18 +104,15 @@ protected:
     }
 
     std::string to_timepoint_string(std::uint64_t msu) {
-        auto ms = static_cast<std::int64_t>(msu);
-        std::timespec ts{ms / 1000, (ms % 1000) * 1000000};
+        std::chrono::time_point<std::chrono::system_clock> e0{};
+        std::chrono::time_point<std::chrono::system_clock> t = e0 + std::chrono::milliseconds(static_cast<std::int64_t>(msu));
 
-        auto* when = std::localtime(&ts.tv_sec);
-        constexpr int array_size = 32;
-        std::array<char, array_size> buf{};
-        std::strftime(buf.data(), array_size - 1, "%Y-%m-%d %H:%M:%S", when);
-        std::array<char, array_size> output{};
-        const int msec = ts.tv_nsec / 1000000;
-        auto len = snprintf(output.data(), array_size, "%s.%03d %s", buf.data(), msec, when->tm_zone);
-        std::string rv{output.data(), static_cast<std::size_t>(len)};
-        return rv;
+        std::stringstream stream;
+        time_t epoch_seconds = std::chrono::system_clock::to_time_t(t);
+        struct tm buf;
+        gmtime_r(&epoch_seconds, &buf);
+        stream << std::put_time(&buf, "%FT%TZ");
+        return stream.str();
     }
 };
 
@@ -133,12 +130,12 @@ TEST_F(session_test, session_list) {
         entry->set_application("session_test");
         entry->set_user("test_user");
         entry->set_start_at(now_stamp);
-        entry->set_connection_type(std::string("IPC"));
+        entry->set_connection_type(std::string("ipc"));
         entry->set_connection_info(std::to_string(getpid()));
         server_mock_->push_response(session_list.SerializeAsString());
     }
 
-    command = "tgctl session list --conf ";
+    command = "tgctl session list --verbose --conf ";
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
@@ -151,7 +148,7 @@ TEST_F(session_test, session_list) {
     EXPECT_NE(std::string::npos, result.find("session_test"));
     EXPECT_NE(std::string::npos, result.find("test_user"));
     EXPECT_NE(std::string::npos, result.find(to_timepoint_string(now_stamp)));
-    EXPECT_NE(std::string::npos, result.find("IPC"));
+    EXPECT_NE(std::string::npos, result.find("ipc"));
     EXPECT_NE(std::string::npos, result.find(std::to_string(getpid())));
 
     EXPECT_EQ(tateyama::framework::service_id_session, server_mock_->component_id());
@@ -173,7 +170,7 @@ TEST_F(session_test, session_show) {
         entry->set_application("session_test");
         entry->set_user("test_user");
         entry->set_start_at(now_stamp);
-        entry->set_connection_type(std::string("IPC"));
+        entry->set_connection_type(std::string("ipc"));
         entry->set_connection_info(std::to_string(getpid()));
         server_mock_->push_response(session_get.SerializeAsString());
     }
@@ -191,7 +188,7 @@ TEST_F(session_test, session_show) {
     EXPECT_NE(std::string::npos, result.find("session_test"));
     EXPECT_NE(std::string::npos, result.find("test_user"));
     EXPECT_NE(std::string::npos, result.find(to_timepoint_string(now_stamp)));
-    EXPECT_NE(std::string::npos, result.find("IPC"));
+    EXPECT_NE(std::string::npos, result.find("ipc"));
     EXPECT_NE(std::string::npos, result.find(std::to_string(getpid())));
 
     EXPECT_EQ(tateyama::framework::service_id_session, server_mock_->component_id());

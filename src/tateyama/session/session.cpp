@@ -15,7 +15,6 @@
  */
 
 #include <ctime>
-#include <array>
 
 #include <gflags/gflags.h>
 
@@ -30,24 +29,20 @@
 
 DECLARE_string(monitor);
 DECLARE_bool(force);
+DEFINE_bool(verbose, false, "show session list in verbose format");  // NOLINT
 
 namespace tateyama::session {
 
 static std::string to_timepoint_string(std::uint64_t msu) {
-    auto ms = static_cast<std::int64_t>(msu);
-    std::timespec ts{ms / 1000, (ms % 1000) * 1000000};
+    std::chrono::time_point<std::chrono::system_clock> e0{};
+    std::chrono::time_point<std::chrono::system_clock> t = e0 + std::chrono::milliseconds(static_cast<std::int64_t>(msu));
 
-    auto* when = std::localtime(&ts.tv_sec);
-    constexpr int array_size = 32;
-    std::array<char, array_size> buf{};
-    if (std::strftime(buf.data(), array_size - 1, "%Y-%m-%d %H:%M:%S", when) == 0) {
-        return {};
-    }
-    std::array<char, array_size> output{};
-    const int msec = static_cast<std::int32_t>(ts.tv_nsec) / 1000000;
-    auto len = snprintf(output.data(), array_size, "%s.%03d %s", buf.data(), msec, when->tm_zone);  // NOLINT(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
-    std::string rv{output.data(), static_cast<std::size_t>(len)};
-    return rv;
+    std::stringstream stream;
+    time_t epoch_seconds = std::chrono::system_clock::to_time_t(t);
+    struct tm buf{};
+    gmtime_r(&epoch_seconds, &buf);
+    stream << std::put_time(&buf, "%FT%TZ");
+    return stream.str();
 }
 
 tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-complexity)
@@ -83,7 +78,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             }
 
             if (rtnv == tgctl::return_code::ok) {
-                auto session_list = response.success().entries();
+                auto& session_list = response.success().entries();
 
                 std::size_t id_max{2};
                 std::size_t label_max{5};
@@ -125,33 +120,40 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 type_max += 2;
                 remote_max += 2;
 
-                std::cout << std::left;
-                std::cout << std::setw(static_cast<int>(id_max)) << "id";
-                std::cout << std::setw(static_cast<int>(label_max)) << "label";
-                std::cout << std::setw(static_cast<int>(application_max)) << "application";
-                std::cout << std::setw(static_cast<int>(user_max)) << "user";
-                std::cout << std::setw(static_cast<int>(start_max)) << "start";
-                std::cout << std::setw(static_cast<int>(type_max)) << "type";
-                std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
-                std::cout << std::endl;
-
+                if (FLAGS_verbose) {
+                    std::cout << std::left;
+                    std::cout << std::setw(static_cast<int>(id_max)) << "id";
+                    std::cout << std::setw(static_cast<int>(label_max)) << "label";
+                    std::cout << std::setw(static_cast<int>(application_max)) << "application";
+                    std::cout << std::setw(static_cast<int>(user_max)) << "user";
+                    std::cout << std::setw(static_cast<int>(start_max)) << "start";
+                    std::cout << std::setw(static_cast<int>(type_max)) << "type";
+                    std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
+                    std::cout << std::endl;
+                }
                 for( auto& e : session_list ) {
                     auto e_session_id = e.session_id();
                     if (e_session_id.substr(1) != std::to_string(session_id)) {
-                        std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
-                        std::cout << std::setw(static_cast<int>(label_max)) << e.label();
-                        std::cout << std::setw(static_cast<int>(application_max)) << e.application();
-                        std::cout << std::setw(static_cast<int>(user_max)) << e.user();
-                        std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
-                        std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
-                        std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
-                        std::cout << std::endl;
+                        if (FLAGS_verbose) {
+                            std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
+                            std::cout << std::setw(static_cast<int>(label_max)) << e.label();
+                            std::cout << std::setw(static_cast<int>(application_max)) << e.application();
+                            std::cout << std::setw(static_cast<int>(user_max)) << e.user();
+                            std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
+                            std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
+                            std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
+                            std::cout << std::endl;
+                        } else {
+                            std::cout << (e.label().empty() ? e_session_id : e.label()) << " ";
+                        }
                         if (monitor_output) {
                             monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
                         }
                     }
                 }
-
+                if (!FLAGS_verbose) {
+                    std::cout << std::endl;
+                }
                 if (monitor_output) {
                     monitor_output->finish(true);
                 }
