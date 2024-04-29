@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <memory>
 
 #include <gflags/gflags.h>
 
