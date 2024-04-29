@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 #include <iostream>
 #include <csignal>
+#include <cstdint>
 #include <cstdlib>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error

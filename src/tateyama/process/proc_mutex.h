@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <functional>
