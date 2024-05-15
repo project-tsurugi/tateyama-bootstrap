@@ -18,8 +18,10 @@ target_link_libraries(${test_target}
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE rt
+        PRIVATE Boost::thread
         PRIVATE Boost::filesystem
         PRIVATE ${tateyama_engine}
+        PRIVATE protobuf::libprotobuf
         )
 
 function (add_test_executable source_file)
@@ -39,6 +41,7 @@ file(GLOB SRCS
         "tateyama/tgctl/*_test.cpp"
         "tateyama/configuration/*_test.cpp"
         "tateyama/version/*_test.cpp"
+        "tateyama/session/*_test.cpp"
 )
 
 foreach(file ${SRCS})

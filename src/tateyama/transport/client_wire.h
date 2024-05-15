@@ -93,14 +93,14 @@ public:
     public:
         wire_container() = default;
         wire_container(unidirectional_message_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
-        message_header peep(bool wait = false) {
-            return wire_->peep(bip_buffer_, wait);
+        message_header peep() {
+            return wire_->peep(bip_buffer_);
         }
         void write(const std::string& data, message_header::index_type index) {
             wire_->write(bip_buffer_, data.data(), message_header(index, data.length()));
         }
         void disconnect() {
-            wire_->write(bip_buffer_, nullptr, message_header(message_header::termination_request, 0));
+            wire_->terminate();
         }
 
     private:
@@ -153,7 +153,7 @@ public:
     }
 
     ~session_wire_container() = default;
-    
+
     void close() {
         request_wire_.disconnect();
     }

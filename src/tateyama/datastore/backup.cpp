@@ -24,7 +24,6 @@
 
 #include <gflags/gflags.h>
 
-#include <tateyama/framework/component_ids.h>
 #include <tateyama/logging.h>
 
 #include "tateyama/configuration/bootstrap_configuration.h"
@@ -95,32 +94,6 @@ static bool prompt(std::string_view msg)
     return rtnv;
 }
 
-static std::string database_name() {
-    if (auto conf = tateyama::api::configuration::create_configuration(FLAGS_conf, tateyama::configuration::default_property_for_bootstrap()); conf != nullptr) {
-        auto endpoint_config = conf->get_section("ipc_endpoint");
-        if (endpoint_config == nullptr) {
-            std::cerr << "cannot find ipc_endpoint section in the configuration" << std::endl;
-            exit(tgctl::return_code::err);
-        }
-        auto database_name_opt = endpoint_config->get<std::string>("database_name");
-        if (!database_name_opt) {
-            std::cerr << "cannot find database_name at the section in the configuration" << std::endl;
-            exit(tgctl::return_code::err);
-        }
-        return database_name_opt.value();
-    }
-    std::cerr << "error in create_configuration" << std::endl;
-    exit(2);
-}
-
-static std::string digest() {
-    auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
-    if (bst_conf.valid()) {
-        return bst_conf.digest();
-    }
-    return {};
-}
-    
 tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
@@ -132,7 +105,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
     auto rtnv = tgctl::return_code::ok;
     authentication::auth_options();
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request requestBegin{};
         auto backup_begin = requestBegin.mutable_backup_begin();
         if (!FLAGS_label.empty()) {
@@ -241,7 +214,7 @@ tgctl::return_code tgctl_backup_estimate() {
     authentication::auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         request.mutable_backup_estimate();
         auto response = transport->send<::tateyama::proto::datastore::response::BackupEstimate>(request);
@@ -269,7 +242,7 @@ tgctl::return_code tgctl_backup_estimate() {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << database_name() << std::endl;
+        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -303,7 +276,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
     authentication::auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_begin = request.mutable_restore_begin();
         restore_begin->set_backup_directory(path_to_backup);
@@ -335,7 +308,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << database_name() << std::endl;
+        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -381,7 +354,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             std::cerr << "option --nokeep_backup is ignored when --use-file-list is specified" << std::endl;
         }
 
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_begin = request.mutable_restore_begin();
         auto entries = restore_begin->mutable_entries();
@@ -422,7 +395,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << database_name() << std::endl;
+        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -444,7 +417,7 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
     authentication::auth_options();
 
     try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(database_name(), digest(), tateyama::framework::service_id_datastore);
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_begin = request.mutable_restore_begin();
@@ -473,7 +446,7 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << database_name() << std::endl;
+        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
