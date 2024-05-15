@@ -24,7 +24,7 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/version/version.h"
 #include "tateyama/session/session.h"
-#include "tateyama/statistics/statistics.h"
+#include "tateyama/metrics/metrics.h"
 
 // common
 DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
@@ -192,10 +192,10 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
     }
     if (args.at(1) == "dbstats") {
         if (args.at(2) == "list") {
-            return tateyama::statistics::list();
+            return tateyama::metrics::list();
         }
         if (args.at(2) == "show") {
-            return tateyama::statistics::show();
+            return tateyama::metrics::show();
         }
         std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'" << std::endl;
         return tateyama::tgctl::return_code::err;

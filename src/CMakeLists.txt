@@ -81,6 +81,8 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/common.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/endpoint/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/endpoint/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/metrics/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/metrics/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/kvs/response.proto
@@ -107,7 +109,7 @@ file(GLOB TGCTL_SOURCES
         "tateyama/configuration/*.cpp"
         "tateyama/utils/*.cpp"
         "tateyama/session/*.cpp"
-        "tateyama/statistics/*.cpp"
+        "tateyama/metrics/*.cpp"
         )
 
 set_source_files_properties(

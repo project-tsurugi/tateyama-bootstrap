@@ -17,9 +17,9 @@
 
 #include "tateyama/tgctl/tgctl.h"
 
-namespace tateyama::statistics {
+namespace tateyama::metrics {
 
     tgctl::return_code list();
     tgctl::return_code show();
 
-} //  tateyama::statistics
+} //  tateyama::metrics
