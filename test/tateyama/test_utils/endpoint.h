@@ -146,7 +146,8 @@ public:
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)
-        : name_(name), digest_(digest), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), thread_(std::thread(std::ref(*this))), sync_(sync) {
+        : name_(name), digest_(digest), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync) {
+        thread_ = std::thread(std::ref(*this));
     }
     ~endpoint() {
         if (thread_.joinable()) {
