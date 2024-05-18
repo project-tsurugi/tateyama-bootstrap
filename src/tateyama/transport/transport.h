@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -285,12 +285,12 @@ private:
         tateyama::proto::endpoint::request::Request request{};
         request.set_allocated_handshake(&handshake);
         auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
-        request.release_handshake();
+        (void)request.release_handshake();
 
-        wire_information.release_ipc_information();
-        handshake.release_wire_information();
+        (void)wire_information.release_ipc_information();
+        (void)handshake.release_wire_information();
 
-        handshake.release_client_information();
+        (void)handshake.release_client_information();
         return response;
     }
 };
