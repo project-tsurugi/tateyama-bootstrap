@@ -61,7 +61,6 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
         (void) request.mutable_session_list();
         auto response_opt = transport->send<::tateyama::proto::session::response::SessionList>(request);
         request.clear_session_list();
-        auto session_id = transport->session_id();
 
         if (response_opt) {
             auto response = response_opt.value();
@@ -133,22 +132,20 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 }
                 for( auto& e : session_list ) {
                     auto e_session_id = e.session_id();
-                    if (e_session_id.substr(1) != std::to_string(session_id)) {
-                        if (FLAGS_verbose) {
-                            std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
-                            std::cout << std::setw(static_cast<int>(label_max)) << e.label();
-                            std::cout << std::setw(static_cast<int>(application_max)) << e.application();
-                            std::cout << std::setw(static_cast<int>(user_max)) << e.user();
-                            std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
-                            std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
-                            std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
-                            std::cout << std::endl;
-                        } else {
-                            std::cout << (e.label().empty() ? e_session_id : e.label()) << " ";
-                        }
-                        if (monitor_output) {
-                            monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
-                        }
+                    if (FLAGS_verbose) {
+                        std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
+                        std::cout << std::setw(static_cast<int>(label_max)) << e.label();
+                        std::cout << std::setw(static_cast<int>(application_max)) << e.application();
+                        std::cout << std::setw(static_cast<int>(user_max)) << e.user();
+                        std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
+                        std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
+                        std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
+                        std::cout << std::endl;
+                    } else {
+                        std::cout << (e.label().empty() ? e_session_id : e.label()) << " ";
+                    }
+                    if (monitor_output) {
+                        monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
                     }
                 }
                 if (!FLAGS_verbose) {
