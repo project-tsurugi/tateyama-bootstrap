@@ -174,3 +174,18 @@ static bool validate_json(std::filesystem::path file)
 
     return result;
 }
+
+static bool validate_json_regular(const std::string& str)
+{
+    bool result = true;
+    std::stringstream ss;
+
+    ss << str;
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(ss, pt);
+    } catch (boost::property_tree::json_parser_error) {
+        result = false;
+    }
+    return result;
+}

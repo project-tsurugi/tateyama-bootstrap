@@ -34,6 +34,8 @@
 #include <tateyama/proto/endpoint/response.pb.h>
 #include <tateyama/proto/session/request.pb.h>
 #include <tateyama/proto/session/response.pb.h>
+#include <tateyama/proto/metrics/request.pb.h>
+#include <tateyama/proto/metrics/response.pb.h>
 
 #include "tateyama/server/status_info.h"
 #include "client_wire.h"
@@ -50,6 +52,8 @@ constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t ENDPOINT_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t SESSION_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t SESSION_MESSAGE_VERSION_MINOR = 0;
+constexpr static std::size_t METRICS_MESSAGE_VERSION_MAJOR = 0;
+constexpr static std::size_t METRICS_MESSAGE_VERSION_MINOR = 0;
 
 class transport {
 public:
@@ -87,7 +91,6 @@ public:
     transport(transport&& other) noexcept = delete;
     transport& operator=(transport&& other) noexcept = delete;
 
-    // for datastore
     template <typename T>
     std::optional<T> send(::tateyama::proto::datastore::request::Request& request) {
         auto& response_wire = wire_.get_response_wire();
@@ -220,6 +223,53 @@ public:
         tateyama::proto::framework::response::Header fwrs_header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(fwrs_header), std::addressof(ins), nullptr); ! res) {
+            return std::nullopt;
+        }
+        std::string_view payload{};
+        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
+            return std::nullopt;
+        }
+        T response{};
+        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+            return std::nullopt;
+        }
+        return response;
+    }
+
+    // metrics
+    template <typename T>
+    std::optional<T> send(::tateyama::proto::metrics::request::Request& request) {
+        auto& response_wire = wire_.get_response_wire();
+
+        std::stringstream sst{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        request.set_service_message_version_major(METRICS_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(METRICS_MESSAGE_VERSION_MINOR);
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        wire_.write(sst.str());
+
+        while (true) {
+            try {
+                response_wire.await();
+                break;
+            } catch (std::runtime_error &e) {
+                if (status_info_->alive()) {
+                    continue;
+                }
+                std::cerr << e.what() << std::endl;
+                return std::nullopt;
+            }
+        }
+        std::string res_message{};
+        res_message.resize(response_wire.get_length());
+        response_wire.read(res_message.data());
+        ::tateyama::proto::framework::response::Header header{};
+        google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
             return std::nullopt;
         }
         std::string_view payload{};
