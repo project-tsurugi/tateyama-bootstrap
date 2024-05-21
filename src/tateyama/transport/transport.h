@@ -74,6 +74,7 @@ public:
             throw std::runtime_error("handshake error");
         }
         session_id_ = handshake_response.success().session_id();
+        header_.set_session_id(session_id_);
     }
 
     ~transport() {
