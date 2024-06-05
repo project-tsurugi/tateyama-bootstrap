@@ -149,8 +149,8 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                         std::cout << std::endl;
                     } else {
                         auto& label = e.label();
-                        std::cout << ((label.empty() || label.find(" ") != std::string::npos || label.find("\t") != std::string::npos || FLAGS_id || labels.count(label) > 1) ?
-                                      e_session_id : e.label()) << " ";
+                        std::cout << ((label.empty() || label.find(' ') != std::string::npos || label.find('\t') != std::string::npos || FLAGS_id || labels.count(label) > 1) ?   // NOLINT(abseil-string-find-str-contains)
+                                      e_session_id : e.label()) << ' ';
                     }
                     if (monitor_output) {
                         monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
