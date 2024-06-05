@@ -15,6 +15,7 @@
  */
 
 #include <ctime>
+#include <set>
 
 #include <gflags/gflags.h>
 
@@ -30,6 +31,7 @@
 DECLARE_string(monitor);
 DECLARE_bool(force);
 DEFINE_bool(verbose, false, "show session list in verbose format");  // NOLINT
+DEFINE_bool(id, false, "show session list using session id");  // NOLINT
 
 namespace tateyama::session {
 
@@ -77,6 +79,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             }
 
             if (rtnv == tgctl::return_code::ok) {
+                std::multiset<std::string> labels{};
                 auto& session_list = response.success().entries();
 
                 std::size_t id_max{2};
@@ -86,7 +89,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 std::size_t start_max{5};
                 std::size_t type_max{4};
                 std::size_t remote_max{6};
-                for( auto& e : session_list ) {
+                for(auto& e : session_list) {
                     if (id_max < e.session_id().length()) {
                         id_max = e.session_id().length();
                     }
@@ -109,6 +112,9 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     if (remote_max < e.connection_info().length()) {
                         remote_max = e.connection_info().length();
                     }
+                    if (!e.label().empty()) {
+                        labels.emplace(e.label());
+                    }
                 }
 
                 id_max += 2;
@@ -130,7 +136,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
                     std::cout << std::endl;
                 }
-                for( auto& e : session_list ) {
+                for(auto& e : session_list) {
                     auto e_session_id = e.session_id();
                     if (FLAGS_verbose) {
                         std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
@@ -142,7 +148,9 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                         std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
                         std::cout << std::endl;
                     } else {
-                        std::cout << (e.label().empty() ? e_session_id : e.label()) << " ";
+                        auto& label = e.label();
+                        std::cout << ((label.empty() || label.find(" ") != std::string::npos || label.find("\t") != std::string::npos || FLAGS_id || labels.count(label) > 1) ?
+                                      e_session_id : e.label()) << " ";
                     }
                     if (monitor_output) {
                         monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
