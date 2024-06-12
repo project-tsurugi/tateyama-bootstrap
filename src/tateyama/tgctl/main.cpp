@@ -39,6 +39,10 @@ DEFINE_int32(timeout, -1, "timeout for tgctl shutdown, no timeout control takes 
 DEFINE_bool(q, false, "do not display command execution results on the console");  // NOLINT
 DEFINE_bool(quiet, false, "do not display command execution results on the console");  // NOLINT
 
+// for control and session
+DEFINE_bool(graceful, false, "graceful shutdown");  // NOLINT
+DEFINE_bool(forceful, false, "forceful shutdown");  // NOLINT
+
 // for backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
 DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
@@ -172,13 +176,12 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             }
             return tateyama::session::session_show(args.at(3));
         }
-        if (args.at(2) == "kill") {
+        if (args.at(2) == "shutdown") {
             if (args.size() < 3) {
                 std::cerr << "need to specify session-ref(s)" << std::endl;
                 return tateyama::tgctl::return_code::err;
             }
-            // return tateyama::session::session_kill(std::vector<std::string>(args.begin() + 3, args.begin() + static_cast<std::int64_t>(args.size()))); // FIXME confirm specification
-            return tateyama::session::session_kill(args.at(3));
+            return tateyama::session::session_shutdown(args.at(3));
         }
         if (args.at(2) == "set") {
             if (args.size() < 5) {

@@ -28,10 +28,11 @@
 #include <tateyama/monitor/monitor.h>
 #include "session.h"
 
-DECLARE_string(monitor);
-DECLARE_bool(force);
 DEFINE_bool(verbose, false, "show session list in verbose format");  // NOLINT
 DEFINE_bool(id, false, "show session list using session id");  // NOLINT
+DECLARE_string(monitor);
+DECLARE_bool(graceful);
+DECLARE_bool(forceful);
 
 namespace tateyama::session {
 
@@ -237,7 +238,7 @@ tgctl::return_code session_show(std::string_view session_ref) {
     return rtnv;
 }
 
-tgctl::return_code session_kill(std::string_view session_ref) {
+tgctl::return_code session_shutdown(std::string_view session_ref) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty()) {
@@ -246,43 +247,50 @@ tgctl::return_code session_kill(std::string_view session_ref) {
     }
 
     auto rtnv = tgctl::return_code::ok;
-    authentication::auth_options();
-    try {
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
-        ::tateyama::proto::session::request::Request request{};
-        auto* command = request.mutable_session_shutdown();
-        command->set_session_specifier(std::string(session_ref));
-        command->set_request_type(FLAGS_force ?
-                                  ::tateyama::proto::session::request::SessionShutdownType::FORCEFUL :
-                                  ::tateyama::proto::session::request::SessionShutdownType::GRACEFUL);
-        auto response_opt = transport->send<::tateyama::proto::session::response::SessionShutdown>(request);
-        request.clear_session_shutdown();
-
-        if (response_opt) {
-            auto response = response_opt.value();
-            switch(response.result_case()) {
-            case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kSuccess:
-                break;
-            case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kError:
-                std::cerr << "SessionShutdown error: " << response.error().message() << std::endl;
-                rtnv = tgctl::return_code::err;
-                break;
-            default:
-                std::cerr << "SessionShutdown result_case() error: " << std::endl;
-                rtnv = tgctl::return_code::err;
+    if (FLAGS_graceful && FLAGS_forceful) {
+        std::cerr << "both forceful and graceful options specified" << std::endl;
+        rtnv = tgctl::return_code::err;
+    } else {
+        authentication::auth_options();
+        try {
+            auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
+            ::tateyama::proto::session::request::Request request{};
+            auto* command = request.mutable_session_shutdown();
+            command->set_session_specifier(std::string(session_ref));
+            if (FLAGS_graceful) {
+                command->set_request_type(::tateyama::proto::session::request::SessionShutdownType::GRACEFUL);
+            } else if (FLAGS_forceful) {
+                command->set_request_type(::tateyama::proto::session::request::SessionShutdownType::FORCEFUL);
             }
+            auto response_opt = transport->send<::tateyama::proto::session::response::SessionShutdown>(request);
+            request.clear_session_shutdown();
 
-            if (rtnv == tgctl::return_code::ok) {
-                if (monitor_output) {
-                    monitor_output->finish(true);
+            if (response_opt) {
+                auto response = response_opt.value();
+                switch(response.result_case()) {
+                case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kSuccess:
+                    break;
+                case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kError:
+                    std::cerr << "SessionShutdown error: " << response.error().message() << std::endl;
+                    rtnv = tgctl::return_code::err;
+                    break;
+                default:
+                    std::cerr << "SessionShutdown result_case() error: " << std::endl;
+                    rtnv = tgctl::return_code::err;
                 }
-                return rtnv;
+
+                if (rtnv == tgctl::return_code::ok) {
+                    if (monitor_output) {
+                        monitor_output->finish(true);
+                    }
+                    return rtnv;
+                }
             }
+        } catch (std::runtime_error &ex) {
+            std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
         }
-    } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        rtnv = tgctl::return_code::err;
     }
-    rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
         monitor_output->finish(false);

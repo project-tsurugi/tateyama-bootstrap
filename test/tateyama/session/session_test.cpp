@@ -179,7 +179,7 @@ TEST_F(session_test, session_show) {
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot tgctl session get" << std::endl;
+        std::cerr << "cannot tgctl session show" << std::endl;
     }
     auto result = read_pipe(fp);
 //    std::cout << result << std::flush;
@@ -197,7 +197,7 @@ TEST_F(session_test, session_show) {
     EXPECT_EQ(":123456", rq.session_specifier());
 }
 
-TEST_F(session_test, session_kill_graceful) {
+TEST_F(session_test, session_shutdown_graceful) {
     std::string command;
     FILE *fp;
 
@@ -207,11 +207,12 @@ TEST_F(session_test, session_kill_graceful) {
         server_mock_->push_response(session_sd.SerializeAsString());
     }
 
-    command = "tgctl session kill :123456 --conf ";
+    command = "tgctl session shutdown :123456 --conf ";
     command += helper_->conf_file_path();
+    command += " --graceful";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot tgctl session get" << std::endl;
+        std::cerr << "cannot tgctl session shutdown" << std::endl;
     }
     auto result = read_pipe(fp);
     std::cout << result << std::flush;
@@ -223,7 +224,7 @@ TEST_F(session_test, session_kill_graceful) {
     EXPECT_EQ(tateyama::proto::session::request::SessionShutdownType::GRACEFUL, rq.request_type());
 }
 
-TEST_F(session_test, session_kill_forceful) {
+TEST_F(session_test, session_shutdown_forceful) {
     std::string command;
     FILE *fp;
 
@@ -233,12 +234,12 @@ TEST_F(session_test, session_kill_forceful) {
         server_mock_->push_response(session_sd.SerializeAsString());
     }
 
-    command = "tgctl session kill :123456 --conf ";
+    command = "tgctl session shutdown :123456 --conf ";
     command += helper_->conf_file_path();
-    command += " --force";
+    command += " --forceful";
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot tgctl session get" << std::endl;
+        std::cerr << "cannot tgctl session shutdown" << std::endl;
     }
     auto result = read_pipe(fp);
     std::cout << result << std::flush;
@@ -248,6 +249,32 @@ TEST_F(session_test, session_kill_forceful) {
     server_mock_->request_message(rq);
     EXPECT_EQ(":123456", rq.session_specifier());
     EXPECT_EQ(tateyama::proto::session::request::SessionShutdownType::FORCEFUL, rq.request_type());
+}
+
+TEST_F(session_test, session_shutdown) {
+    std::string command;
+    FILE *fp;
+
+    {
+        tateyama::proto::session::response::SessionShutdown session_sd{};
+        auto* success = session_sd.mutable_success();
+        server_mock_->push_response(session_sd.SerializeAsString());
+    }
+
+    command = "tgctl session shutdown :123456 --conf ";
+    command += helper_->conf_file_path();
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot tgctl session shutdown" << std::endl;
+    }
+    auto result = read_pipe(fp);
+    std::cout << result << std::flush;
+
+    EXPECT_EQ(tateyama::framework::service_id_session, server_mock_->component_id());
+    tateyama::proto::session::request::SessionShutdown rq{};
+    server_mock_->request_message(rq);
+    EXPECT_EQ(":123456", rq.session_specifier());
+    EXPECT_EQ(tateyama::proto::session::request::SessionShutdownType::SESSION_SHUTDOWN_TYPE_NOT_SET, rq.request_type());
 }
 
 TEST_F(session_test, session_set) {
@@ -264,7 +291,7 @@ TEST_F(session_test, session_set) {
     command += helper_->conf_file_path();
     std::cout << command << std::endl;
     if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot tgctl session get" << std::endl;
+        std::cerr << "cannot tgctl session set" << std::endl;
     }
     auto result = read_pipe(fp);
     std::cout << result << std::flush;
