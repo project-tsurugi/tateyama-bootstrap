@@ -65,10 +65,10 @@ public:
         return resource_status_memory_->whole();
     }
     [[nodiscard]] bool is_shutdown_requested() {
-        return resource_status_memory_->shutdown();
+        return resource_status_memory_->get_shutdown_request() != tateyama::status_info::shutdown_type::nothing;
     }
-    [[nodiscard]] bool request_shutdown() {
-        return resource_status_memory_->request_shutdown();
+    [[nodiscard]] bool request_shutdown(tateyama::status_info::shutdown_type type) {
+        return resource_status_memory_->request_shutdown(type);
     }
     [[nodiscard]] bool alive() {
         return resource_status_memory_->alive();
