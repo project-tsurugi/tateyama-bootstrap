@@ -32,18 +32,20 @@
 #include "tateyama/monitor/monitor.h"
 #include "process.h"
 
-DECLARE_string(conf);  // NOLINT
-DECLARE_string(monitor);  // NOLINT
-DECLARE_string(label);  // NOLINT
-DECLARE_bool(quiesce);  // NOLINT
-DECLARE_bool(maintenance_server);  // NOLINT
-DECLARE_string(start_mode);  // NOLINT
-DECLARE_int32(timeout); // NOLINT
-DECLARE_bool(quiet);  // NOLINT
+DECLARE_string(conf);
+DECLARE_string(monitor);
+DECLARE_string(label);
+DECLARE_bool(quiesce);
+DECLARE_bool(maintenance_server);
+DECLARE_string(start_mode);
+DECLARE_int32(timeout);
+DECLARE_bool(quiet);
+DECLARE_bool(graceful);
+DECLARE_bool(forceful);
 
-DECLARE_string(location);  // NOLINT
-DECLARE_bool(load);  // NOLINT
-DECLARE_bool(tpch);  // NOLINT
+DECLARE_string(location);  // obsolete
+DECLARE_bool(load);  // obsolete
+DECLARE_bool(tpch);  // obsolete
 
 namespace tateyama::process {
 
@@ -449,7 +451,15 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
     auto rtnv = tgctl::return_code::ok;
     bool dot = false;
 
-    if (!status_info->request_shutdown()) {
+    if (FLAGS_graceful && FLAGS_forceful) {
+        std::cerr << "both forceful and graceful options specified" << std::endl;
+        return  tgctl::return_code::err;
+    }
+    auto shutdown_type = tateyama::status_info::shutdown_type::forceful;
+    if (FLAGS_graceful) {
+        shutdown_type = tateyama::status_info::shutdown_type::graceful;
+    }
+    if (!status_info->request_shutdown(shutdown_type)) {
         if (!FLAGS_quiet) {
             std::cout << "shutdown was not performed, as shutdown is already requested." << std::endl;
         }
