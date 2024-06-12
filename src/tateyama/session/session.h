@@ -25,7 +25,7 @@ namespace tateyama::session {
 
     tgctl::return_code session_list();
     tgctl::return_code session_show(std::string_view session_ref);
-    tgctl::return_code session_kill(std::string_view session_ref);
+    tgctl::return_code session_shutdown(std::string_view session_ref);
     tgctl::return_code session_swtch(std::string_view session_ref, std::string_view set_key, std::string_view set_value);
 
 } //  tateyama::session
