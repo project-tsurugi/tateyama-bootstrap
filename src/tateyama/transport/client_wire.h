@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <stdexcept> // std::runtime_error
+
 #include "wire.h"
 
 namespace tateyama::common::wire {
@@ -217,11 +219,13 @@ public:
     std::string connect() {
         auto& que = get_connection_queue();
         auto rid = que.request();  // connect
-        auto session_id = que.wait(rid);  // wait
-        std::string name{db_name_};
-        name += "-";
-        name += std::to_string(session_id);
-        return name;
+        if (auto session_id = que.wait(rid); session_id != tateyama::common::wire::connection_queue::session_id_indicating_error) { // wait
+            std::string name{db_name_};
+            name += "-";
+            name += std::to_string(session_id);
+            return name;
+        }
+        throw std::runtime_error("IPC connection establishment failure");
     }
     
 private:

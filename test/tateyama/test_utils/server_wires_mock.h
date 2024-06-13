@@ -66,7 +66,6 @@ public:
         std::size_t read_point() { return wire_->read_point(); }
         void dispose() { wire_->dispose(); }
         void notify() { wire_->notify(); }
-        [[nodiscard]] bool terminate_requested() const { return wire_->terminate_requested(); }
 
         // for mainly client, except for terminate request from server
         void write(const char* from, const std::size_t len, tateyama::common::wire::message_header::index_type index) {
@@ -167,10 +166,6 @@ public:
     void notify_shutdown() {
         request_wire_.notify();
         response_wire_.notify_shutdown();
-    }
-
-    [[nodiscard]] bool terminate_requested() const {
-        return request_wire_.terminate_requested();
     }
 
 private:

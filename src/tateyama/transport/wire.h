@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2023 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@
 #include <memory>
 #include <exception>
 #include <atomic>
-#include <cstdint>
 #include <stdexcept> // std::runtime_error
 #include <vector>
 #include <string>
 #include <string_view>
+#include <cstdint>
 #include <sys/file.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/sync/interprocess_condition.hpp>
@@ -43,7 +43,7 @@ class message_header {
 public:
     using length_type = std::uint32_t;
     using index_type = std::uint16_t;
-    static constexpr index_type null_request = 0xffff;
+    static constexpr index_type terminate_request = 0xffff;
 
     static constexpr std::size_t size = sizeof(length_type) + sizeof(index_type);
 
@@ -377,8 +377,9 @@ public:
 
     /**
      * @brief wait a request message arives and peep the current header.
-     * @returnm the essage_header if request message has been received,
-     *  otherwise, say timeout or termination requested, dummy request message whose length is 0 and index is message_header::null_request.
+     * @return the essage_header if request message has been received, for normal reception of request message.
+     *  otherwise, dummy request message whose length is 0 and index is message_header::termination_request for termination request
+     * @throws std::runtime_error when timeout occures.
      */
     message_header peep(const char* base) {
         while (true) {
@@ -386,9 +387,12 @@ public:
                 copy_header(base);
                 return header_received_;
             }
-            if (termination_requested_.load() || onetime_notification_.load()) {
-                onetime_notification_.store(false);
-                return {message_header::null_request, 0};
+            if (termination_requested_.load()) {
+                termination_requested_.store(false);
+                return {message_header::terminate_request, 0};
+            }
+            if (onetime_notification_.load()) {
+                throw std::runtime_error("received shutdown request from outside the communication partner");
             }
             boost::interprocess::scoped_lock lock(m_mutex_);
             wait_for_read_ = true;
@@ -397,18 +401,10 @@ public:
                                      boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(watch_interval * 1000 * 1000))),
                                      [this](){ return (stored() >= message_header::size) || termination_requested_.load() || onetime_notification_.load(); })) {
                 wait_for_read_ = false;
-                header_received_ = message_header(message_header::null_request, 0);
-                return header_received_;
+                throw std::runtime_error("request has not been received within the specified time");
             }
             wait_for_read_ = false;
         }
-    }
-    /**
-     * @brief check if an termination request has been made
-     * @retrun true if terminate request has been made
-     */
-    [[nodiscard]] bool terminate_requested() {
-        return termination_requested_.load();
     }
     /**
      * @brief wake up the worker immediately.
@@ -463,8 +459,9 @@ private:
 
 // for response
 class unidirectional_response_wire : public simple_wire<response_header> {
-    constexpr static std::size_t watch_interval = 5;
 public:
+    constexpr static std::size_t watch_interval = 5;
+
     unidirectional_response_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t capacity) : simple_wire<response_header>(managed_shm_ptr, capacity) {}
 
     /**
@@ -476,19 +473,19 @@ public:
         }
 
         while (true) {
-            if (closed_.load()) {
-                header_received_ = response_header(0, 0, 0);
-                return header_received_;
-            }
             if(stored() >= response_header::size) {
                 break;
+            }
+            if (closed_.load() || shutdown_.load()) {
+                header_received_ = response_header(0, 0, 0);
+                return header_received_;
             }
             {
                 boost::interprocess::scoped_lock lock(m_mutex_);
                 wait_for_read_ = true;
                 std::atomic_thread_fence(std::memory_order_acq_rel);
 
-                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))), [this](){ return (stored() >= response_header::size) || closed_.load(); })) {
+                if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))), [this](){ return (stored() >= response_header::size) || closed_.load() || shutdown_.load(); })) {
                     wait_for_read_ = false;
                     throw std::runtime_error("response has not been received within the specified time");
                 }
@@ -524,6 +521,10 @@ public:
         std::atomic_thread_fence(std::memory_order_acq_rel);
         if (wait_for_write_) {
             boost::interprocess::scoped_lock lock(m_mutex_);
+            c_full_.notify_one();
+        }
+        if (wait_for_read_) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
             c_empty_.notify_one();
         }
     }
@@ -547,8 +548,12 @@ public:
     /**
      * @brief notify client of the client of the shutdown
      */
-    void notify_shutdown() noexcept {
+    void notify_shutdown() {
         shutdown_.store(true);
+        if (wait_for_read_) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            c_empty_.notify_one();
+        }
     }
 
 private:
@@ -970,7 +975,7 @@ public:
             flock(fd, LOCK_UN);
             close(fd);
             std::stringstream ss{};
-            ss << "the lock file (" << mutex_file_.c_str() << ") is not locked, possibly due to server crash";
+            ss << "the lock file (" << mutex_file_.c_str() << ") is not locked, possibly due to server process lost";
             return ss.str();
         }
         close(fd);
@@ -1027,8 +1032,13 @@ public:
                                          boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(watch_interval * 1000 * 1000))),
                                          [this, &terminate](){ return (pushed_.load() > poped_.load()) || terminate.load(); });
         }
-        [[nodiscard]] std::size_t pop() {
-            return queue_.at(index(poped_.fetch_add(1)));
+        // thread unsafe (assume single listener thread)
+        void pop() {
+            poped_.fetch_add(1);
+        }
+        // thread unsafe (assume single listener thread)
+        [[nodiscard]] std::size_t front() {
+            return queue_.at(index(poped_.load()));
         }
         void notify() {
             condition_.notify_one();
@@ -1065,11 +1075,11 @@ public:
 
         void accept(std::size_t session_id) {
             session_id_ = session_id;
-            std::atomic_thread_fence(std::memory_order_acq_rel);
-            {
-                boost::interprocess::scoped_lock lock(m_accepted_);
-                c_accepted_.notify_one();
-            }
+            notify();
+        }
+        void reject() {
+            session_id_ = session_id_indicating_error;
+            notify();
         }
         [[nodiscard]] std::size_t wait(std::int64_t timeout = 0) {
             std::atomic_thread_fence(std::memory_order_acq_rel);
@@ -1100,9 +1110,18 @@ public:
         boost::interprocess::interprocess_mutex m_accepted_{};
         boost::interprocess::interprocess_condition c_accepted_{};
         std::size_t session_id_{};
+
+        void notify() {
+            std::atomic_thread_fence(std::memory_order_acq_rel);
+            {
+                boost::interprocess::scoped_lock lock(m_accepted_);
+                c_accepted_.notify_one();
+            }
+        }
     };
 
     using element_allocator = boost::interprocess::allocator<element, boost::interprocess::managed_shared_memory::segment_manager>;
+    constexpr static std::size_t session_id_indicating_error = UINT64_MAX;
 
     /**
      * @brief Construct a new object.
@@ -1127,9 +1146,14 @@ public:
     }
     std::size_t wait(std::size_t rid, std::int64_t timeout = 0) {
         auto& entry = v_requested_.at(rid);
-        auto rtnv = entry.wait(timeout);
-        entry.reuse();
-        return rtnv;
+        try {
+            auto rtnv = entry.wait(timeout);
+            entry.reuse();
+            return rtnv;
+        } catch (std::runtime_error &ex) {
+            entry.reuse();
+            throw ex;
+        }
     }
     bool check(std::size_t rid) {
         return v_requested_.at(rid).check();
@@ -1140,11 +1164,19 @@ public:
         }
         return 0;
     }
-    std::size_t accept(std::size_t session_id) {
-        std::size_t sid = q_requested_.pop();
-        auto& request = v_requested_.at(sid);
-        request.accept(session_id);
-        return sid;
+    std::size_t slot() {
+        return q_requested_.front();
+    }
+    // either accept() or reject() must be called
+    void accept(std::size_t sid, std::size_t session_id) {
+        q_requested_.pop();
+        v_requested_.at(sid).accept(session_id);
+    }
+    // either accept() or reject() must be called
+    void reject(std::size_t sid) {
+        q_requested_.pop();
+        v_requested_.at(sid).reject();
+        q_free_.push(sid);
     }
     void disconnect(std::size_t rid) {
         q_free_.push(rid);
