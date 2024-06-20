@@ -83,6 +83,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "flush_interval=10000\n"
         "flush_file_size=1048576\n"
         "max_file_size=1073741824\n"
+        "slow_query_time=1000000000\n"
 
     "[audit_log]\n"
         "output=true\n"

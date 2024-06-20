@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <filesystem>
 
 #include <glog/logging.h>
 
 #include <tateyama/api/configuration.h>
-#include <tateyama/altimeter/events.h>
+
+#include <altimeter/configuration.h>
+#include <altimeter/log_item.h>
 #include <altimeter/logger.h>
+
+#include <altimeter/audit/constants.h>
+#include <altimeter/event/constants.h>
+#include <altimeter/event/event_logger.h>
 
 #include "altimeter_helper.h"
 
@@ -39,7 +46,7 @@ altimeter_helper::~altimeter_helper() {
 // The following method is created with reference to altimeter/logger/examples/altimeter/main.cpp
 //
 void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type) {
-    configuration.category((type == log_type::event_log) ? log_category::event : log_category::audit);
+    configuration.category((type == log_type::event_log) ? ::altimeter::event::category : ::altimeter::audit::category);
     configuration.output(section->get<bool>("output").value());
     configuration.directory(section->get<std::filesystem::path>("directory").value().string());
     configuration.level(section->get<int>("level").value());
@@ -49,6 +56,19 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
     configuration.flush_interval(section->get<std::size_t>("flush_interval").value());
     configuration.flush_file_size(section->get<std::size_t>("flush_file_size").value());
     configuration.max_file_size(section->get<std::size_t>("max_file_size").value());
+    if (type == log_type::event_log) {
+        configuration.error_handler([](std::string_view error_message) {
+            std::cout << "Failed to flush or rotate event log files: "
+                      << error_message << "\n";
+        });
+        // FIXME implement set_slow_query_time() in altimeter::event::event_logger
+        // ::altimeter::event::event_logger::set_slow_query_time(section->get<std::size_t>("slow_query_time").value());
+    } else {
+        configuration.error_handler([](std::string_view error_message) {
+            std::cout << "Failed to flush or rotate audit log files: "
+                      << error_message << "\n";
+        });
+    }
 
     std::string_view log_type_name = (type == log_type::event_log) ? "event log" : "audit log";
     configuration.error_handler([log_type_name](std::string_view error_message) {
