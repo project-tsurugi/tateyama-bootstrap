@@ -61,8 +61,7 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
             std::cout << "Failed to flush or rotate event log files: "
                       << error_message << "\n";
         });
-        // FIXME implement set_slow_query_time() in altimeter::event::event_logger
-        // ::altimeter::event::event_logger::set_slow_query_time(section->get<std::size_t>("slow_query_time").value());
+        ::altimeter::event::event_logger::set_stmt_duration_threshold(section->get<std::size_t>("stmt_duration_threshold").value());
     } else {
         configuration.error_handler([](std::string_view error_message) {
             std::cout << "Failed to flush or rotate audit log files: "
