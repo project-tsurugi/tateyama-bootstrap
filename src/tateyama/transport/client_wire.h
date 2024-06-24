@@ -218,7 +218,7 @@ public:
 
     std::string connect() {
         auto& que = get_connection_queue();
-        auto rid = que.request();  // connect
+        auto rid = que.request_admin();  // connect
         if (auto session_id = que.wait(rid); session_id != tateyama::common::wire::connection_queue::session_id_indicating_error) { // wait
             std::string name{db_name_};
             name += "-";
