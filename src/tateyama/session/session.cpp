@@ -16,6 +16,8 @@
 
 #include <ctime>
 #include <set>
+#include <sstream>
+#include <map>
 
 #include <gflags/gflags.h>
 
@@ -137,28 +139,36 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
                     std::cout << std::endl;
                 }
+                std::map<std::size_t, std::string> output{};
                 for(auto& e : session_list) {
                     auto e_session_id = e.session_id();
+                    auto session_id = stol(e_session_id.substr(1));
                     if (FLAGS_verbose) {
-                        std::cout << std::setw(static_cast<int>(id_max)) << e_session_id;
-                        std::cout << std::setw(static_cast<int>(label_max)) << e.label();
-                        std::cout << std::setw(static_cast<int>(application_max)) << e.application();
-                        std::cout << std::setw(static_cast<int>(user_max)) << e.user();
-                        std::cout << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
-                        std::cout << std::setw(static_cast<int>(type_max)) << e.connection_type();
-                        std::cout << std::setw(static_cast<int>(remote_max)) << e.connection_info();
-                        std::cout << std::endl;
+                        std::ostringstream ss{};
+                        ss << std::left;
+                        ss << std::setw(static_cast<int>(id_max)) << e_session_id;
+                        ss << std::setw(static_cast<int>(label_max)) << e.label();
+                        ss << std::setw(static_cast<int>(application_max)) << e.application();
+                        ss << std::setw(static_cast<int>(user_max)) << e.user();
+                        ss << std::setw(static_cast<int>(start_max)) << to_timepoint_string(e.start_at());
+                        ss << std::setw(static_cast<int>(type_max)) << e.connection_type();
+                        ss << std::setw(static_cast<int>(remote_max)) << e.connection_info();
+                        output.emplace(session_id, ss.str());
                     } else {
+                        std::ostringstream ss{};
                         auto& label = e.label();
-                        std::cout << ((label.empty() || label.find(' ') != std::string::npos || label.find('\t') != std::string::npos || FLAGS_id || labels.count(label) > 1) ?   // NOLINT(abseil-string-find-str-contains)
+                        ss << ((label.empty() || label.find(' ') != std::string::npos || label.find('\t') != std::string::npos || FLAGS_id || labels.count(label) > 1) ?   // NOLINT(abseil-string-find-str-contains)
                                       e_session_id : e.label()) << ' ';
+                        output.emplace(session_id, ss.str());
                     }
                     if (monitor_output) {
                         monitor_output->session_info(e_session_id, e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
                     }
                 }
-                if (!FLAGS_verbose) {
-                    std::cout << std::endl;
+                if (!output.empty()) {
+                    for(auto&& e: output) {
+                        std::cout << e.second << std::endl;
+                    }
                 }
                 if (monitor_output) {
                     monitor_output->finish(true);
