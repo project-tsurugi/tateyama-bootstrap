@@ -73,8 +73,9 @@ namespace tateyama::altimeter {
             ::altimeter::configuration{}   // audit_log_cfg
         };
         bool shutdown_{};
+        tateyama::api::configuration::whole* conf_{};
 
-        void setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type);
+        void setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, const std::string& dbname = "");
     };
 
 } // tateyama::altimeter
