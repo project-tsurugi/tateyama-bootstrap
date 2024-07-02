@@ -68,12 +68,12 @@ namespace tateyama::altimeter {
         void shutdown();
 
       private:
+        tateyama::api::configuration::whole* conf_;
         std::vector<::altimeter::configuration> cfgs_ = {
             ::altimeter::configuration{},  // event_log_cfg
             ::altimeter::configuration{}   // audit_log_cfg
         };
         bool shutdown_{};
-        tateyama::api::configuration::whole* conf_{};
 
         void setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, const std::string& dbname = "");
     };

@@ -30,10 +30,12 @@
 #include <altimeter/event/event_logger.h>
 
 #include "altimeter_helper.h"
+#include "logging.h"
 
 namespace tateyama::altimeter {
 
-altimeter_helper::altimeter_helper(tateyama::api::configuration::whole* conf) :conf_(conf) {}
+altimeter_helper::altimeter_helper(tateyama::api::configuration::whole* conf) : conf_(conf) {
+}
 
 altimeter_helper::~altimeter_helper() {
     shutdown();
@@ -57,25 +59,34 @@ void altimeter_helper::shutdown() {
 //
 // The following method is created with reference to altimeter/logger/examples/altimeter/main.cpp
 //
-void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, const std::string& dbname) {
+void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, [[maybe_unused]] const std::string& dbname) {
     configuration.category((type == log_type::event_log) ? ::altimeter::event::category : ::altimeter::audit::category);
-    configuration.output(section->get<bool>("output").value());
-    configuration.directory(section->get<std::filesystem::path>("directory").value().string());
+    auto output = section->get<bool>("output").value();
+    configuration.output(output);
+    auto directory = section->get<std::filesystem::path>("directory").value().string();
+    configuration.directory(directory);
     auto level = section->get<int>("level").value();
     configuration.level(level);
-    configuration.file_number(section->get<std::uint32_t>("file_number").value());
-    configuration.sync(section->get<bool>("sync").value());
-    configuration.buffer_size(section->get<std::size_t>("buffer_size").value());
-    configuration.flush_interval(section->get<std::size_t>("flush_interval").value());
-    configuration.flush_file_size(section->get<std::size_t>("flush_file_size").value());
-    configuration.max_file_size(section->get<std::size_t>("max_file_size").value());
+    auto file_number = section->get<std::uint32_t>("file_number").value();
+    configuration.file_number(file_number);
+    auto sync = section->get<bool>("sync").value();
+    configuration.sync(sync);
+    auto buffer_size = section->get<std::size_t>("buffer_size").value();
+    configuration.buffer_size(buffer_size);
+    auto flush_interval = section->get<std::size_t>("flush_interval").value();
+    configuration.flush_interval(flush_interval);
+    auto flush_file_size = section->get<std::size_t>("flush_file_size").value();
+    configuration.flush_file_size(flush_file_size);
+    auto max_file_size = section->get<std::size_t>("max_file_size").value();
+    configuration.max_file_size(max_file_size);
+
     if (type == log_type::event_log) {
         configuration.error_handler([](std::string_view error_message) {
             std::cout << "Failed to flush or rotate event log files: "
                       << error_message << "\n";
         });
         ::altimeter::event::event_logger::set_stmt_duration_threshold(section->get<std::size_t>("stmt_duration_threshold").value());
-        ::altimeter::event::event_logger::set_level(level, dbname);
+//        ::altimeter::event::event_logger::set_level(level, dbname);
     } else {
         configuration.error_handler([](std::string_view error_message) {
             std::cout << "Failed to flush or rotate audit log files: "
@@ -93,6 +104,21 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
             LOG(ERROR) << "Failed to " << log_type_name << " write: " << error_message
                        << ", log: " << log << "\n";
         });
+
+    // output configuration to be used
+    const std::string_view& prefix = (type == log_type::event_log) ? altimeter_event_config_prefix : altimeter_audit_config_prefix;
+    LOG(INFO) << prefix << "output = " << std::boolalpha << output          << ", log output flag.";
+    LOG(INFO) << prefix << "directory = "                << directory       << ", log-storage directory path";
+    LOG(INFO) << prefix << "level = "                    << level           << ", log level";
+    LOG(INFO) << prefix << "file_number = "              << file_number     << ", number of log output files";
+    LOG(INFO) << prefix << "sync = " << std::boolalpha   << sync            << ", log-synchronous storage";
+    LOG(INFO) << prefix << "buffer_size = "              << buffer_size     << ", buffer size per log file";
+    LOG(INFO) << prefix << "flush_interval = "           << flush_interval  << ", flash interval (milliseconds)";
+    LOG(INFO) << prefix << "flush_file_size = "          << flush_file_size << ", file size to be flashed";
+    LOG(INFO) << prefix << "max_file_size = "            << max_file_size   << ", file size to rotate";
+    if (type == log_type::event_log) {
+        LOG(INFO) << prefix << "stmt_duration_threshold = " << section->get<std::size_t>("stmt_duration_threshold").value() << ", duration threshold for statement log";
+    }
 }
 
 } // tateyama::altimeter
