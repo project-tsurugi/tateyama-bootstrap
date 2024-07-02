@@ -42,8 +42,7 @@ altimeter_helper::~altimeter_helper() {
 }
 
 void altimeter_helper::start() {
-    auto dbname = conf_->get_section("ipc_endpoint")->get<std::string>("database_name").value();
-    setup(cfgs_.at(0), conf_->get_section("event_log"), log_type::event_log, dbname);
+    setup(cfgs_.at(0), conf_->get_section("event_log"), log_type::event_log);
     setup(cfgs_.at(1), conf_->get_section("audit_log"), log_type::audit_log);
 
     ::altimeter::logger::start(cfgs_);
@@ -59,7 +58,7 @@ void altimeter_helper::shutdown() {
 //
 // The following method is created with reference to altimeter/logger/examples/altimeter/main.cpp
 //
-void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, [[maybe_unused]] const std::string& dbname) {
+void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type) {
     configuration.category((type == log_type::event_log) ? ::altimeter::event::category : ::altimeter::audit::category);
     auto output = section->get<bool>("output").value();
     configuration.output(output);
@@ -86,7 +85,6 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
                       << error_message << "\n";
         });
         ::altimeter::event::event_logger::set_stmt_duration_threshold(section->get<std::size_t>("stmt_duration_threshold").value());
-//        ::altimeter::event::event_logger::set_level(level, dbname);
     } else {
         configuration.error_handler([](std::string_view error_message) {
             std::cout << "Failed to flush or rotate audit log files: "

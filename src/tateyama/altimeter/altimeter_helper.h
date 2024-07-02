@@ -75,7 +75,7 @@ namespace tateyama::altimeter {
         };
         bool shutdown_{};
 
-        void setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type, const std::string& dbname = "");
+        void setup(::altimeter::configuration& configuration, tateyama::api::configuration::section* section, log_type type);
     };
 
 } // tateyama::altimeter
