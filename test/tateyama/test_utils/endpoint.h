@@ -60,8 +60,8 @@ class endpoint {
 public:
     class worker {
     public:
-        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, std::queue<endpoint_response>& responses)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), responses_(responses), thread_(std::thread(std::ref(*this))) {
+        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, std::queue<endpoint_response>& responses, tateyama::framework::component::id_type& component_id, std::string& current_request)
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), responses_(responses), component_id_(component_id), current_request_(current_request), thread_(std::thread(std::ref(*this))) {
         }
         ~worker() {
             if (thread_.joinable()) {
@@ -127,22 +127,15 @@ public:
             }
             clean_up_();
         }
-        const tateyama::framework::component::id_type component_id() const {
-            return component_id_;
-        }
-        const std::string& current_request() const {
-            return current_request_;
-        }
 
     private:
         std::size_t session_id_;
         std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire_;
         std::function<void(void)> clean_up_;
         std::queue<endpoint_response>& responses_;
+        tateyama::framework::component::id_type& component_id_;
+        std::string& current_request_;
         std::thread thread_;
-
-        std::string current_request_;
-        tateyama::framework::component::id_type component_id_{};
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)
@@ -184,7 +177,7 @@ public:
             connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
-                worker_ = std::make_unique<worker>(session_id, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, responses_);
+                worker_ = std::make_unique<worker>(session_id, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, responses_, component_id_, current_request_);
                 condition_.notify_all();
             } catch (std::exception& ex) {
                 LOG(ERROR) << ex.what();
@@ -196,16 +189,10 @@ public:
         responses_.emplace(response, type);
     }
     const tateyama::framework::component::id_type component_id() const {
-        if (worker_) {
-            return worker_->component_id();
-        }
-        throw std::runtime_error("no active worker thread");
+        return component_id_;
     }
     const std::string& current_request() const {
-        if (worker_) {
-            return worker_->current_request();
-        }
-        throw std::runtime_error("no active worker thread");
+        return current_request_;
     }
     void terminate() {
         container_->get_connection_queue().request_terminate();
@@ -222,6 +209,8 @@ private:
     std::condition_variable condition_{};
     std::queue<endpoint_response> responses_{};
     bool notified_{false};
+    tateyama::framework::component::id_type component_id_{};
+    std::string current_request_{};
 };
 
 }  // namespace tateyama::test_utils
