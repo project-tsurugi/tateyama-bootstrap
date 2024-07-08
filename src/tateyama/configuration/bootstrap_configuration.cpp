@@ -59,6 +59,11 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "threads=104\n"
         "dev_idle_work_interval=1000\n"
 
+    "[session]\n"
+        "enable_timeout=true\n"
+        "refresh_timeout=300\n"
+        "max_refresh_timeout=86400\n"
+
     "[datastore]\n"
         "log_location=\n"
         "logging_max_parallelism=112\n"
