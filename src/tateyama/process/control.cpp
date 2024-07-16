@@ -233,10 +233,12 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         rtnv = tgctl::return_code::ok;
         if (need_check) {
             std::size_t check_count = check_count_startup;
-            if (FLAGS_timeout > 0) {
-                check_count = (1000L * FLAGS_timeout) / sleep_time_unit_regular;  // in mS
-            } else if(FLAGS_timeout == 0) {
-                check_count = INT64_MAX;  // practically infinite time
+            if (!gflags::GetCommandLineFlagInfoOrDie("timeout").is_default) {
+                if(FLAGS_timeout == 0) {
+                    check_count = INT64_MAX;  // practically infinite time
+                } else {
+                    check_count = (1000L * FLAGS_timeout) / sleep_time_unit_regular;  // in mS
+                }
             }
             if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
                 std::size_t chkn = 0;
@@ -413,10 +415,12 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
         kill(pid, SIGKILL);
         std::size_t check_count = check_count_kill;
         int sleep_time_unit = sleep_time_unit_regular;
-        if (FLAGS_timeout > 0) {
-            check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in mS
-        } else if(FLAGS_timeout == 0) {
-            check_count = INT64_MAX;  // practically infinite time
+        if (!gflags::GetCommandLineFlagInfoOrDie("timeout").is_default) {
+            if(FLAGS_timeout == 0) {
+                check_count = INT64_MAX;  // practically infinite time
+            } else {
+                check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in mS
+            }
         }
         for (size_t i = 0; i < check_count; i++) {
             switch(status_check_internal()) {
@@ -469,10 +473,12 @@ tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_br
 
     std::size_t check_count = check_count_shutdown;
     int sleep_time_unit = sleep_time_unit_shutdown;
-    if (FLAGS_timeout > 0) {
-        check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in uS
-    } else if(FLAGS_timeout == 0) {
-        check_count = INT64_MAX;  // practically infinite time
+    if (!gflags::GetCommandLineFlagInfoOrDie("timeout").is_default) {
+        if(FLAGS_timeout == 0) {
+            check_count = INT64_MAX;  // practically infinite time
+        } else {
+            check_count = (1000L * FLAGS_timeout) / sleep_time_unit;  // in uS
+        }
     }
     for (size_t i = 0; i < check_count; i++) {
         if (file_mutex->check() == proc_mutex::lock_state::no_file) {
