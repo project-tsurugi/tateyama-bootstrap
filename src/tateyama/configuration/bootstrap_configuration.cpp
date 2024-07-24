@@ -39,7 +39,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_profile_commits=false\n"
         "dev_return_os_pages=false\n"
         "dev_omit_task_when_idle=true\n"
-        "external_log_explain=true\n"
+        "external_log_explain=false\n"
         "dev_try_insert_on_upserting_secondary=true\n"
         "dev_scan_concurrent_operation_as_not_found=true\n"
         "dev_point_read_concurrent_operation_as_not_found=true\n"
