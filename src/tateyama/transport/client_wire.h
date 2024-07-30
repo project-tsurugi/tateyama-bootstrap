@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <atomic>
+#include <array>
 #include <stdexcept> // std::runtime_error
 
 #include "wire.h"
@@ -24,6 +26,7 @@ namespace tateyama::common::wire {
 class session_wire_container
 {
     static constexpr std::size_t metadata_size_boundary = 256;
+    static constexpr std::size_t index_size = 256;
 
 public:
     class resultset_wires_container {
@@ -114,9 +117,6 @@ public:
     public:
         response_wire_container() = default;
         response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
-        response_header await() {
-            return wire_->await(bip_buffer_);
-        }
         [[nodiscard]] response_header::length_type get_length() const noexcept {
             return wire_->get_length();
         }
@@ -136,6 +136,12 @@ public:
     private:
         unidirectional_response_wire* wire_{};
         char* bip_buffer_{};
+
+        response_header await() {
+            return wire_->await(bip_buffer_);
+        }
+
+        friend class session_wire_container;
     };
 
     explicit session_wire_container(std::string_view name) : db_name_(name) {
@@ -169,10 +175,15 @@ public:
     session_wire_container& operator = (session_wire_container&&) = delete;
 
     void write(const std::string& data) {
-        request_wire_.write(data, index_);
+        request_wire_.write(data, search_free_index());
     }
     response_wire_container& get_response_wire() noexcept {
         return response_wire_;
+    }
+    response_header await() {
+        auto rv = response_wire_.await();
+        index_in_use_.at(static_cast<std::size_t>(response_wire_.get_idx())).clear();
+        return rv;
     }
 
     std::unique_ptr<resultset_wires_container> create_resultset_wire() {
@@ -186,13 +197,21 @@ public:
         std::string sname(name);
         boost::interprocess::shared_memory_object::remove(sname.c_str());
     }
+    message_header::index_type search_free_index() {
+        for(message_header::index_type i = 0; i < index_size; i++) {
+            if (!index_in_use_.at(i).test_and_set()) {
+                return i;
+            }
+        }
+        throw std::runtime_error("running out of slot");
+    }
 
 private:
     std::string db_name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
     wire_container request_wire_{};
     response_wire_container response_wire_{};
-    message_header::index_type index_{};
+    std::array<std::atomic_flag, index_size> index_in_use_{};
 };
 
 class connection_container

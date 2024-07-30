@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/timerfd.h>
+#include <time.h>
+
+volatile sig_atomic_t stop_flag = 0;
+
+void abort_handler(int sig);
+void thread_func2(void);
+
+void abort_handler(int sig){
+	stop_flag = 1;
+}
+
+
+void thread_func2(void){
+	int tfd;
+	struct itimerspec its;
+	ssize_t r_size;
+	u_int64_t t_cnt;
+	struct timespec curTime,lastTime;
+
+	tfd = timerfd_create(CLOCK_MONOTONIC,0);
+	its.it_value.tv_sec = 1;
+	its.it_value.tv_nsec = 0;
+	its.it_interval.tv_sec = 1;
+	its.it_interval.tv_nsec = 0;
+
+	clock_gettime(CLOCK_REALTIME,&lastTime);
+	timerfd_settime(tfd,0,&its,NULL);
+
+	while(1){
+		r_size = read(tfd,&t_cnt,sizeof(t_cnt));
+		if(r_size == sizeof(t_cnt)){
+			clock_gettime(CLOCK_REALTIME,&curTime);
+			printf("Timer count = %lu,",t_cnt);
+			if(curTime.tv_nsec < lastTime.tv_nsec){
+				printf("Interval = %10ld.%09ld\n",curTime.tv_sec - lastTime.tv_sec - 1,curTime.tv_nsec + 1000000000 - lastTime.tv_nsec);
+			}
+			else{
+				printf("Interval = %10ld.%09ld\n",curTime.tv_sec - lastTime.tv_sec,curTime.tv_nsec - lastTime.tv_nsec);
+			}
+		}
+		if(stop_flag){
+		       break;
+		}
+ 		lastTime = curTime;		
+	}
+	close(tfd);
+
+}
+
+int main(int argc,char *argv[]){
+	pthread_t thread;
+	int ret;
+
+	if (signal(SIGINT,abort_handler) == SIG_ERR){
+		printf("Singal Handler set error!!\n");
+		exit(1);
+	}
+
+	ret = pthread_create(&thread,NULL,(void *)thread_func2,NULL);
+	if(ret != 0){
+		printf("Cannot create thread!!\n");
+		exit(1);
+	}
+	ret = pthread_join(thread,NULL);
+	if(ret != 0){
+		printf("Cannot join thread!!\n");
+		exit(1);
+	}
+	return 0;
+
+}
