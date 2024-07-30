@@ -76,8 +76,6 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/auth/common.proto
-        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/core/request.proto
-        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/core/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/datastore/common.proto
