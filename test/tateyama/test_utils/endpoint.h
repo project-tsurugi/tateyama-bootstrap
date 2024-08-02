@@ -29,6 +29,7 @@
 #include <tateyama/logging.h>
 
 #include <tateyama/proto/framework/response.pb.h>
+#include <tateyama/proto/core/response.pb.h>
 #include <tateyama/proto/endpoint/request.pb.h>
 #include <tateyama/proto/endpoint/response.pb.h>
 #include "server_wires_mock.h"
@@ -53,9 +54,6 @@ private:
 
 class endpoint {
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODY = 1;
-    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
-    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_HANDSHAKE = 98;
-    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_HELLO = 99;
 
 public:
     class worker {
@@ -97,7 +95,37 @@ public:
                     }
                     rp.clear_success();
                     auto reply_message = ss.str();
-                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_HANDSHAKE));
+                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                    continue;
+                } else if (req_header.service_id() == tateyama::framework::service_id_routing) {
+                    ::tateyama::proto::framework::response::Header header{};
+                    if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    tateyama::proto::core::response::UpdateExpirationTime rp{};
+                    (void) rp.mutable_success();
+                    auto body = rp.SerializeAsString();
+                    if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    rp.clear_success();
+                    auto reply_message = ss.str();
+                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                    continue;
+                } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(1234)) {
+                    std::string_view payload{};
+                    if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                        throw std::runtime_error("error reading payload");
+                    }
+                    ::tateyama::proto::framework::response::Header header{};
+                    if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    if(auto res = tateyama::utils::PutDelimitedBodyToOstream(payload, std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    auto reply_message = ss.str();
+                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     continue;
                 }
                 {

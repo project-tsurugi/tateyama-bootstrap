@@ -43,6 +43,7 @@ file(GLOB SRCS
         "tateyama/version/*_test.cpp"
         "tateyama/session/*_test.cpp"
         "tateyama/metrics/*_test.cpp"
+        "tateyama/transport/*_test.cpp"
 )
 
 foreach(file ${SRCS})

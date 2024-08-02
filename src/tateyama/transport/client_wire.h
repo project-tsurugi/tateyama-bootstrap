@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <atomic>
+#include <array>
+#include <mutex>
 #include <stdexcept> // std::runtime_error
 
 #include "wire.h"
@@ -24,6 +27,7 @@ namespace tateyama::common::wire {
 class session_wire_container
 {
     static constexpr std::size_t metadata_size_boundary = 256;
+    static constexpr std::size_t slot_size = 16;
 
 public:
     class resultset_wires_container {
@@ -91,10 +95,10 @@ public:
         std::string wrap_around_{};
     };
 
-    class wire_container {
+    class request_wire_container {
     public:
-        wire_container() = default;
-        wire_container(unidirectional_message_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
+        request_wire_container() = default;
+        request_wire_container(unidirectional_message_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
         message_header peep() {
             return wire_->peep(bip_buffer_);
         }
@@ -114,9 +118,6 @@ public:
     public:
         response_wire_container() = default;
         response_wire_container(unidirectional_response_wire* wire, char* bip_buffer) noexcept : wire_(wire), bip_buffer_(bip_buffer) {};
-        response_header await() {
-            return wire_->await(bip_buffer_);
-        }
         [[nodiscard]] response_header::length_type get_length() const noexcept {
             return wire_->get_length();
         }
@@ -136,6 +137,30 @@ public:
     private:
         unidirectional_response_wire* wire_{};
         char* bip_buffer_{};
+
+        response_header await() {
+            return wire_->await(bip_buffer_);
+        }
+
+        friend class session_wire_container;
+    };
+
+    class slot {
+    public:
+        slot() = default;
+    private:
+        std::atomic_flag in_use_{};
+        std::atomic_bool valid_{};
+        std::string response_message_{};
+
+        void finish_receive() {
+            response_message_.clear();
+            valid_.store(false);
+            std::atomic_thread_fence(std::memory_order_acq_rel);
+            in_use_.clear();
+        }
+
+        friend class session_wire_container;
     };
 
     explicit session_wire_container(std::string_view name) : db_name_(name) {
@@ -146,7 +171,7 @@ public:
             if (req_wire == nullptr || res_wire == nullptr) {
                 throw std::runtime_error("cannot find the session wire");
             }
-            request_wire_ = wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
+            request_wire_ = request_wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
             response_wire_ = response_wire_container(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
@@ -168,31 +193,79 @@ public:
     session_wire_container& operator = (session_wire_container const&) = delete;
     session_wire_container& operator = (session_wire_container&&) = delete;
 
-    void write(const std::string& data) {
-        request_wire_.write(data, index_);
-    }
-    response_wire_container& get_response_wire() noexcept {
-        return response_wire_;
-    }
-
-    std::unique_ptr<resultset_wires_container> create_resultset_wire() {
-        return std::make_unique<resultset_wires_container>(this);
-    }
-    void dispose_resultset_wire(std::unique_ptr<resultset_wires_container>& container) {
-        container->set_closed();
-        container = nullptr;
-    }
     static void remove_shm_entry(std::string_view name) {
         std::string sname(name);
         boost::interprocess::shared_memory_object::remove(sname.c_str());
     }
 
+    // handle request and response
+    message_header::index_type search_slot() {
+        for(message_header::index_type i = 0; i < slot_size; i++) {
+            if (!slot_status_.at(i).in_use_.test_and_set()) {
+                return i;
+            }
+        }
+        throw std::runtime_error("running out of slot");
+    }
+    void send(const std::string& req_message, message_header::index_type slot_index) {
+        std::unique_lock<std::mutex> lock(mtx_send_);
+        request_wire_.write(req_message, slot_index);
+    }
+    void receive(std::string& res_message, message_header::index_type slot_index) {
+        slot& my_slot = slot_status_.at(static_cast<std::size_t>(slot_index));
+
+        while (true) {
+            if (my_slot.valid_.load()) {
+                res_message = my_slot.response_message_;
+                my_slot.finish_receive();
+                return;
+            }
+            {
+                std::unique_lock<std::mutex> lock(mtx_receive_);
+
+                // check again to avoid race
+                if (my_slot.valid_.load()) {
+                    res_message = my_slot.response_message_;
+                    my_slot.finish_receive();
+                    return;
+                }
+
+                auto header_received = response_wire_.await();
+                auto index_received = header_received.get_idx();
+                if (index_received == slot_index) {
+                    res_message.resize(header_received.get_length());
+                    response_wire_.read(res_message.data());
+                    my_slot.finish_receive();
+                    return;
+                }
+                auto& slot_received = slot_status_.at(static_cast<std::size_t>(index_received));
+                std::string& message_received = slot_received.response_message_;
+                message_received.resize(header_received.get_length());
+                response_wire_.read(message_received.data());
+                std::atomic_thread_fence(std::memory_order_acq_rel);
+                slot_received.valid_.store(true);
+            }
+        }
+    }
+
+    // handle result set
+    std::unique_ptr<resultset_wires_container> create_resultset_wire() {
+        return std::make_unique<resultset_wires_container>(this);
+    }
+
 private:
     std::string db_name_;
     std::unique_ptr<boost::interprocess::managed_shared_memory> managed_shared_memory_{};
-    wire_container request_wire_{};
+    request_wire_container request_wire_{};
     response_wire_container response_wire_{};
-    message_header::index_type index_{};
+    std::array<slot, slot_size> slot_status_{};
+    std::mutex mtx_send_{};
+    std::mutex mtx_receive_{};
+
+    void dispose_resultset_wire(std::unique_ptr<resultset_wires_container>& container) {
+        container->set_closed();
+        container = nullptr;
+    }
 };
 
 class connection_container
