@@ -28,6 +28,7 @@ class session_wire_container
 {
     static constexpr std::size_t metadata_size_boundary = 256;
     static constexpr std::size_t slot_size = 16;
+    constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODYHEAD = 2;
 
 public:
     class resultset_wires_container {
@@ -148,19 +149,64 @@ public:
     class slot {
     public:
         slot() = default;
+
+        bool test_and_set_in_use() {
+            return in_use_.test_and_set();
+        }
+        bool valid() {
+            return received_.load() > consumed_.load();
+        }
+        std::string& pre_receive(response_header::msg_type msg_type) {
+            if (expected_ == 0) {
+                expected_ = (msg_type == RESPONSE_BODYHEAD) ? 2 : 1;
+            }
+            if (expected_ == 2 && received_.load() == 0) {
+                return body_head_message_;
+            }
+            return body_message_;
+        }
+        void post_receive() {
+            std::atomic_thread_fence(std::memory_order_acq_rel);
+            received_++;
+        }
+        void receive_and_consume(response_header::msg_type msg_type) {
+            if (expected_ == 0) {
+                expected_ = (msg_type == RESPONSE_BODYHEAD) ? 2 : 1;
+            }
+            if (expected_ == 2 && received_.load() == 0) {
+                received_++;
+            } else {
+                finish_receive();
+            }
+        }
+        void consume(std::string& message) {
+            if (expected_ == 2 && consumed_.load() == 0) {
+                message = body_head_message_;
+                std::atomic_thread_fence(std::memory_order_acq_rel);
+                consumed_++;
+            } else {
+                message = body_message_;
+                finish_receive();
+            }
+        }
+
     private:
         std::atomic_flag in_use_{};
-        std::atomic_bool valid_{};
-        std::string response_message_{};
+        std::atomic_int received_{};
+        std::atomic_int consumed_{};
+        std::int32_t expected_{};
+        std::string body_message_{};
+        std::string body_head_message_{};
 
         void finish_receive() {
-            response_message_.clear();
-            valid_.store(false);
+            body_message_.clear();
+            body_head_message_.clear();
+            received_.store(0);
+            consumed_.store(0);
+            expected_ = 0;
             std::atomic_thread_fence(std::memory_order_acq_rel);
             in_use_.clear();
         }
-
-        friend class session_wire_container;
     };
 
     explicit session_wire_container(std::string_view name) : db_name_(name) {
@@ -201,7 +247,7 @@ public:
     // handle request and response
     message_header::index_type search_slot() {
         for(message_header::index_type i = 0; i < slot_size; i++) {
-            if (!slot_status_.at(i).in_use_.test_and_set()) {
+            if (!slot_status_.at(i).test_and_set_in_use()) {
                 return i;
             }
         }
@@ -215,18 +261,16 @@ public:
         slot& my_slot = slot_status_.at(static_cast<std::size_t>(slot_index));
 
         while (true) {
-            if (my_slot.valid_.load()) {
-                res_message = my_slot.response_message_;
-                my_slot.finish_receive();
+            if (my_slot.valid()) {
+                my_slot.consume(res_message);
                 return;
             }
             {
                 std::unique_lock<std::mutex> lock(mtx_receive_);
 
                 // check again to avoid race
-                if (my_slot.valid_.load()) {
-                    res_message = my_slot.response_message_;
-                    my_slot.finish_receive();
+                if (my_slot.valid()) {
+                    my_slot.consume(res_message);
                     return;
                 }
 
@@ -235,15 +279,14 @@ public:
                 if (index_received == slot_index) {
                     res_message.resize(header_received.get_length());
                     response_wire_.read(res_message.data());
-                    my_slot.finish_receive();
+                    my_slot.receive_and_consume(header_received.get_type());
                     return;
                 }
                 auto& slot_received = slot_status_.at(static_cast<std::size_t>(index_received));
-                std::string& message_received = slot_received.response_message_;
+                std::string& message_received = slot_received.pre_receive(header_received.get_type());
                 message_received.resize(header_received.get_length());
                 response_wire_.read(message_received.data());
-                std::atomic_thread_fence(std::memory_order_acq_rel);
-                slot_received.valid_.store(true);
+                slot_received.post_receive();
             }
         }
     }
