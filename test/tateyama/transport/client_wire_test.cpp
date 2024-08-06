@@ -36,7 +36,7 @@ namespace tateyama::session {
 static constexpr std::size_t threads = 16;
 static constexpr std::size_t loops = 1024;
 
-class transport_test : public ::testing::Test {
+class client_wire_test : public ::testing::Test {
 public:
     class worker {
         constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
@@ -121,10 +121,10 @@ public:
     };
 
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("transport_test", 20401);
+        helper_ = std::make_unique<directory_helper>("client_wire_test", 20401);
         helper_->set_up();
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
-        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("transport_test", bst_conf.digest(), sync_);
+        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("client_wire_test", bst_conf.digest(), sync_);
         sync_.wait();
     }
 
@@ -139,8 +139,8 @@ protected:
 };
 
 
-TEST_F(transport_test, echo) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("transport_test").connect());
+TEST_F(client_wire_test, echo) {
+    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("client_wire_test").connect());
     std::vector<std::unique_ptr<worker>> workers{};
     boost::barrier thread_sync{threads};
 

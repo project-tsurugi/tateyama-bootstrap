@@ -55,13 +55,24 @@ private:
 class endpoint {
     constexpr static tateyama::common::wire::response_header::msg_type RESPONSE_BODY = 1;
 
+    class data_for_check {
+    public:
+        std::queue<endpoint_response> responses_{};
+        tateyama::framework::component::id_type component_id_{};
+        std::string current_request_{};
+        std::size_t uet_count_{};
+    };
+
 public:
     class worker {
     public:
-        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, std::queue<endpoint_response>& responses, tateyama::framework::component::id_type& component_id, std::string& current_request)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), responses_(responses), component_id_(component_id), current_request_(current_request), thread_(std::thread(std::ref(*this))) {
+        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, data_for_check& data_for_check)
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check), thread_(std::thread(std::ref(*this))) {
         }
         ~worker() {
+            if (reply_thread_.joinable()) {
+                reply_thread_.join();
+            }
             if (thread_.joinable()) {
                 thread_.join();
             }
@@ -81,7 +92,7 @@ public:
                     throw std::runtime_error("error parsing request message");
                 }
                 std::stringstream ss{};
-                if (component_id_ = req_header.service_id(); component_id_ == tateyama::framework::service_id_endpoint_broker) {
+                if (data_for_check_.component_id_ = req_header.service_id(); data_for_check_.component_id_ == tateyama::framework::service_id_endpoint_broker) {
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw std::runtime_error("error formatting response message");
@@ -102,6 +113,7 @@ public:
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw std::runtime_error("error formatting response message");
                     }
+                    data_for_check_.uet_count_++;
                     tateyama::proto::core::response::UpdateExpirationTime rp{};
                     (void) rp.mutable_success();
                     auto body = rp.SerializeAsString();
@@ -127,18 +139,38 @@ public:
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     continue;
+                } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(2468)) {
+                    std::string_view payload{};
+                    if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                        throw std::runtime_error("error reading payload");
+                    }
+                    auto t = std::stoi(std::string(payload));
+                    reply_thread_ = std::thread([this, t, index]{
+                        std::this_thread::sleep_for(std::chrono::seconds(t));
+                        std::stringstream ss{};
+                        ::tateyama::proto::framework::response::Header header{};
+                        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(std::string("OK"), std::addressof(ss)); ! res) {
+                            throw std::runtime_error("error formatting response message");
+                        }
+                        auto reply_message = ss.str();
+                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                    });
+                    continue;
                 }
                 {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
                         throw std::runtime_error("error reading payload");
                     }
-                    current_request_ = payload;
-                    if (responses_.empty()) {
+                    data_for_check_.current_request_ = payload;
+                    if (data_for_check_.responses_.empty()) {
                         throw std::runtime_error("response queue is empty");
                     }
-                    auto reply = responses_.front();
-                    responses_.pop();
+                    auto reply = data_for_check_.responses_.front();
+                    data_for_check_.responses_.pop();
                     std::stringstream ss{};
                     ::tateyama::proto::framework::response::Header header{};
                     header.set_payload_type(reply.get_type());
@@ -155,15 +187,21 @@ public:
             }
             clean_up_();
         }
+        void finish() {
+            wire_->finish();
+        }
+        void suppress_message() {
+            wire_->suppress_message();
+        }
 
     private:
         std::size_t session_id_;
         std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire_;
         std::function<void(void)> clean_up_;
-        std::queue<endpoint_response>& responses_;
-        tateyama::framework::component::id_type& component_id_;
-        std::string& current_request_;
+        data_for_check& data_for_check_;
         std::thread thread_;
+        std::thread reply_thread_{};
+        bool suppress_message_{};
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)
@@ -193,6 +231,9 @@ public:
         }
         while(true) {
             auto session_id = connection_queue.listen();
+            if (session_id == 0) {  // means timeout
+                continue;
+            }
             if (connection_queue.is_terminated()) {
                 connection_queue.confirm_terminated();
                 break;
@@ -205,7 +246,10 @@ public:
             connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
-                worker_ = std::make_unique<worker>(session_id, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, responses_, component_id_, current_request_);
+                worker_ = std::make_unique<worker>(session_id, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, data_for_check_);
+                if (suppress_message_) {
+                    worker_->suppress_message();
+                }
                 condition_.notify_all();
             } catch (std::exception& ex) {
                 LOG(ERROR) << ex.what();
@@ -214,16 +258,23 @@ public:
         }
     }
     void push_response(std::string_view response, tateyama::proto::framework::response::Header_PayloadType type) {
-        responses_.emplace(response, type);
+        data_for_check_.responses_.emplace(response, type);
     }
     const tateyama::framework::component::id_type component_id() const {
-        return component_id_;
+        return data_for_check_.component_id_;
     }
     const std::string& current_request() const {
-        return current_request_;
+        return data_for_check_.current_request_;
+    }
+    const std::size_t update_expiration_time_count() {
+        return data_for_check_.uet_count_;
     }
     void terminate() {
+        worker_->finish();
         container_->get_connection_queue().request_terminate();
+    }
+    void suppress_message() {
+        suppress_message_ = true;
     }
 
 private:
@@ -235,10 +286,9 @@ private:
     std::unique_ptr<worker> worker_{};
     std::mutex mutex_{};
     std::condition_variable condition_{};
-    std::queue<endpoint_response> responses_{};
     bool notified_{false};
-    tateyama::framework::component::id_type component_id_{};
-    std::string current_request_{};
+    data_for_check data_for_check_{};
+    bool suppress_message_{};
 };
 
 }  // namespace tateyama::test_utils

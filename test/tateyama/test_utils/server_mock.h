@@ -52,6 +52,12 @@ public:
     const std::string& current_request() const {
         return endpoint_.current_request();
     }
+    const std::size_t update_expiration_time_count() {
+        return endpoint_.update_expiration_time_count();
+    }
+    void suppress_message() {
+        endpoint_.suppress_message();
+    }
 
 private:
     std::string name_;

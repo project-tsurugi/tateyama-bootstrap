@@ -55,7 +55,19 @@ public:
             bip_buffer_ = bip_buffer;
         }
         tateyama::common::wire::message_header peep() {
-            return wire_->peep(bip_buffer_);
+            while (true) {
+                try {
+                    return wire_->peep(bip_buffer_);
+                } catch (std::runtime_error &ex) {
+                    if (!suppress_message_) {
+                        std::cout << ex.what() << std::endl;
+                    }
+                    if (finish_) {
+                        break;
+                    }
+                }
+            }
+            return {tateyama::common::wire::message_header::terminate_request, 0};
         }
         std::string_view payload() {
             return wire_->payload(bip_buffer_);
@@ -66,6 +78,8 @@ public:
         std::size_t read_point() { return wire_->read_point(); }
         void dispose() { wire_->dispose(); }
         void notify() { wire_->notify(); }
+        void finish() { finish_ = true; }
+        void suppress_message() { suppress_message_ = true; }
 
         // for mainly client, except for terminate request from server
         void write(const char* from, const std::size_t len, tateyama::common::wire::message_header::index_type index) {
@@ -75,6 +89,8 @@ public:
     private:
         tateyama::common::wire::unidirectional_message_wire* wire_{};
         char* bip_buffer_{};
+        bool finish_{};
+        bool suppress_message_{};
     };
 
     class response_wire_container_mock {
@@ -100,7 +116,18 @@ public:
 
         // for client
         tateyama::common::wire::response_header await() {
-            return wire_->await(bip_buffer_);
+            while (true) {
+                try {
+                    return wire_->await(bip_buffer_);
+                } catch (std::runtime_error &ex) {
+                    if (!suppress_message_) {
+                        std::cout << ex.what() << std::endl;
+                    }
+                    if (finish_) {
+                        break;
+                    }
+                }
+            }
         }
         [[nodiscard]] tateyama::common::wire::response_header::length_type get_length() const {
             return wire_->get_length();
@@ -117,11 +144,15 @@ public:
         void close() {
             wire_->close();
         }
+        void finish() { finish_ = true; }
+        void suppress_message() { suppress_message_ = true; }
 
     private:
         tateyama::common::wire::unidirectional_response_wire* wire_{};
         char* bip_buffer_{};
         std::mutex mtx_{};
+        bool finish_{};
+        bool suppress_message_{};
     };
 
     server_wire_container_mock(std::string_view name, std::string_view mutex_file) : name_(name) {
@@ -166,6 +197,14 @@ public:
     void notify_shutdown() {
         request_wire_.notify();
         response_wire_.notify_shutdown();
+    }
+    void finish() {
+        request_wire_.finish();
+        response_wire_.finish();
+    }
+    void suppress_message() {
+        request_wire_.suppress_message();
+        response_wire_.suppress_message();
     }
 
 private:

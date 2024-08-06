@@ -83,7 +83,7 @@ public:
         session_id_ = handshake_response.success().session_id();
         header_.set_session_id(session_id_);
 
-        time_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
+        timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
             auto ret = update_expiration_time();
             if (ret.has_value()) {
                 return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
@@ -94,7 +94,7 @@ public:
 
     ~transport() {
         try {
-            time_ = nullptr;
+            timer_ = nullptr;
             if (!closed_) {
                 close();
             }
@@ -365,7 +365,7 @@ private:
     std::unique_ptr<tateyama::server::status_info_bridge> status_info_{};
     std::size_t session_id_{};
     bool closed_{};
-    std::unique_ptr<tateyama::common::wire::timer> time_{};
+    std::unique_ptr<tateyama::common::wire::timer> timer_{};
 
     std::string digest() {
         auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
