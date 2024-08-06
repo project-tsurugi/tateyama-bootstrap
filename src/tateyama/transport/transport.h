@@ -84,9 +84,11 @@ public:
         header_.set_session_id(session_id_);
 
         timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
-            auto ret = update_expiration_time();
-            if (ret.has_value()) {
-                return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+            if (!closed_) {
+                auto ret = update_expiration_time();
+                if (ret.has_value()) {
+                    return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+                }
             }
             return false;
         });
