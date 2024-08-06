@@ -105,6 +105,7 @@ runs:
         repository: project-tsurugi/ogawayama
         path: ${{ inputs.path }}/ogawayama
         ref: master
+        submodules: true
 
     - name: Checkout_Metadata_Manager
       uses: actions/checkout@v4
@@ -269,6 +270,6 @@ runs:
         rm -fr build
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin-implementation }} -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin-implementation }} -DBUILD_BRIDGE_ONLY=ON -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
         cmake --build . --target install --clean-first
       shell: bash
