@@ -63,6 +63,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "enable_timeout=true\n"
         "refresh_timeout=300\n"
         "max_refresh_timeout=86400\n"
+        "zone_offset=\n"
 
     "[datastore]\n"
         "log_location=\n"
