@@ -26,9 +26,12 @@ namespace tateyama::test_utils {
 
 class status_mock {
     static constexpr std::string_view file_prefix = "tsurugidb-";
+    static constexpr std::string_view mutex_file_prefix = "tsurugi-";
     static constexpr std::size_t shm_size = 4096;
 public:
-    status_mock(const std::string& name, const std::string& digest) {
+    status_mock(const std::string& name, const std::string& digest) : status_mock(name, digest, "/tmp/") {
+    }
+    status_mock(const std::string& name, const std::string& digest, std::string directory) {
         status_file_name_ = file_prefix;
         status_file_name_ += digest;
         status_file_name_ += ".stat";
@@ -37,6 +40,11 @@ public:
             resource_status_memory_ = std::make_unique<tateyama::status_info::resource_status_memory>(*segment_);
             resource_status_memory_->set_pid();
             resource_status_memory_->set_database_name(name);
+            std::string mutex_file_name{directory};
+            mutex_file_name += mutex_file_prefix;
+            mutex_file_name += digest;
+            mutex_file_name += ".pid";
+            resource_status_memory_->mutex_file(mutex_file_name);
         } catch(const boost::interprocess::interprocess_exception& ex) {
             std::stringstream ss{};
             ss << "could not create shared memory to inform tsurugidb status (cause; '"
