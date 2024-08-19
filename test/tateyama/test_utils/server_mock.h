@@ -30,7 +30,10 @@ namespace tateyama::test_utils {
 class server_mock {
 public:
     server_mock(const std::string& name, const std::string& digest, boost::barrier& sync) :
-        name_(name), endpoint_(name_, digest, sync), status_(std::make_unique<status_mock>(name, digest)) {
+        server_mock(name, digest, sync, "/tmp/") {
+    }
+    server_mock(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory) :
+        name_(name), endpoint_(name_, digest, sync, directory), status_(std::make_unique<status_mock>(name, digest, directory)) {
     }
     ~server_mock() {
         endpoint_.terminate();

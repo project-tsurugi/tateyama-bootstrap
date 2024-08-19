@@ -40,7 +40,7 @@
 #include <tateyama/proto/metrics/request.pb.h>
 #include <tateyama/proto/metrics/response.pb.h>
 
-#include "tateyama/server/status_info.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
 #include "client_wire.h"
 #include "timer.h"
 
@@ -67,11 +67,13 @@ public:
     transport() = delete;
 
     explicit transport(tateyama::framework::component::id_type type) :
-        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name()).connect())) {
+        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name()).connect())),
+        status_provider_(wire_.get_status_provider()) {
+
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(type);
-        status_info_ = std::make_unique<server::status_info_bridge>(digest());
+
         auto handshake_response_opt = handshake();
         if (!handshake_response_opt) {
             throw std::runtime_error("handshake error");
@@ -128,7 +130,7 @@ public:
                 wire_.receive(res_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-                if (status_info_->alive()) {
+                if (status_provider_.is_alive().empty()) {
                     continue;
                 }
                 std::cerr << e.what() << std::endl;
@@ -172,7 +174,7 @@ public:
                 wire_.receive(res_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-                if (status_info_->alive()) {
+                if (status_provider_.is_alive().empty()) {
                     continue;
                 }
                 std::cerr << e.what() << std::endl;
@@ -221,7 +223,7 @@ public:
                 wire_.receive(res_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-                if (status_info_->alive()) {
+                if (status_provider_.is_alive().empty()) {
                     continue;
                 }
                 std::cerr << e.what() << std::endl;
@@ -270,7 +272,7 @@ public:
                 wire_.receive(res_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-                if (status_info_->alive()) {
+                if (status_provider_.is_alive().empty()) {
                     continue;
                 }
                 std::cerr << e.what() << std::endl;
@@ -314,7 +316,7 @@ public:
                 wire_.receive(res_message, slot_index);
                 break;
             } catch (std::runtime_error &e) {
-                if (status_info_->alive()) {
+                if (status_provider_.is_alive().empty()) {
                     continue;
                 }
                 std::cerr << e.what() << std::endl;
@@ -361,8 +363,8 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container wire_;
+    tateyama::common::wire::status_provider &status_provider_;
     tateyama::proto::framework::request::Header header_{};
-    std::unique_ptr<tateyama::server::status_info_bridge> status_info_{};
     std::size_t session_id_{};
     bool closed_{};
     std::unique_ptr<tateyama::common::wire::timer> timer_{};

@@ -205,7 +205,10 @@ public:
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)
-        : name_(name), digest_(digest), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync) {
+        : endpoint(name, digest, sync, "/tmp/") {
+    }
+    endpoint(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory)
+        : name_(name), digest_(digest), directory_(directory), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync) {
         thread_ = std::thread(std::ref(*this));
     }
     ~endpoint() {
@@ -241,7 +244,7 @@ public:
             std::string session_name = name_;
             session_name += "-";
             session_name += std::to_string(session_id);
-            auto wire = std::make_unique<tateyama::test_utils::server_wire_container_mock>(session_name, std::string("tsurugidb-") + digest_ + ".stat");
+            auto wire = std::make_unique<tateyama::test_utils::server_wire_container_mock>(session_name, ((directory_ + "tsurugi-") + digest_) + ".pid");
             std::size_t index = connection_queue.slot();
             connection_queue.accept(index, session_id);
             try {
@@ -280,6 +283,7 @@ public:
 private:
     std::string name_;
     std::string digest_;
+    std::string directory_;
     std::unique_ptr<tateyama::test_utils::connection_container> container_;
     std::thread thread_;
     boost::barrier& sync_;

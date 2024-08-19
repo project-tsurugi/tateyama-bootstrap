@@ -54,6 +54,12 @@ class directory_helper {
         name_ += child;
         return name_;
     }
+    std::string& abs_path(const std::string child) {
+        return abs_path(child.c_str());
+    }
+    std::string location() {
+        return location_;
+    }
 
     void set_up() {
         std::string command;
