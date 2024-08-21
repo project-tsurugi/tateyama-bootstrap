@@ -31,7 +31,7 @@
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
 
-namespace tateyama::session {
+namespace tateyama::transport {
 
 static constexpr std::size_t threads = 16;
 static constexpr std::size_t loops = 1024;
@@ -158,4 +158,4 @@ TEST_F(client_wire_test, echo) {
     wire.close();
 }
 
-}  // namespace tateyama::session
+}  // namespace tateyama::transport
