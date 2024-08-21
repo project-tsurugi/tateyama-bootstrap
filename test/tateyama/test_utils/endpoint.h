@@ -159,6 +159,31 @@ public:
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     });
                     continue;
+                } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(3072)) {
+                    std::string_view payload{};
+                    if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                        throw std::runtime_error("error reading payload");
+                    }
+                    auto t = std::stoi(std::string(payload));
+                    // does not send resultset, as it is for timeout test
+                    resultset_wires_ = wire_->create_resultset_wires("resultset");
+                    resultset_wire_ = resultset_wires_->acquire();
+                    std::stringstream ss{};
+                    ::tateyama::proto::framework::response::Header header{};
+                    if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    if(auto res = tateyama::utils::PutDelimitedBodyToOstream(std::string("OK"), std::addressof(ss)); ! res) {
+                        throw std::runtime_error("error formatting response message");
+                    }
+                    auto reply_message = ss.str();
+                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                    reply_thread_ = std::thread([this, t]{
+                        std::this_thread::sleep_for(std::chrono::seconds(t));
+                        resultset_wire_->write("abcd", 4);
+                        resultset_wire_->flush();
+                    });
+                    continue;
                 }
                 {
                     std::string_view payload{};
@@ -202,6 +227,8 @@ public:
         std::thread thread_;
         std::thread reply_thread_{};
         bool suppress_message_{};
+        server_wire_container_mock::unq_p_resultset_wires_conteiner resultset_wires_{};
+        server_wire_container_mock::unq_p_resultset_wire_conteiner resultset_wire_{};
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)

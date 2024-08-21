@@ -32,15 +32,177 @@
 
 namespace tateyama::test_utils {
 
+using shm_resultset_wire = tateyama::common::wire::shm_resultset_wire;
+using shm_resultset_wires = tateyama::common::wire::shm_resultset_wires;
+
 class server_wire_container_mock
 {
     static constexpr std::size_t request_buffer_size = (1<<12);   //  4K bytes NOLINT
     static constexpr std::size_t response_buffer_size = (1<<13);  //  8K bytes NOLINT
-    static constexpr std::size_t writer_count = 32;
-    static constexpr std::size_t data_channel_overhead = 7700;   //  by experiment NOLINT
-    static constexpr std::size_t total_overhead = (1<<14);   //  16K bytes by experiment NOLINT
+    static constexpr std::size_t writer_count = 4;
+    static constexpr std::size_t data_channel_overhead = 7700;      //  by experiment NOLINT
+    static constexpr std::size_t total_overhead = (1<<14);          //  16K bytes by experiment NOLINT
+    static constexpr std::size_t datachannel_buffer_size = (1<<16); //  64K bytes NOLINT
 
 public:
+    class resultset_wires_container;
+
+    // resultset_wire_container
+    class resultset_wire_container {
+    public:
+        resultset_wire_container(shm_resultset_wire* resultset_wire, resultset_wires_container& resultset_wires_container)
+            : shm_resultset_wire_(resultset_wire), resultset_wires_container_(resultset_wires_container) {
+        }
+
+        void write(char const* data, std::size_t length) {
+            if (shm_resultset_wire_->check_room(length)) {
+                shm_resultset_wire_->write(data, length);
+                return;
+            }
+        }
+        void flush() {
+            shm_resultset_wire_->flush();
+            return;
+        }
+
+    private:
+        shm_resultset_wire* shm_resultset_wire_;
+        resultset_wires_container &resultset_wires_container_;
+
+        std::queue<std::size_t> queue_{};
+        std::size_t write_pos_{};
+        std::size_t chunk_size_{};
+        std::size_t read_pos_{};
+        bool released_{};
+
+        std::mutex mtx_queue_{};
+        std::mutex mtx_buffer_{};
+        std::condition_variable cnd_{};
+
+        void write_complete();
+    };
+    using unq_p_resultset_wire_conteiner = std::unique_ptr<resultset_wire_container>;
+
+    // resultset_wires_container
+    class resultset_wires_container {
+    public:
+        //   for server
+        resultset_wires_container(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::string_view name, std::size_t count, std::mutex& mtx_shm)
+            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name), server_(true), mtx_shm_(mtx_shm) {
+            std::lock_guard<std::mutex> lock(mtx_shm_);
+            managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
+            try {
+                shm_resultset_wires_ = managed_shm_ptr_->construct<shm_resultset_wires>(rsw_name_.c_str())(managed_shm_ptr_, count, datachannel_buffer_size);
+            } catch(const boost::interprocess::interprocess_exception& ex) {
+                LOG(ERROR) << ex.what() << " on resultset_wires_container::resultset_wires_container()";
+                pthread_exit(nullptr);  // FIXME
+            } catch (std::runtime_error &ex) {
+                LOG(ERROR) << "running out of boost managed shared memory";
+                pthread_exit(nullptr);  // FIXME
+            }
+        }
+        //  constructor for client
+        resultset_wires_container(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::string_view name, std::mutex& mtx_shm)
+            : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name), server_(false), mtx_shm_(mtx_shm) {
+            shm_resultset_wires_ = managed_shm_ptr_->find<shm_resultset_wires>(rsw_name_.c_str()).first;
+            if (shm_resultset_wires_ == nullptr) {
+                throw std::runtime_error("cannot find the resultset wire");
+            }
+        }
+        ~resultset_wires_container() {
+            if (server_) {
+                std::lock_guard<std::mutex> lock(mtx_shm_);
+                managed_shm_ptr_->destroy<shm_resultset_wires>(rsw_name_.c_str());
+            }
+        }
+
+        /**
+         * @brief Copy and move constructers are delete.
+         */
+        resultset_wires_container(resultset_wires_container const&) = delete;
+        resultset_wires_container(resultset_wires_container&&) = delete;
+        resultset_wires_container& operator = (resultset_wires_container const&) = delete;
+        resultset_wires_container& operator = (resultset_wires_container&&) = delete;
+
+        unq_p_resultset_wire_conteiner acquire() {
+            std::lock_guard<std::mutex> lock(mtx_shm_);
+            try {
+                return std::make_unique<resultset_wire_container>(shm_resultset_wires_->acquire(), *this);
+            } catch(const boost::interprocess::interprocess_exception& ex) {
+                LOG(ERROR) << ex.what() << " on resultset_wires_container::acquire()";
+                pthread_exit(nullptr);  // FIXME
+            } catch (std::runtime_error &ex) {
+                LOG(ERROR) << "running out of boost managed shared memory";
+                pthread_exit(nullptr);  // FIXME
+            }
+        }
+
+        void set_eor() {
+            if (deffered_writers_ == 0) {
+                shm_resultset_wires_->set_eor();
+            }
+        }
+        bool is_closed() {
+            return shm_resultset_wires_->is_closed();
+        }
+
+        void add_deffered_delete(unq_p_resultset_wire_conteiner resultset_wire) {
+            deffered_delete_.emplace(std::move(resultset_wire));
+            deffered_writers_++;
+        }
+        void write_complete() {
+            deffered_writers_--;
+            if (deffered_writers_ == 0) {
+                shm_resultset_wires_->set_eor();
+            }
+        }
+
+        // for client
+        std::string_view get_chunk() {
+            if (wrap_around_.data()) {
+                auto rv = wrap_around_;
+                wrap_around_ = std::string_view();
+                return rv;
+            }
+            if (current_wire_ == nullptr) {
+                current_wire_ = active_wire();
+            }
+            if (current_wire_ != nullptr) {
+                return current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), wrap_around_);
+            }
+            return std::string_view();
+        }
+        void dispose(std::size_t) {
+            if (current_wire_ != nullptr) {
+                current_wire_->dispose(current_wire_->get_bip_address(managed_shm_ptr_));
+                current_wire_ = nullptr;
+                return;
+            }
+            std::abort();
+        }
+        bool is_eor() {
+            return shm_resultset_wires_->is_eor();
+        }
+
+    private:
+        boost::interprocess::managed_shared_memory* managed_shm_ptr_;
+        std::string rsw_name_;
+        shm_resultset_wires* shm_resultset_wires_{};
+        bool server_;
+        std::mutex& mtx_shm_;
+        std::set<unq_p_resultset_wire_conteiner> deffered_delete_{};
+        std::size_t deffered_writers_{};
+
+        //   for client
+        std::string_view wrap_around_{};
+        shm_resultset_wire* current_wire_{};
+
+        shm_resultset_wire* active_wire() {
+            return shm_resultset_wires_->active_wire();
+        }
+    };
+    using unq_p_resultset_wires_conteiner = std::unique_ptr<resultset_wires_container>;
+
     class request_wire_container_mock {
     public:
         request_wire_container_mock() = default;
@@ -161,7 +323,7 @@ public:
             boost::interprocess::permissions unrestricted_permissions;
             unrestricted_permissions.set_unrestricted();
 
-            std::size_t shm_size = request_buffer_size + response_buffer_size + total_overhead;
+            std::size_t shm_size = request_buffer_size + response_buffer_size + total_overhead + (datachannel_buffer_size + data_channel_overhead) * writer_count;
             managed_shared_memory_ =
                 std::make_unique<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, name_.c_str(), shm_size, nullptr, unrestricted_permissions);
             auto req_wire = managed_shared_memory_->construct<tateyama::common::wire::unidirectional_message_wire>(tateyama::common::wire::request_wire_name)(managed_shared_memory_.get(), request_buffer_size);
@@ -194,6 +356,16 @@ public:
     request_wire_container_mock& get_request_wire() { return request_wire_; }
     response_wire_container_mock& get_response_wire() { return response_wire_; }
 
+    unq_p_resultset_wires_conteiner create_resultset_wires(std::string_view name) {
+        try {
+            return std::make_unique<resultset_wires_container>(managed_shared_memory_.get(), name, writer_count, mtx_shm_);
+        }
+        catch(const boost::interprocess::interprocess_exception& ex) {
+            LOG(ERROR) << "running out of boost managed shared memory";
+            pthread_exit(nullptr);  // FIXME
+        }
+    }
+
     void notify_shutdown() {
         request_wire_.notify();
         response_wire_.notify_shutdown();
@@ -214,8 +386,6 @@ private:
     response_wire_container_mock response_wire_{};
     tateyama::common::wire::status_provider* status_provider_{};
     std::mutex mtx_shm_{};
-
-    std::size_t datachannel_buffer_size_;
 };
 
 class connection_container

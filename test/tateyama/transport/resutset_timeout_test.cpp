@@ -17,6 +17,8 @@
 #include "test_root.h"
 
 #include <iostream>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <thread>
 #include <chrono>
@@ -36,15 +38,42 @@ namespace tateyama::transport {
 static constexpr std::size_t threads = 16;
 static constexpr std::size_t loops = 1024;
 
-class timeout_test : public ::testing::Test {
+class resutset_timeout_test : public ::testing::Test {
     class transport_mock {
         constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
         constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
         constexpr static std::size_t CORE_MESSAGE_VERSION_MAJOR = 0;
         constexpr static std::size_t CORE_MESSAGE_VERSION_MINOR = 0;
-        constexpr static tateyama::framework::component::id_type TYPE = 2468;
+        constexpr static tateyama::framework::component::id_type TYPE = 3072;
 
     public:
+        class resultset_wire_wrapper {
+        public:
+            resultset_wire_wrapper(transport_mock* envelope, std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> rw ) :
+                envelope_(envelope),
+                wire_(std::move(rw)) {
+            }
+            std::string_view get_chunk() {
+                while (true) {
+                    try {
+                        return wire_->get_chunk();
+                    } catch (std::runtime_error &e) {
+                        if (envelope_->status_provider_.is_alive().empty()) {
+                            continue;
+                        }
+                        std::cerr << e.what() << std::endl;
+                        throw e;
+                    }
+                }
+            }
+            void dispose() {
+                wire_->dispose();
+            }
+        private:
+            transport_mock* envelope_;
+            std::unique_ptr<tateyama::common::wire::session_wire_container::resultset_wires_container> wire_;
+        };
+        
         transport_mock(tateyama::common::wire::session_wire_container& wire, std::string digest) : wire_(wire), status_provider_(wire_.get_status_provider()) {
             header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
             header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
@@ -65,6 +94,16 @@ class timeout_test : public ::testing::Test {
                 return response_opt.value();
             }
             return std::nullopt;
+        }
+        std::unique_ptr<resultset_wire_wrapper> create_resultset_wire(std::string_view name) {
+            auto rw = wire_.create_resultset_wire();
+            try {
+                rw->connect(name);
+                return std::make_unique<resultset_wire_wrapper>(this, std::move(rw));
+            } catch (std::runtime_error& e) {
+                std::cerr << e.what() << std::endl;
+            }
+            return nullptr;
         }
     private:
         tateyama::common::wire::session_wire_container& wire_;
@@ -113,17 +152,20 @@ public:
                 FAIL();
             }
         }
-
+        std::unique_ptr<resutset_timeout_test::transport_mock::resultset_wire_wrapper> create_resultset_wire(std::string_view name) {
+            return transport_mock_->create_resultset_wire(name);
+        }
+                                                                                                                         
     private:
         std::unique_ptr<transport_mock> transport_mock_{};
     };
 
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("timeout_test", 20403);
+        helper_ = std::make_unique<directory_helper>("resutset_timeout_test", 20404);
         helper_->set_up();
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
         digest_ = bst_conf.digest();
-        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("timeout_test", digest_, sync_, helper_->location());
+        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("resutset_timeout_test", digest_, sync_, helper_->location());
         mutex_file_ = helper_->abs_path(std::string("tsurugi-") + digest_ + ".pid");
         if (system((std::string("touch ") + mutex_file_).c_str()) != 0) {
             FAIL();
@@ -166,20 +208,25 @@ private:
     }
 };
 
-TEST_F(timeout_test, response_alive_case) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("timeout_test").connect());
+TEST_F(resutset_timeout_test, response_alive_case) {
+    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resutset_timeout_test").connect());
     worker w(wire, digest_);
     w.send(6);
-
+    auto resultset_wire = w.create_resultset_wire("resultset");
+    auto reply = resultset_wire->get_chunk();
+    EXPECT_FALSE(reply.empty());
+    
     wire.close();
 }
 
-TEST_F(timeout_test, response_dead_case) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("timeout_test").connect());
+TEST_F(resutset_timeout_test, response_dead_case) {
+    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resutset_timeout_test").connect());
     worker w(wire, digest_);
     funlock();
 
-    EXPECT_THROW(w.send(6), std::runtime_error);
+    w.send(6);
+    auto resultset_wire = w.create_resultset_wire("resultset");
+    EXPECT_THROW(resultset_wire->get_chunk(), std::runtime_error);
 
     wire.close();
 }
