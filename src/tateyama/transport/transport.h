@@ -67,8 +67,7 @@ public:
     transport() = delete;
 
     explicit transport(tateyama::framework::component::id_type type) :
-        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name()).connect())),
-        status_provider_(wire_.get_status_provider()) {
+        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name()).connect())) {
 
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
@@ -125,18 +124,7 @@ public:
         wire_.send(sst.str(), slot_index);
 
         std::string res_message{};
-        while (true) {
-            try {
-                wire_.receive(res_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(res_message, slot_index);        
         ::tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
@@ -169,18 +157,7 @@ public:
         wire_.send(sst.str(), slot_index);
 
         std::string res_message{};
-        while (true) {
-            try {
-                wire_.receive(res_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(res_message, slot_index);
         ::tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
@@ -218,18 +195,7 @@ public:
         wire_.send(sst.str(), slot_index);
 
         std::string res_message{};
-        while (true) {
-            try {
-                wire_.receive(res_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(res_message, slot_index);
         tateyama::proto::framework::response::Header fwrs_header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(fwrs_header), std::addressof(ins), nullptr); ! res) {
@@ -267,18 +233,7 @@ public:
         wire_.send(sst.str(), slot_index);
 
         std::string res_message{};
-        while (true) {
-            try {
-                wire_.receive(res_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(res_message, slot_index);
         tateyama::proto::framework::response::Header fwrs_header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(fwrs_header), std::addressof(ins), nullptr); ! res) {
@@ -311,18 +266,7 @@ public:
         wire_.send(sst.str(), slot_index);
 
         std::string res_message{};
-        while (true) {
-            try {
-                wire_.receive(res_message, slot_index);
-                break;
-            } catch (std::runtime_error &e) {
-                if (status_provider_.is_alive().empty()) {
-                    continue;
-                }
-                std::cerr << e.what() << std::endl;
-                return std::nullopt;
-            }
-        }
+        wire_.receive(res_message, slot_index);
         ::tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
         if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
@@ -363,7 +307,6 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container wire_;
-    tateyama::common::wire::status_provider &status_provider_;
     tateyama::proto::framework::request::Header header_{};
     std::size_t session_id_{};
     bool closed_{};

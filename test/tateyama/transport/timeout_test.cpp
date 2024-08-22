@@ -74,19 +74,7 @@ class timeout_test : public ::testing::Test {
 
         std::optional<std::string> receive(tateyama::common::wire::message_header::index_type index) {
             std::string response_message{};
-            
-            while (true) {
-                try {
-                    wire_.receive(response_message, index);
-                    break;
-                } catch (std::runtime_error &e) {
-                    if (status_provider_.is_alive().empty()) {
-                        continue;
-                    }
-                    throw e;
-                }
-            }
-
+            wire_.receive(response_message, index);
             ::tateyama::proto::framework::response::Header header{};
             google::protobuf::io::ArrayInputStream in{response_message.data(), static_cast<int>(response_message.length())};
             if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(in), nullptr); ! res) {
