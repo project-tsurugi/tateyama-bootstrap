@@ -23,7 +23,7 @@ namespace details {
 static constexpr std::string_view default_configuration {  // NOLINT
     "[sql]\n"
         "thread_pool_size=\n"
-        "enable_index_join=false\n"
+        "enable_index_join=true\n"
         "stealing_enabled=true\n"
         "default_partitions=5\n"
         "stealing_wait=1\n"
@@ -43,7 +43,6 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_try_insert_on_upserting_secondary=true\n"
         "dev_scan_concurrent_operation_as_not_found=true\n"
         "dev_point_read_concurrent_operation_as_not_found=true\n"
-        "dev_compiler_support=1\n"
         "lowercase_regular_identifiers=false\n"
         "scan_block_size=0\n"
 
