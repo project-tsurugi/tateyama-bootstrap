@@ -34,12 +34,15 @@
 #include "backup.h"
 #include "file_list.h"
 
+// common
 DECLARE_string(conf);  // NOLINT
-DECLARE_bool(force);  // NOLINT
-DECLARE_bool(keep_backup);  // NOLINT
 DECLARE_string(label);  // NOLINT
 DECLARE_string(monitor);  // NOLINT
-DECLARE_string(use_file_list);  // NOLINT
+
+// backup
+DEFINE_bool(force, false, "no confirmation step");  // NOLINT
+DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
+DEFINE_string(use_file_list, "", "json file describing the individual files to be specified for restore");  // NOLINT
 
 namespace tateyama::datastore {
 
