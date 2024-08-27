@@ -17,7 +17,6 @@
 #include <string>
 #include <exception>
 
-#define STRIP_FLAG_HELP 1
 #include <gflags/gflags.h>
 
 #include "tateyama/process/process.h"
@@ -31,8 +30,6 @@
 
 // help
 DECLARE_bool(help);
-DECLARE_bool(helpshort);
-DEFINE_bool(h, false, "help");  // NOLINT
 
 // common
 DECLARE_string(monitor);
@@ -202,15 +199,14 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
 int main(int argc, char* argv[]) {
     if (argc > 1) {
         // command arguments (must conduct after the argment copy)
-        gflags::SetUsageMessage(std::string(tateyama::tgctl::help_text));
+        gflags::SetUsageMessage("tateyama database server CLI");
         gflags::ParseCommandLineNonHelpFlags(&argc, &argv, true);
 
-        if (FLAGS_help || FLAGS_h) {
-            FLAGS_help = false;
-            FLAGS_helpshort = true;
+        if (FLAGS_help) {
+            std::cout << tateyama::tgctl::help_text << std::flush;
+            return 0;
         }
-        gflags::HandleCommandLineHelpFlags();
-        
+
         // copy argv to args
         std::vector<std::string> args(argv, argv + argc);
 
