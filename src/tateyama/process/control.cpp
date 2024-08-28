@@ -32,20 +32,30 @@
 #include "tateyama/monitor/monitor.h"
 #include "process.h"
 
-DECLARE_string(conf);
-DECLARE_string(monitor);
-DECLARE_string(label);
-DECLARE_bool(quiesce);
-DECLARE_bool(maintenance_server);
-DECLARE_string(start_mode);
-DECLARE_int32(timeout);
-DECLARE_bool(quiet);
-DECLARE_bool(graceful);
-DECLARE_bool(forceful);
+DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
+DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
+DEFINE_string(label, "", "label for this operation");  // NOLINT
 
-DECLARE_string(location);  // obsolete
-DECLARE_bool(load);  // obsolete
-DECLARE_bool(tpch);  // obsolete
+DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
+DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT
+
+// for control
+DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for tgctl_start()
+DEFINE_int32(timeout, -1, "timeout for tgctl shutdown, no timeout control takes place if 0 is specified");  // NOLINT for tgctl_start()
+DEFINE_bool(q, false, "do not display command execution results on the console");  // NOLINT
+DEFINE_bool(quiet, false, "do not display command execution results on the console");  // NOLINT
+
+// for control and session
+DEFINE_bool(graceful, false, "graceful shutdown");  // NOLINT
+DEFINE_bool(forceful, false, "forceful shutdown");  // NOLINT
+
+// for tsurugidb, obsolete
+DEFINE_string(location, "./db", "database location on file system");  // NOLINT
+DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
+DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
+
+// for dbstats
+DEFINE_string(format, "json", "metrics information display format");  // NOLINT
 
 namespace tateyama::process {
 

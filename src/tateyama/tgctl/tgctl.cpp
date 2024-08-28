@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,35 +26,21 @@
 #include "tateyama/session/session.h"
 #include "tateyama/metrics/metrics.h"
 
+#include "help_text.h"
+
+// help
+DECLARE_bool(help);
+
 // common
-DEFINE_string(conf, "", "the file name of the configuration");  // NOLINT
-DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT
-DEFINE_string(label, "", "label for this operation");  // NOLINT
+DECLARE_string(monitor);
+DECLARE_int32(timeout);
 
-// for control
-DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT for quiesce
-DEFINE_bool(maintenance_server, false, "invoke in maintenance_server mode");  // NOLINT for tgctl_start() invoked from start_maintenance_server()
-DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT for tgctl_start()
-DEFINE_int32(timeout, -1, "timeout for tgctl shutdown, no timeout control takes place if 0 is specified");  // NOLINT for tgctl_start()
-DEFINE_bool(q, false, "do not display command execution results on the console");  // NOLINT
-DEFINE_bool(quiet, false, "do not display command execution results on the console");  // NOLINT
+// control
+DECLARE_bool(q);
+DECLARE_bool(quiet);
 
-// for control and session
-DEFINE_bool(graceful, false, "graceful shutdown");  // NOLINT
-DEFINE_bool(forceful, false, "forceful shutdown");  // NOLINT
-
-// for backup
-DEFINE_bool(force, false, "no confirmation step");  // NOLINT
-DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
-DEFINE_string(use_file_list, "", "json file describing the individual files to be specified for restore");  // NOLINT
-
-// for tsurugidb
-DEFINE_string(location, "./db", "database location on file system");  // NOLINT
-DEFINE_bool(load, false, "Database contents are loaded from the location just after boot");  // NOLINT
-DEFINE_bool(tpch, false, "Database will be set up for tpc-h benchmark");  // NOLINT
-
-// for dbstats
-DEFINE_string(format, "json", "metrics information display format");  // NOLINT
+// backup
+DECLARE_string(use_file_list);
 
 namespace tateyama::tgctl {
 
@@ -214,7 +200,12 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         // command arguments (must conduct after the argment copy)
         gflags::SetUsageMessage("tateyama database server CLI");
-        gflags::ParseCommandLineFlags(&argc, &argv, true);
+        gflags::ParseCommandLineNonHelpFlags(&argc, &argv, true);
+
+        if (FLAGS_help) {
+            std::cout << tateyama::tgctl::help_text << std::flush;
+            return 0;
+        }
 
         // copy argv to args
         std::vector<std::string> args(argv, argv + argc);
