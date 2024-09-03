@@ -67,14 +67,11 @@ public:
     class worker {
     public:
         worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, data_for_check& data_for_check)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check), thread_(std::thread(std::ref(*this))) {
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check) {
         }
         ~worker() {
             if (reply_thread_.joinable()) {
                 reply_thread_.join();
-            }
-            if (thread_.joinable()) {
-                thread_.join();
             }
         }
         void operator()() {
@@ -224,7 +221,6 @@ public:
         std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire_;
         std::function<void(void)> clean_up_;
         data_for_check& data_for_check_;
-        std::thread thread_;
         std::thread reply_thread_{};
         bool suppress_message_{};
         server_wire_container_mock::unq_p_resultset_wires_conteiner resultset_wires_{};
@@ -236,7 +232,6 @@ public:
     }
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory)
         : name_(name), digest_(digest), directory_(directory), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync) {
-        thread_ = std::thread(std::ref(*this));
     }
     ~endpoint() {
         if (thread_.joinable()) {
@@ -276,7 +271,11 @@ public:
             connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
-                worker_ = std::make_unique<worker>(session_id, std::move(wire), [&connection_queue, index](){ connection_queue.disconnect(index); }, data_for_check_);
+                worker_ = std::make_unique<worker>(session_id,
+                                                   std::move(wire),
+                                                   [&connection_queue, index](){ connection_queue.disconnect(index); },
+                                                   data_for_check_);
+                thread_ = std::thread(std::ref(*worker_));
                 if (suppress_message_) {
                     worker_->suppress_message();
                 }

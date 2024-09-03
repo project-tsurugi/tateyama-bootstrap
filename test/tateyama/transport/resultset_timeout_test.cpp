@@ -38,7 +38,7 @@ namespace tateyama::transport {
 static constexpr std::size_t threads = 16;
 static constexpr std::size_t loops = 1024;
 
-class resutset_timeout_test : public ::testing::Test {
+class resultset_timeout_test : public ::testing::Test {
     class transport_mock {
         constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
         constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
@@ -121,11 +121,11 @@ public:
     };
 
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("resutset_timeout_test", 20404);
+        helper_ = std::make_unique<directory_helper>("resultset_timeout_test", 20404);
         helper_->set_up();
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
         digest_ = bst_conf.digest();
-        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("resutset_timeout_test", digest_, sync_, helper_->location());
+        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("resultset_timeout_test", digest_, sync_, helper_->location());
         mutex_file_ = helper_->abs_path(std::string("tsurugi-") + digest_ + ".pid");
         if (system((std::string("touch ") + mutex_file_).c_str()) != 0) {
             FAIL();
@@ -168,8 +168,8 @@ private:
     }
 };
 
-TEST_F(resutset_timeout_test, response_alive_case) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resutset_timeout_test").connect());
+TEST_F(resultset_timeout_test, response_alive_case) {
+    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resultset_timeout_test").connect());
     worker w(wire, digest_);
     w.send(6);
     auto resultset_wire = w.create_resultset_wire("resultset");
@@ -179,8 +179,8 @@ TEST_F(resutset_timeout_test, response_alive_case) {
     wire.close();
 }
 
-TEST_F(resutset_timeout_test, response_dead_case) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resutset_timeout_test").connect());
+TEST_F(resultset_timeout_test, response_dead_case) {
+    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("resultset_timeout_test").connect());
     worker w(wire, digest_);
     funlock();
 

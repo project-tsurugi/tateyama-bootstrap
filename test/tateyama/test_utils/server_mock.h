@@ -34,9 +34,13 @@ public:
     }
     server_mock(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory) :
         name_(name), endpoint_(name_, digest, sync, directory), status_(std::make_unique<status_mock>(name, digest, directory)) {
+        thread_ = std::thread(std::ref(endpoint_));
     }
     ~server_mock() {
         endpoint_.terminate();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
         remove_shm();
     }
 
@@ -66,6 +70,7 @@ private:
     std::string name_;
     endpoint endpoint_;
     std::unique_ptr<status_mock> status_;
+    std::thread thread_;
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
