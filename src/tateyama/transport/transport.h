@@ -67,7 +67,7 @@ public:
     transport() = delete;
 
     explicit transport(tateyama::framework::component::id_type type) :
-        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name()).connect())) {
+        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name(true)).connect())) {
 
         header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
@@ -292,17 +292,23 @@ public:
         return session_id_;
     }
 
-    static std::string database_name() {
-        auto conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf).get_configuration();
-        auto endpoint_config = conf->get_section("ipc_endpoint");
-        if (endpoint_config == nullptr) {
-            throw std::runtime_error("cannot find ipc_endpoint section in the configuration");
+    static std::string database_name(bool output_error = false) {
+        if (auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf); bst_conf.valid()) {
+            if (auto conf = bst_conf.get_configuration(); conf) {
+                if (auto endpoint_config = conf->get_section("ipc_endpoint"); endpoint_config) {
+                    if (auto database_name_opt = endpoint_config->get<std::string>("database_name"); database_name_opt) {
+                        return database_name_opt.value();
+                    }
+                    throw std::runtime_error("cannot find database_name at the section in the configuration");
+                }
+                throw std::runtime_error("cannot find ipc_endpoint section in the configuration");
+            }
+            throw std::runtime_error("error in create_configuration");
         }
-        auto database_name_opt = endpoint_config->get<std::string>("database_name");
-        if (!database_name_opt) {
-            throw std::runtime_error("cannot find database_name at the section in the configuration");
+        if (output_error) {
+            std::cerr << "cannot find any valid configuration file, database name has been set to brank" << std::endl;
         }
-        return database_name_opt.value();
+        return {};
     }
 
 private:

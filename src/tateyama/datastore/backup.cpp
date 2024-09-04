@@ -245,7 +245,7 @@ tgctl::return_code tgctl_backup_estimate() {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -311,7 +311,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -398,7 +398,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -449,7 +449,7 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
             }
         }
     } catch (std::runtime_error &e) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 

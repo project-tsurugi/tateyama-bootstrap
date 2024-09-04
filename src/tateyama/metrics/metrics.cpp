@@ -115,7 +115,7 @@ tgctl::return_code list() {
             std::cerr << "could not receive a valid response" << std::endl;
         }
     } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     
     if (monitor_output) {
@@ -204,7 +204,7 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
             std::cerr << "could not receive a valid response" << std::endl;
         }
     } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
 
     if (monitor_output) {

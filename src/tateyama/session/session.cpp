@@ -177,7 +177,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             }
         }
     } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -238,7 +238,7 @@ tgctl::return_code session_show(std::string_view session_ref) {
             }
         }
     } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
@@ -297,7 +297,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
                 }
             }
         } catch (std::runtime_error &ex) {
-            std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+            std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
         }
         rtnv = tgctl::return_code::err;
     }
@@ -350,7 +350,7 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
             }
         }
     } catch (std::runtime_error &ex) {
-        std::cerr << "could not connect to database with name " << tateyama::bootstrap::wire::transport::database_name() << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
     }
     rtnv = tgctl::return_code::err;
 
