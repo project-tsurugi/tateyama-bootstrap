@@ -19,7 +19,8 @@ add_executable(server
 
 set_target_properties(server
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "tsurugidb"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "tsurugidb"
         )
 
 target_include_directories(server
@@ -132,7 +133,8 @@ add_dependencies(tgctl
 
 set_target_properties(tgctl
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "tgctl"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "tgctl"
         )
 
 target_include_directories(tgctl
