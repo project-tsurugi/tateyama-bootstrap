@@ -34,12 +34,27 @@ jobs:
         with:
           sharksfin-implementation: shirakami
 
+      - name: Install_mpdecimal
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          mkdir build-mpdecimal
+          cd build-mpdecimal
+          curl -OL https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz
+          tar xf mpdecimal-2.5.1.tar.gz
+          cd mpdecimal-2.5.1
+          ./configure --prefix="${GITHUB_WORKSPACE}/.local"
+          make -j8
+          make install
+          cd ../..
+          rm -fr build-mpdecimal;
+        shell: bash
+
       - name: CMake_Install
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=shirakami -DOGAWAYAMA=ON -DFORCE_INSTALL_RPATH=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=shirakami -DOGAWAYAMA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
           cmake --build . --target install --clean-first
 
       - name: CTest
