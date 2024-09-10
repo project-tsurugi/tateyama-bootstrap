@@ -324,7 +324,9 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
         auto* command = request.mutable_session_set_variable();
         command->set_session_specifier(std::string(session_ref));
         command->set_name(std::string(set_key));
-        command->set_value(std::string(set_value));
+        if (!set_value.empty()) {
+            command->set_value(std::string(set_value));
+        }
         auto response_opt = transport->send<::tateyama::proto::session::response::SessionSetVariable>(request);
         request.clear_session_set_variable();
 

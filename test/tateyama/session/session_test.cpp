@@ -304,4 +304,31 @@ TEST_F(session_test, session_set) {
     EXPECT_EQ("test_value", rq.value());
 }
 
+TEST_F(session_test, session_unset) {
+    std::string command;
+    FILE *fp;
+
+    {
+        tateyama::proto::session::response::SessionSetVariable session_set{};
+        auto* success = session_set.mutable_success();
+        server_mock_->push_response(session_set.SerializeAsString());
+    }
+
+    command = "tgctl session set :123456 test_variable --conf ";
+    command += helper_->conf_file_path();
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot tgctl session set" << std::endl;
+    }
+    auto result = read_pipe(fp);
+    std::cout << result << std::flush;
+
+    EXPECT_EQ(tateyama::framework::service_id_session, server_mock_->component_id());
+    tateyama::proto::session::request::SessionSetVariable rq{};
+    server_mock_->request_message(rq);
+    EXPECT_EQ(":123456", rq.session_specifier());
+    EXPECT_EQ("test_variable", rq.name());
+    EXPECT_EQ(tateyama::proto::session::request::SessionSetVariable::ValueOptCase::VALUE_OPT_NOT_SET, rq.value_opt_case());
+}
+
 }  // namespace tateyama::session

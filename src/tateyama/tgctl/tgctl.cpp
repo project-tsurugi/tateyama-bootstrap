@@ -182,9 +182,12 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             return tateyama::session::session_shutdown(args.at(3));
         }
         if (args.at(2) == "set") {
-            if (args.size() < 6) {
-                std::cerr << "need to specify session-ref, set-key, and set-value" << std::endl;
+            if (args.size() < 5) {
+                std::cerr << "need to specify session-ref and set-key" << std::endl;
                 return tateyama::tgctl::return_code::err;
+            }
+            if (args.size() < 6) {
+                return tateyama::session::session_swtch(args.at(3), args.at(4));
             }
             return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5));
         }
