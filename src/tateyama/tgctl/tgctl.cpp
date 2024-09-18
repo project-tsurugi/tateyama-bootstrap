@@ -189,7 +189,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             if (args.size() < 6) {
                 return tateyama::session::session_swtch(args.at(3), args.at(4));
             }
-            return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5));
+            return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5), true);
         }
         std::cerr << "unknown session sub command '" << args.at(2) << "'" << std::endl;
         return tateyama::tgctl::return_code::err;

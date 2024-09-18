@@ -308,7 +308,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
     return rtnv;
 }
 
-tgctl::return_code session_swtch(std::string_view session_ref, std::string_view set_key, std::string_view set_value) {
+tgctl::return_code session_swtch(std::string_view session_ref, std::string_view set_key, std::string_view set_value, bool set) {
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty()) {
@@ -324,7 +324,7 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
         auto* command = request.mutable_session_set_variable();
         command->set_session_specifier(std::string(session_ref));
         command->set_name(std::string(set_key));
-        if (!set_value.empty()) {
+        if (set) {
             command->set_value(std::string(set_value));
         }
         auto response_opt = transport->send<::tateyama::proto::session::response::SessionSetVariable>(request);
