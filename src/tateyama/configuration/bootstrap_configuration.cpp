@@ -45,6 +45,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_point_read_concurrent_operation_as_not_found=true\n"
         "lowercase_regular_identifiers=false\n"
         "scan_block_size=0\n"
+        "dev_rtx_parallel_scan=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
