@@ -83,7 +83,7 @@ class proc_mutex {
     void unlock() const {
         flock(fd_, LOCK_UN);
     }
-    void fill_contents() {
+    void fill_contents() const {
         std::string pid = std::to_string(getpid());
         if (write(fd_, pid.data(), pid.length()) < 0) {
             throw std::runtime_error("write error");
