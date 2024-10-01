@@ -26,7 +26,7 @@
 
 namespace tateyama::process {
 
-class file_mutex {
+class proc_mutex {
   public:
     enum class lock_state : std::int32_t {
         no_file = 0,
@@ -35,7 +35,7 @@ class file_mutex {
         error,
     };
 
-    file_mutex(std::filesystem::path lock_file, bool create_file, bool throw_exception) : lock_file_(std::move(lock_file)) {
+    proc_mutex(std::filesystem::path lock_file, bool create_file, bool throw_exception) : lock_file_(std::move(lock_file)) {
         if (create_file) {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {  // NOLINT
                 if (throw_exception) {
@@ -50,7 +50,13 @@ class file_mutex {
             }
         }
     }
-    ~file_mutex() {
+    proc_mutex(std::filesystem::path lock_file, bool create_file)
+        : proc_mutex(std::move(lock_file), create_file, true) {
+    }
+    explicit proc_mutex(std::filesystem::path lock_file)
+        : proc_mutex(std::move(lock_file), true, true) {
+    }
+    ~proc_mutex() {
         if (fd_ >= 0) {
             close(fd_);
         }
@@ -59,17 +65,16 @@ class file_mutex {
         }
     }
 
-    file_mutex(file_mutex const& other) = delete;
-    file_mutex& operator=(file_mutex const& other) = delete;
-    file_mutex(file_mutex&& other) noexcept = delete;
-    file_mutex& operator=(file_mutex&& other) noexcept = delete;
+    proc_mutex(proc_mutex const& other) = delete;
+    proc_mutex& operator=(proc_mutex const& other) = delete;
+    proc_mutex(proc_mutex&& other) noexcept = delete;
+    proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
 
-    [[nodiscard]] inline std::string name() const {
-        return lock_file_.generic_string();
-    }
-    void lock(const std::function<void(void)>& fill_contents = []{}) {
+    void lock() {
+        if (ftruncate(fd_, 0) < 0) {
+            throw std::runtime_error("ftruncate error");
+        }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
-            fill_contents();
             owner_ = true;
             return;
         }
@@ -78,6 +83,29 @@ class file_mutex {
     void unlock() const {
         flock(fd_, LOCK_UN);
     }
+    void fill_contents() {
+        std::string pid = std::to_string(getpid());
+        if (write(fd_, pid.data(), pid.length()) < 0) {
+            throw std::runtime_error("write error");
+        }
+    }
+
+    [[nodiscard]] inline std::string name() const {
+        return lock_file_.generic_string();
+    }
+
+    [[nodiscard]] int pid(bool do_check = true) {
+        std::string str;
+        if (contents(str, do_check)) {
+            try {
+                return stoi(str);
+            } catch (std::invalid_argument& e) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
     [[nodiscard]] lock_state check() {
         std::error_code error;
         const bool result = std::filesystem::exists(lock_file_, error);
@@ -98,6 +126,7 @@ class file_mutex {
         }
         return lock_state::locked;
     }
+
     [[nodiscard]] inline constexpr std::string_view to_string_view(lock_state value) noexcept {
         using namespace std::string_view_literals;
         switch (value) {
@@ -109,47 +138,12 @@ class file_mutex {
         return "illegal lock state"sv;
     }
 
-protected:
-    std::filesystem::path lock_file_;  // NOLINT
-    int fd_{not_opened};               // NOLINT
-
 private:
+    int fd_{not_opened};
+    std::filesystem::path lock_file_;
     bool owner_{};
     static constexpr int not_opened = -1;
-};
 
-
-class proc_mutex : public file_mutex {
-public:
-    explicit proc_mutex(std::filesystem::path lock_file, bool create_file = true, bool throw_exception = true)
-        : file_mutex(std::move(lock_file), create_file, throw_exception) {
-    }
-
-    void lock() {
-        file_mutex::lock([this]{
-            if (ftruncate(fd_, 0) < 0) {
-                throw std::runtime_error("ftruncate error");
-            }
-            std::string pid = std::to_string(getpid());
-            if (write(fd_, pid.data(), pid.length()) < 0) {
-                throw std::runtime_error("write error");
-            }
-        });
-    }
-
-    [[nodiscard]] int pid(bool do_check = true) {
-        std::string str;
-        if (contents(str, do_check)) {
-            try {
-                return stoi(str);
-            } catch (std::invalid_argument& e) {
-                return 0;
-            }
-        }
-        return 0;
-    }
-    
-private:
     [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
         if (do_check && check() != lock_state::locked) {
             return false;
@@ -166,11 +160,11 @@ class shm_mutex {
 public:
     explicit shm_mutex(std::filesystem::path lock_file) {
         try {
-            shm_mutex_ = std::make_unique<file_mutex>(std::move(lock_file), true, true);
+            shm_mutex_ = std::make_unique<proc_mutex>(std::move(lock_file), true, true);
             shm_mutex_->lock();
             return;
         } catch (std::runtime_error &ex) {
-            shm_mutex_ = std::make_unique<file_mutex>(std::move(lock_file), false, true);
+            shm_mutex_ = std::make_unique<proc_mutex>(std::move(lock_file), false, true);
             shm_mutex_->lock();
             return;
         }
@@ -183,7 +177,7 @@ public:
     }
 
 private:
-    std::unique_ptr<file_mutex> shm_mutex_{};
+    std::unique_ptr<proc_mutex> shm_mutex_{};
 };
 
 }  // tateyama::process

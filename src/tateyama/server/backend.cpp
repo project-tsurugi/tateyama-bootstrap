@@ -185,6 +185,7 @@ int backend_main(int argc, char **argv) {
 #endif
 
     // should do after setup()
+    mutex->fill_contents();
     status_info->mutex_file(mutex_file.string());
 
     // shm mutex
