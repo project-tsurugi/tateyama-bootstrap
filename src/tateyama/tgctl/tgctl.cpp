@@ -25,6 +25,9 @@
 #include "tateyama/version/version.h"
 #include "tateyama/session/session.h"
 #include "tateyama/metrics/metrics.h"
+#ifdef ENABLE_ALTIMETER
+#include "tateyama/altimeter/altimeter.h"
+#endif
 
 #include "help_text.h"
 
@@ -208,6 +211,64 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'" << std::endl;
         return tateyama::tgctl::return_code::err;
     }
+#ifdef ENABLE_ALTIMETER
+    if (args.at(1) == "altimeter") {
+        if (args.size() < 3) {
+            std::cerr << "need to specify altimeter subcommand" << std::endl;
+            return tateyama::tgctl::return_code::err;
+        }
+        if (args.at(2) == "enable") {
+            if (args.size() < 4) {
+                std::cerr << "need to specify log type for altimeter enable" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            return tateyama::altimeter::set_enabled(args.at(3), true);
+        }
+        if (args.at(2) == "disable") {
+            if (args.size() < 4) {
+                std::cerr << "need to specify log type for altimeter disable" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            return tateyama::altimeter::set_enabled(args.at(3), false);
+        }
+        if (args.at(2) == "set") {
+            if (args.size() < 4) {
+                std::cerr << "need to specify parameter for altimeter set" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            if (args.at(3) == "event_level") {
+                if (args.size() < 5) {
+                    std::cerr << "need to specify parameter for altimeter set event_level" << std::endl;
+                    return tateyama::tgctl::return_code::err;
+                }
+                return tateyama::altimeter::set_log_level("event", args.at(4));
+            }
+            if (args.at(3) == "audit_level") {
+                if (args.size() < 5) {
+                    std::cerr << "need to specify parameter for altimeter set audit_level" << std::endl;
+                    return tateyama::tgctl::return_code::err;
+                }
+                return tateyama::altimeter::set_log_level("audit", args.at(4));
+            }
+            if (args.at(3) == "statement_duration") {
+                if (args.size() < 5) {
+                    std::cerr << "need to specify parameter for altimeter set statement_duration" << std::endl;
+                    return tateyama::tgctl::return_code::err;
+                }
+                return tateyama::altimeter::set_statement_duration(args.at(4));
+            }
+        }
+        if (args.at(2) == "rotate") {
+            if (args.size() < 4) {
+                std::cerr << "need to specify parameter for altimeter rotate" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            return tateyama::altimeter::rotate(args.at(3));
+        }
+        std::cerr << "unknown altimeter-sub command '" << args.at(2) << "'" << std::endl;
+        return tateyama::tgctl::return_code::err;
+    }
+#endif
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return tateyama::tgctl::return_code::err;
 }
