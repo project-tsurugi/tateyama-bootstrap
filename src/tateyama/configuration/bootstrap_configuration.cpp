@@ -48,6 +48,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "scan_yield_interval=1\n"
         "dev_rtx_parallel_scan=false\n"
         "dev_thousandths_ratio_check_local_first=100\n"
+        "dev_direct_commit_callback=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
