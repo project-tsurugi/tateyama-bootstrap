@@ -50,6 +50,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_thousandths_ratio_check_local_first=100\n"
         "dev_direct_commit_callback=false\n"
         "scan_default_parallel=1\n"
+        "dev_inplace_teardown=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
