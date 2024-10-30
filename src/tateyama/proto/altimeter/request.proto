@@ -27,7 +27,7 @@ message LogSettings {
 
     // the reporting threshold of statement duration, or keep the current settings.
     oneof statement_duration_opt {
-            
+
         // the reporting threshold of statement duration, by nanoseconds.
         uint64 statement_duration = 3;
     }
@@ -37,13 +37,6 @@ message LogSettings {
 message Configure {
 
     // configure event log, or keep the current settings.
-////    oneof log_opt {
-////        // configuration for event log.
-////        LogSettings event_log = 1;
-////
-////        // configuration for audit log.
-////        LogSettings audit_log = 2;
-////    }
     oneof event_log_opt {
 
         // configuration for event log.

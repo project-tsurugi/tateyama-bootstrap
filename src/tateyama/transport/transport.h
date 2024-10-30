@@ -64,8 +64,10 @@ constexpr static std::size_t SESSION_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t SESSION_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t METRICS_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t METRICS_MESSAGE_VERSION_MINOR = 0;
+#ifdef ENABLE_ALTIMETER
 constexpr static std::size_t ALTIMETER_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t ALTIMETER_MESSAGE_VERSION_MINOR = 0;
+#endif
 constexpr static std::int64_t EXPIRATION_SECONDS = 60;
 
 class transport {
@@ -289,6 +291,7 @@ public:
         return response;
     }
 
+#ifdef ENABLE_ALTIMETER
     // altimeter
     template <typename T>
     std::optional<T> send(::tateyama::proto::altimeter::request::Request& request) {
@@ -321,6 +324,7 @@ public:
         }
         return response;
     }
+#endif
 
     void close() {
         wire_.close();

@@ -33,24 +33,23 @@ DECLARE_string(monitor);
 namespace tateyama::altimeter {
 
 template <class T>
-static tgctl::return_code post_processing(std::optional<T>& response_opt, const std::string_view sub_command) {
+static monitor::reason post_processing(std::optional<T>& response_opt, const std::string_view sub_command) {
     if (response_opt) {
         auto response = response_opt.value();
     
         switch(response.result_case()) {
         case T::ResultCase::kSuccess:
-            return tgctl::return_code::ok;
+            return monitor::reason::absent;
         case T::ResultCase::kError:
             std::cerr << "altimeter " << sub_command << " error: " << response.error().message() << std::endl;
-            break;
+            return monitor::reason::server;
         default:
-            std::cerr << "altimeter " << sub_command << " returns illegal result_case" << std::endl;
-            break;
+            std::cerr << "altimeter " << sub_command << " returns illegal response" << std::endl;
+            return monitor::reason::unknown;
         }
-    } else {
-        std::cerr << "altimeter " << sub_command << " returns nullopt" << std::endl;
     }
-    return tgctl::return_code::err;
+    std::cerr << "altimeter " << sub_command << " returns nullopt" << std::endl;
+    return monitor::reason::server;
 }
 
 tgctl::return_code set_enabled(const std::string& type, bool enabled) {
@@ -61,7 +60,7 @@ tgctl::return_code set_enabled(const std::string& type, bool enabled) {
         monitor_output->start();
     }
 
-    auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
@@ -77,16 +76,16 @@ tgctl::return_code set_enabled(const std::string& type, bool enabled) {
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::Configure>(request);
         request.clear_configure();
 
-        rtnv = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_enabled");
+        reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_enabled");
     } catch (std::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        rtnv = tgctl::return_code::err;
+        reason = monitor::reason::connection;
     }
 
     if (monitor_output) {
-        monitor_output->finish(rtnv == tgctl::return_code::ok);
+        monitor_output->finish(reason);
     }
-    return rtnv;
+    return (reason == monitor::reason::absent) ? tgctl::return_code::err : tgctl::return_code::err;  // NOLINT(misc-redundant-expression)
 }
 
 tgctl::return_code set_log_level(const std::string& type, const std::string& level) {
@@ -97,7 +96,7 @@ tgctl::return_code set_log_level(const std::string& type, const std::string& lev
         monitor_output->start();
     }
 
-    auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
@@ -114,16 +113,16 @@ tgctl::return_code set_log_level(const std::string& type, const std::string& lev
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::Configure>(request);
         request.clear_configure();
 
-        rtnv = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_log_level");
+        reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_log_level");
     } catch (std::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        rtnv = tgctl::return_code::err;
+        reason = monitor::reason::connection;
     }
 
     if (monitor_output) {
-        monitor_output->finish(rtnv == tgctl::return_code::ok);
+        monitor_output->finish(reason);
     }
-    return rtnv;
+    return (reason == monitor::reason::absent) ? tgctl::return_code::err : tgctl::return_code::err;  // NOLINT(misc-redundant-expression)
 }
 
 tgctl::return_code set_statement_duration(const std::string& value) {
@@ -134,7 +133,7 @@ tgctl::return_code set_statement_duration(const std::string& value) {
         monitor_output->start();
     }
 
-    auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
@@ -145,16 +144,16 @@ tgctl::return_code set_statement_duration(const std::string& value) {
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::Configure>(request);
         request.clear_configure();
 
-        rtnv = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_statement_duration");
+        reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_statement_duration");
     } catch (std::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        rtnv = tgctl::return_code::err;
+        reason = monitor::reason::connection;
     }
 
     if (monitor_output) {
-        monitor_output->finish(rtnv == tgctl::return_code::ok);
+        monitor_output->finish(reason);
     }
-    return rtnv;
+    return (reason == monitor::reason::absent) ? tgctl::return_code::err : tgctl::return_code::err;  // NOLINT(misc-redundant-expression)
 }
 
 tgctl::return_code rotate(const std::string& type) {
@@ -165,7 +164,7 @@ tgctl::return_code rotate(const std::string& type) {
         monitor_output->start();
     }
 
-    auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
@@ -183,16 +182,16 @@ tgctl::return_code rotate(const std::string& type) {
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::LogRotate>(request);
         request.clear_log_rotate();
 
-        rtnv = post_processing<::tateyama::proto::altimeter::response::LogRotate>(response_opt, "rotete");
+        reason = post_processing<::tateyama::proto::altimeter::response::LogRotate>(response_opt, "rotete");
     } catch (std::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        rtnv = tgctl::return_code::err;
+        reason = monitor::reason::connection;
     }
 
     if (monitor_output) {
-        monitor_output->finish(rtnv == tgctl::return_code::ok);
+        monitor_output->finish(reason);
     }
-    return rtnv;
+    return (reason == monitor::reason::absent) ? tgctl::return_code::err : tgctl::return_code::err;  // NOLINT(misc-redundant-expression)
 }
 
 } //  tateyama::bootstrap::backup
