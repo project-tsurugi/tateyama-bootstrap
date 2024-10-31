@@ -10,7 +10,7 @@ file(GLOB SERVER_SOURCES
         "tateyama/configuration/*.cpp"
         )
 if (ENABLE_ALTIMETER)
-        set(SERVER_SOURCES ${SERVER_SOURCES} "tateyama/altimeter/altimeter_helper.cpp")
+    list(APPEND SERVER_SOURCES "tateyama/altimeter/altimeter_helper.cpp")
 endif ()
 
 add_executable(server
@@ -96,7 +96,14 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/diagnostic.proto
         )
-
+if (ENABLE_ALTIMETER)
+    list(APPEND ProtoFiles
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/altimeter/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/altimeter/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/altimeter/common.proto
+    )
+endif()
+      
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
@@ -114,6 +121,9 @@ file(GLOB TGCTL_SOURCES
         "tateyama/session/*.cpp"
         "tateyama/metrics/*.cpp"
         )
+if (ENABLE_ALTIMETER)
+    list(APPEND TGCTL_SOURCES "tateyama/altimeter/altimeter.cpp")
+endif ()
 
 set_source_files_properties(
         ${GENERATED_PROTO_SRCS}

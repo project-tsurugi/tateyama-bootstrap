@@ -45,6 +45,12 @@ file(GLOB SRCS
         "tateyama/metrics/*_test.cpp"
         "tateyama/transport/*_test.cpp"
 )
+if (ENABLE_ALTIMETER)
+    file(GLOB ALTIMETER_SRCS
+        "tateyama/altimeter/*_test.cpp"
+    )
+    list(APPEND SRCS ${ALTIMETER_SRCS})
+endif ()
 
 foreach(file ${SRCS})
     add_test_executable(${file})

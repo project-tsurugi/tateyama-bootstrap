@@ -84,7 +84,7 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
             std::cout << "Failed to flush or rotate event log files: "
                       << error_message << "\n";
         });
-        ::altimeter::event::event_logger::set_stmt_duration_threshold(section->get<std::size_t>("stmt_duration_threshold").value());
+        ::altimeter::event::event_logger::set_stmt_duration_threshold(section->get<std::uint32_t>("stmt_duration_threshold").value());
     } else {
         configuration.error_handler([](std::string_view error_message) {
             std::cout << "Failed to flush or rotate audit log files: "
@@ -115,7 +115,7 @@ void altimeter_helper::setup(::altimeter::configuration& configuration, tateyama
     LOG(INFO) << prefix << "flush_file_size = "          << flush_file_size << ", file size to be flashed";
     LOG(INFO) << prefix << "max_file_size = "            << max_file_size   << ", file size to rotate";
     if (type == log_type::event_log) {
-        LOG(INFO) << prefix << "stmt_duration_threshold = " << section->get<std::size_t>("stmt_duration_threshold").value() << ", duration threshold for statement log";
+        LOG(INFO) << prefix << "stmt_duration_threshold = " << section->get<std::uint32_t>("stmt_duration_threshold").value() << ", duration threshold for statement log";
     }
 }
 

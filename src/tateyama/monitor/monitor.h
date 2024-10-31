@@ -33,6 +33,19 @@ enum class status : std::int64_t {
     unknown = -1,
 };
 
+enum class reason : std::int64_t {
+    absent = 0,
+    connection = 1,
+    server = 2,
+    not_found = 3,
+    ambiguous = 4,
+    permission = 5,
+    variable_not_defined = 6,
+    variable_invalid_value = 7,
+
+    unknown = -1,
+};
+
 /**
  * @brief returns string representation of the value.
  * @param value the target value
@@ -52,6 +65,27 @@ enum class status : std::int64_t {
     return "illegal state"sv;
 }
 
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(reason value) noexcept {
+    using namespace std::string_view_literals;
+    switch (value) {
+    case reason::absent:return "absent"sv;
+    case reason::connection:return "connection"sv;
+    case reason::server:return "server"sv;
+    case reason::not_found:return "not_found"sv;
+    case reason::ambiguous:return "ambiguous"sv;
+    case reason::permission:return "permission"sv;
+    case reason::variable_not_defined:return "variable_not_defined"sv;
+    case reason::variable_invalid_value:return "variable_invalid_value"sv;
+    case reason::unknown: return "unknown"sv;
+    }
+    return "illegal reason"sv;
+}
+
 class monitor {
     constexpr static std::string_view TIME_STAMP = R"("timestamp": )";
     constexpr static std::string_view KIND_START = R"("kind": "start")";
@@ -62,6 +96,7 @@ class monitor {
     // status
     constexpr static std::string_view FORMAT_STATUS = R"("format": "status")";
     constexpr static std::string_view STATUS = R"("status": ")";
+    constexpr static std::string_view REASON = R"("reason": ")";
     // session info
     constexpr static std::string_view FORMAT_SESSION_INFO = R"("format": "session-info")";
     constexpr static std::string_view SESSION_ID = R"("session_id": ":)";
@@ -97,10 +132,21 @@ public:
     void finish(bool status) {
         if (status) {
             strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-                  << KIND_FINISH << ", " << STATUS << "success\" }" << std::endl;
+                  << KIND_FINISH << ", " << STATUS << R"(success" })" << std::endl;
         } else {
             strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-                  << KIND_FINISH << ", " << STATUS << "failure\" }" << std::endl;
+                  << KIND_FINISH << ", " << STATUS << R"(failure" })" << std::endl;
+        }
+        strm_.flush();
+    }
+    void finish(reason rc) {
+        if (rc == reason::absent) {
+            strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+                  << KIND_FINISH << ", " << STATUS << R"(success" })" << std::endl;
+        } else {
+            strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+                  << KIND_FINISH << ", " << STATUS << R"(failure", )"
+                  << REASON << to_string_view(rc) << R"(" })" << std::endl;
         }
         strm_.flush();
     }
