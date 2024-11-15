@@ -52,6 +52,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "scan_default_parallel=1\n"
         "dev_inplace_teardown=true\n"
         "dev_inplace_dag_schedule=true\n"
+        "enable_join_scan=true\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
