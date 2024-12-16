@@ -28,6 +28,7 @@
 #ifdef ENABLE_ALTIMETER
 #include "tateyama/altimeter/altimeter.h"
 #endif
+#include "tateyama/request/request.h"
 
 #include "help_text.h"
 
@@ -269,6 +270,33 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         return tateyama::tgctl::return_code::err;
     }
 #endif
+
+    if (args.at(1) == "request") {
+        if (args.size() < 3) {
+            std::cerr << "need to specify request subcommand" << std::endl;
+            return tateyama::tgctl::return_code::err;
+        }
+        if (args.at(2) == "list") {
+            return tateyama::request::request_list();
+        }
+        if (args.at(2) == "payload") {
+            if (args.size() < 5) {
+                std::cerr << "need to specify session-id and request-id" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            return tateyama::request::request_payload(std::stol(args.at(3)), std::stol(args.at(4)));
+        }
+        if (args.at(2) == "extract-sql") {
+            if (args.size() < 5) {
+                std::cerr << "need to specify session-id and payload" << std::endl;
+                return tateyama::tgctl::return_code::err;
+            }
+            return tateyama::request::request_extract_sql(std::stol(args.at(3)), args.at(4));
+        }
+        std::cerr << "unknown request-sub command '" << args.at(2) << "'" << std::endl;
+        return tateyama::tgctl::return_code::err;
+    }
+
     std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
     return tateyama::tgctl::return_code::err;
 }

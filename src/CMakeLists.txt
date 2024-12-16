@@ -92,6 +92,13 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/diagnostic.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/request/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/request/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/request/diagnostics.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/proto/sql/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/proto/sql/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/proto/sql/common.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/proto/sql/error.proto
         )
 if (ENABLE_ALTIMETER)
     list(APPEND ProtoFiles
@@ -111,12 +118,14 @@ set(GENERATED_PROTO_SRCS ${GENERATED_PROTO_SRCS} PARENT_SCOPE)
 file(GLOB TGCTL_SOURCES
         "tateyama/tgctl/*.cpp"
         "tateyama/authentication/authentication.cpp"
+        "tateyama/monitor/*.cpp"
         "tateyama/datastore/*.cpp"
         "tateyama/process/*.cpp"
         "tateyama/configuration/*.cpp"
         "tateyama/utils/*.cpp"
         "tateyama/session/*.cpp"
         "tateyama/metrics/*.cpp"
+        "tateyama/request/*.cpp"
         )
 if (ENABLE_ALTIMETER)
     list(APPEND TGCTL_SOURCES "tateyama/altimeter/altimeter.cpp")
@@ -164,3 +173,36 @@ target_link_libraries(tgctl
 set_compile_options(tgctl)
 
 install_custom(tgctl ${export_name})
+
+# for tests
+file(GLOB LIB_FOR_TESTS_SOURCES
+        "tateyama/monitor/*.cpp"
+)
+
+add_library(lib_for_tests
+        ${GENERATED_PROTO_SRCS}
+        ${LIB_FOR_TESTS_SOURCES}
+)
+add_dependencies(lib_for_tests
+        build_protos
+)
+set_target_properties(${ENGINE}
+        PROPERTIES
+                OUTPUT_NAME "lib_for_tests"
+                )
+target_link_libraries(lib_for_tests
+        PRIVATE protobuf::libprotobuf
+)
+target_include_directories(lib_for_tests
+        PRIVATE ${CMAKE_BINARY_DIR}/src
+)
+
+add_library(lib_for_tests-impl INTERFACE)
+
+target_include_directories(lib_for_tests-impl
+        INTERFACE ${CMAKE_BINARY_DIR}/src
+)
+
+target_link_libraries(lib_for_tests-impl
+        INTERFACE lib_for_tests
+)
