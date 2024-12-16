@@ -92,6 +92,9 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/diagnostic.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/request/request.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/request/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/proto/sql/common.proto
         )
 if (ENABLE_ALTIMETER)
     list(APPEND ProtoFiles
@@ -117,6 +120,7 @@ file(GLOB TGCTL_SOURCES
         "tateyama/utils/*.cpp"
         "tateyama/session/*.cpp"
         "tateyama/metrics/*.cpp"
+        "tateyama/request/*.cpp"
         )
 if (ENABLE_ALTIMETER)
     list(APPEND TGCTL_SOURCES "tateyama/altimeter/altimeter.cpp")
@@ -164,3 +168,31 @@ target_link_libraries(tgctl
 set_compile_options(tgctl)
 
 install_custom(tgctl ${export_name})
+
+# for tests
+add_library(proto_for_tests
+        ${GENERATED_PROTO_SRCS}
+)
+add_dependencies(proto_for_tests
+        build_protos
+)
+set_target_properties(${ENGINE}
+        PROPERTIES
+                OUTPUT_NAME "proto_for_tests"
+                )
+target_link_libraries(proto_for_tests
+        PRIVATE protobuf::libprotobuf
+)
+target_include_directories(proto_for_tests
+        PRIVATE ${CMAKE_BINARY_DIR}/src
+)
+
+add_library(proto_for_tests-impl INTERFACE)
+
+target_include_directories(proto_for_tests-impl
+        INTERFACE ${CMAKE_BINARY_DIR}/src
+)
+
+target_link_libraries(proto_for_tests-impl
+        INTERFACE proto_for_tests
+)

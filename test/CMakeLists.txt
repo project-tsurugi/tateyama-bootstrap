@@ -11,23 +11,27 @@ target_compile_options(${test_target}
 target_include_directories(${test_target}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+#        PRIVATE ${CMAKE_BINARY_DIR}/src
 )
 
 target_link_libraries(${test_target}
         PUBLIC gtest
+        PRIVATE proto_for_tests-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE rt
         PRIVATE Boost::thread
         PRIVATE Boost::filesystem
         PRIVATE ${tateyama_engine}
-        PRIVATE protobuf::libprotobuf
         )
 
 function (add_test_executable source_file)
     get_filename_component(test_name "${source_file}" NAME_WE)
     target_sources(${test_target}
             PRIVATE ${source_file}
+    )
+    add_dependencies(${test_target}
+            build_protos
     )
     add_test(
             NAME ${test_name}
@@ -43,6 +47,7 @@ file(GLOB SRCS
         "tateyama/version/*_test.cpp"
         "tateyama/session/*_test.cpp"
         "tateyama/metrics/*_test.cpp"
+        "tateyama/request/*_test.cpp"
         "tateyama/transport/*_test.cpp"
 )
 if (ENABLE_ALTIMETER)

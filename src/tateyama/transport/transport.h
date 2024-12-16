@@ -39,6 +39,8 @@
 #include <tateyama/proto/session/response.pb.h>
 #include <tateyama/proto/metrics/request.pb.h>
 #include <tateyama/proto/metrics/response.pb.h>
+#include <tateyama/proto/request/request.pb.h>
+#include <tateyama/proto/request/response.pb.h>
 #ifdef ENABLE_ALTIMETER
 #include <tateyama/proto/altimeter/request.pb.h>
 #include <tateyama/proto/altimeter/response.pb.h>
@@ -64,6 +66,8 @@ constexpr static std::size_t SESSION_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t SESSION_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t METRICS_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t METRICS_MESSAGE_VERSION_MINOR = 0;
+constexpr static std::size_t REQUEST_MESSAGE_VERSION_MAJOR = 0;
+constexpr static std::size_t REQUEST_MESSAGE_VERSION_MINOR = 0;
 #ifdef ENABLE_ALTIMETER
 constexpr static std::size_t ALTIMETER_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t ALTIMETER_MESSAGE_VERSION_MINOR = 0;
@@ -158,6 +162,39 @@ public:
         }
         request.set_service_message_version_major(SESSION_MESSAGE_VERSION_MAJOR);
         request.set_service_message_version_minor(SESSION_MESSAGE_VERSION_MINOR);
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        auto slot_index = wire_.search_slot();
+        wire_.send(sst.str(), slot_index);
+
+        std::string res_message{};
+        wire_.receive(res_message, slot_index);
+        ::tateyama::proto::framework::response::Header header{};
+        google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
+            return std::nullopt;
+        }
+        std::string_view payload{};
+        if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
+            return std::nullopt;
+        }
+        T response{};
+        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+            return std::nullopt;
+        }
+        return response;
+    }
+
+    // for request
+    template <typename T>
+    std::optional<T> send(::tateyama::proto::request::request::Request& request) {
+        std::stringstream sst{};
+        if(auto res = tateyama::utils::SerializeDelimitedToOstream(header_, std::addressof(sst)); ! res) {
+            return std::nullopt;
+        }
+        request.set_service_message_version_major(REQUEST_MESSAGE_VERSION_MAJOR);
+        request.set_service_message_version_minor(REQUEST_MESSAGE_VERSION_MINOR);
         if(auto res = tateyama::utils::SerializeDelimitedToOstream(request, std::addressof(sst)); ! res) {
             return std::nullopt;
         }
