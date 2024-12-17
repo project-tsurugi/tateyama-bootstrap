@@ -61,6 +61,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "datachannel_buffer_size=64\n"
         "max_datachannel_buffers=256\n"
         "admin_sessions=1\n"
+        "max_writers=32\n"
 
     "[stream_endpoint]\n"
         "enabled=false\n"
