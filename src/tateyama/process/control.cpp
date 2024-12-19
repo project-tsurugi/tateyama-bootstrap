@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <stdexcept> // std::runtime_error
+#include <sys/wait.h>
 
 #include <gflags/gflags.h>
 
@@ -179,6 +180,10 @@ void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode m
     }
 }
 
+static void wait_for_signal(int){
+    while( 0 >= waitpid(-1, nullptr, WNOHANG) );
+}
+
 tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) { //NOLINT(readability-function-cognitive-complexity)
     std::unique_ptr<monitor::monitor> monitor_output{};
 
@@ -232,6 +237,9 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             return tgctl::return_code::err;
         }
 
+        if (signal(SIGCHLD, wait_for_signal) == SIG_ERR) {  // NOLINT  #define SIG_ERR  ((__sighandler_t) -1) in a system header file
+            std::cerr << "cannot register signal handler" << std::endl;
+        }
         std::string server_name(server_name_string);
         auto exec = base_path / boost::filesystem::path("libexec") / boost::filesystem::path(server_name);
         std::vector<std::string> args{};
@@ -257,9 +265,14 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     init,
                     ok,
                     another,
+                    dead_abnormally,
                 } check_result = init;
                 pid_t pid_in_file_mutex{};
                 for (size_t i = chkn; i < check_count; i++) {
+                    if (auto krv = kill(child_pid, 0); krv != 0) {
+                        check_result = dead_abnormally;
+                        break;
+                    }
                     if (!file_mutex) {
                         try {
                             file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
@@ -387,6 +400,11 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
                         std::cout << "could not launch " << server_name_string << " as " << server_name_string << " is already running." << std::endl;
+                    }
+                    rtnv = tgctl::return_code::err;
+                } else if (check_result == dead_abnormally) {
+                    if (!FLAGS_quiet) {
+                        std::cout << "could not launch " << server_name_string << ", as " << server_name_string << " has exited abnormally." << std::endl;
                     }
                     rtnv = tgctl::return_code::err;
                 } else {  // case in which check_result == init, meaning status check error
