@@ -49,7 +49,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_rtx_parallel_scan=false\n"
         "dev_thousandths_ratio_check_local_first=100\n"
         "dev_direct_commit_callback=false\n"
-        "scan_default_parallel=1\n"
+        "scan_default_parallel=4\n"
         "dev_inplace_teardown=true\n"
         "dev_inplace_dag_schedule=true\n"
         "enable_join_scan=true\n"
