@@ -189,8 +189,9 @@ TEST_F(request_test, request_payload) {
 
 TEST_F(request_test, request_extract_sql) {
     {
-        jogasaki::proto::sql::response::ExtractStatementInfo response{};
-        auto* success = response.mutable_success();
+        jogasaki::proto::sql::response::Response response{};
+        auto* extract_statement_info = response.mutable_extract_statement_info();
+        auto* success = extract_statement_info->mutable_success();
         success->mutable_transaction_id()->set_id("transaction_id_for_test");
         success->set_sql("select 1");
 

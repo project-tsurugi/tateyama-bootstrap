@@ -194,45 +194,50 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
         auto* extract_statement_info = request.mutable_extract_statement_info();
         extract_statement_info->set_session_id(session_id);
         extract_statement_info->set_payload(sso.str());
-        auto response_opt = transport->send<::jogasaki::proto::sql::response::ExtractStatementInfo>(request);
+        auto response_opt = transport->send<::jogasaki::proto::sql::response::Response>(request);
         request.clear_extract_statement_info();
 
         if (response_opt) {
             auto response = response_opt.value();
-            switch(response.result_case()) {
-            case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kSuccess:
-                break;
-            case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kError:
-                std::cerr << "ExtractStatementInfo error: " << response.error().detail() << std::endl;
-                rtnv = tgctl::return_code::err;
-                break;
-            default:
-                std::cerr << "ExtractStatementInfo result_case() error: " << std::endl;
-                rtnv = tgctl::return_code::err;
-            }
-
-            if (rtnv == tgctl::return_code::ok) {
-                std::optional<std::string> transaction_id{};
-                std::optional<std::string> sql{};
-
-                auto& success = response.success();
-
-                if (success.transaction_id_opt_case() ==
-                    jogasaki::proto::sql::response::ExtractStatementInfo_Success::TransactionIdOptCase::kTransactionId) {
-                    transaction_id = success.transaction_id().id();
+            if (response.response_case() == ::jogasaki::proto::sql::response::Response::ResponseCase::kExtractStatementInfo) {
+                auto extract_statement_info = response.extract_statement_info();    
+                switch(extract_statement_info.result_case()) {
+                case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kSuccess:
+                    break;
+                case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kError:
+                    std::cerr << "ExtractStatementInfo error: " << extract_statement_info.error().detail() << std::endl;
+                    rtnv = tgctl::return_code::err;
+                    break;
+                default:
+                    std::cerr << "ExtractStatementInfo result_case() error: " << std::endl;
+                    rtnv = tgctl::return_code::err;
                 }
-                if (success.sql_opt_case() ==
-                    jogasaki::proto::sql::response::ExtractStatementInfo_Success::SqlOptCase::kSql) {
-                    sql = success.sql();
-                    if (!FLAGS_quiet) {
-                        std::cout << sql.value() << std::endl;
+
+                if (rtnv == tgctl::return_code::ok) {
+                    std::optional<std::string> transaction_id{};
+                    std::optional<std::string> sql{};
+
+                    auto& success = extract_statement_info.success();
+
+                    if (success.transaction_id_opt_case() ==
+                        jogasaki::proto::sql::response::ExtractStatementInfo_Success::TransactionIdOptCase::kTransactionId) {
+                        transaction_id = success.transaction_id().id();
                     }
+                    if (success.sql_opt_case() ==
+                        jogasaki::proto::sql::response::ExtractStatementInfo_Success::SqlOptCase::kSql) {
+                        sql = success.sql();
+                        if (!FLAGS_quiet) {
+                            std::cout << sql.value() << std::endl;
+                        }
+                    }
+                    if (monitor_output) {
+                        monitor_output->request_extract_sql(transaction_id, sql);
+                        monitor_output->finish(true);
+                    }
+                    return rtnv;
                 }
-                if (monitor_output) {
-                    monitor_output->request_extract_sql(transaction_id, sql);
-                    monitor_output->finish(true);
-                }
-                return rtnv;
+            } else {
+                std::cerr << "the response type does not match with that expected" << std::endl;                
             }
         }
     } catch (std::runtime_error &ex) {
