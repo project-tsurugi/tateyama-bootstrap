@@ -200,7 +200,7 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
         if (response_opt) {
             auto response = response_opt.value();
             if (response.response_case() == ::jogasaki::proto::sql::response::Response::ResponseCase::kExtractStatementInfo) {
-                auto extract_statement_info = response.extract_statement_info();    
+                const auto& extract_statement_info = response.extract_statement_info();    
                 switch(extract_statement_info.result_case()) {
                 case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kSuccess:
                     break;
