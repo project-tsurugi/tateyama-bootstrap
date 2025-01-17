@@ -22,6 +22,7 @@ target_link_libraries(${test_target}
         PRIVATE Boost::thread
         PRIVATE Boost::filesystem
         PRIVATE ${tateyama_engine}
+        PRIVATE takatori
         )
 
 function (add_test_executable source_file)
