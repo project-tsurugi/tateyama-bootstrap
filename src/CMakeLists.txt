@@ -88,6 +88,7 @@ set(ProtoFiles
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/metrics/response.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/response.proto
+        ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/framework/common.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/diagnostics.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/request.proto
         ${CMAKE_CURRENT_SOURCE_DIR}/tateyama/proto/session/response.proto
