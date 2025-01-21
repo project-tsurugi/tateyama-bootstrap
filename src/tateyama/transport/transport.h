@@ -57,7 +57,7 @@ DECLARE_string(conf);  // NOLINT
 namespace tateyama::bootstrap::wire {
 
 constexpr static std::size_t HEADER_MESSAGE_VERSION_MAJOR = 0;
-constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 0;
+constexpr static std::size_t HEADER_MESSAGE_VERSION_MINOR = 1;
 constexpr static std::size_t CORE_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t CORE_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t DATASTORE_MESSAGE_VERSION_MAJOR = 0;
