@@ -21,13 +21,15 @@
 
 #include <gflags/gflags.h>
 
-#include "tateyama/authentication/authentication.h"
 #include <tateyama/proto/session/request.pb.h>
 #include <tateyama/proto/session/response.pb.h>
 #include <tateyama/proto/session/diagnostic.pb.h>
 
-#include <tateyama/transport/transport.h>
-#include <tateyama/monitor/monitor.h>
+#include "tateyama/authentication/authentication.h"
+#include "tateyama/transport/transport.h"
+#include "tateyama/monitor/monitor.h"
+#include "tateyama/tgctl/runtime_error.h"
+
 #include "session.h"
 
 DEFINE_bool(verbose, false, "show session list in verbose format");  // NOLINT
@@ -59,6 +61,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
@@ -75,10 +78,12 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             case ::tateyama::proto::session::response::SessionList::ResultCase::kError:
                 std::cerr << "SessionList error: " << response.error().message() << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::server;
                 break;
             default:
                 std::cerr << "SessionList result_case() error: " << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::payload_broken;
             }
 
             if (rtnv == tgctl::return_code::ok) {
@@ -171,18 +176,21 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     }
                 }
                 if (monitor_output) {
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
                 return rtnv;
             }
+        } else {
+            reason = monitor::reason::payload_broken;
         }
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -196,6 +204,7 @@ tgctl::return_code session_show(std::string_view session_ref) {
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
@@ -213,10 +222,12 @@ tgctl::return_code session_show(std::string_view session_ref) {
             case ::tateyama::proto::session::response::SessionGet::ResultCase::kError:
                 std::cerr << "SessionShow error: " << response.error().message() << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::server;
                 break;
             default:
                 std::cerr << "SessionShow result_case() error: " << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::payload_broken;
             }
 
             if (rtnv == tgctl::return_code::ok) {
@@ -232,18 +243,21 @@ tgctl::return_code session_show(std::string_view session_ref) {
                 std::cout << std::setw(static_cast<int>(13)) << "remote" << e.connection_info() << std::endl;
                 if (monitor_output) {
                     monitor_output->session_info(e.session_id(), e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
                 return rtnv;
             }
+        } else {
+            reason = monitor::reason::payload_broken;
         }
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -257,6 +271,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     if (FLAGS_graceful && FLAGS_forceful) {
         std::cerr << "both forceful and graceful options specified" << std::endl;
         rtnv = tgctl::return_code::err;
@@ -283,27 +298,32 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
                 case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kError:
                     std::cerr << "SessionShutdown error: " << response.error().message() << std::endl;
                     rtnv = tgctl::return_code::err;
+                    reason = monitor::reason::server;
                     break;
                 default:
                     std::cerr << "SessionShutdown result_case() error: " << std::endl;
                     rtnv = tgctl::return_code::err;
+                    reason = monitor::reason::payload_broken;
                 }
 
                 if (rtnv == tgctl::return_code::ok) {
                     if (monitor_output) {
-                        monitor_output->finish(true);
+                        monitor_output->finish(monitor::reason::absent);
                     }
                     return rtnv;
                 }
+            } else {
+                reason = monitor::reason::payload_broken;
             }
-        } catch (std::runtime_error &ex) {
+        } catch (tgctl::runtime_error &ex) {
             std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+            reason = ex.code();
         }
         rtnv = tgctl::return_code::err;
     }
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -317,6 +337,7 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
@@ -338,26 +359,31 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
             case ::tateyama::proto::session::response::SessionSetVariable::ResultCase::kError:
                 std::cerr << "SessionSetVariable error: " << response.error().message() << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::server;
                 break;
             default:
                 std::cerr << "SessionSetVariable result_case() error: " << std::endl;
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::payload_broken;
             }
 
             if (rtnv == tgctl::return_code::ok) {
                 if (monitor_output) {
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
                 return rtnv;
             }
+        } else {
+            reason = monitor::reason::payload_broken;
         }
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }

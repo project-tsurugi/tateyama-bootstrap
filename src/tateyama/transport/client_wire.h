@@ -19,8 +19,8 @@
 #include <array>
 #include <mutex>
 #include <condition_variable>
-#include <stdexcept> // std::runtime_error
 
+#include "tateyama/tgctl/runtime_error.h"
 #include "wire.h"
 
 namespace tateyama::common::wire {
@@ -43,7 +43,7 @@ public:
             if (shm_resultset_wires_ == nullptr) {
                 std::string msg("cannot find a result_set wire with the specified name: ");
                 msg += name;
-                throw std::runtime_error(msg.c_str());
+                throw tgctl::runtime_error(monitor::reason::connection_failure, msg);
             }
         }
         std::string_view get_chunk() {
@@ -66,7 +66,7 @@ public:
                         return wrap_around_;
                     }
                     return {nullptr, 0};
-                } catch (std::runtime_error &ex) {
+                } catch (tgctl::runtime_error &ex) {
                     if (envelope_->get_status_provider().is_alive().empty()) {
                         continue;
                     }
@@ -156,7 +156,7 @@ public:
             while (true) {
                 try {
                     return wire_->await(bip_buffer_);
-                } catch (std::runtime_error &ex) {
+                } catch (tgctl::runtime_error &ex) {
                     if (auto err = envelope_->get_status_provider().is_alive(); !err.empty()) {
                         throw ex;  // FIXME handle this
                     }
@@ -239,13 +239,13 @@ public:
             auto res_wire = managed_shared_memory_->find<unidirectional_response_wire>(response_wire_name).first;
             status_provider_ = managed_shared_memory_->find<status_provider>(status_provider_name).first;
             if (req_wire == nullptr || res_wire == nullptr || status_provider_ == nullptr) {
-                throw std::runtime_error("cannot find the session wire");
+                throw tgctl::runtime_error(monitor::reason::connection_failure, "cannot find the session wire");
             }
             request_wire_ = request_wire_container(req_wire, req_wire->get_bip_address(managed_shared_memory_.get()));
             response_wire_ = response_wire_container(this, res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
         }
         catch(const boost::interprocess::interprocess_exception& ex) {
-            throw std::runtime_error("cannot find a session with the specified name");
+            throw tgctl::runtime_error(monitor::reason::connection_failure, "cannot find a session with the specified name");
         }
     }
 
@@ -275,7 +275,7 @@ public:
                 return i;
             }
         }
-        throw std::runtime_error("running out of slot");
+        throw tgctl::runtime_error(monitor::reason::internal, "running out of slot");
     }
     void send(const std::string& req_message, message_header::index_type slot_index) {
         std::unique_lock<std::mutex> lock(mtx_send_);
@@ -317,7 +317,7 @@ public:
                 slot_received.post_receive();
                 using_wire_.store(false);
                 cnd_receive_.notify_all();
-            } catch (std::runtime_error& ex) {
+            } catch (tgctl::runtime_error& ex) {
                 if (status_provider_->is_alive().empty()) {
                     continue;
                 }
@@ -369,7 +369,7 @@ public:
         catch(const boost::interprocess::interprocess_exception& ex) {
                 std::string msg("cannot find a database with the specified name: ");
                 msg += db_name;
-                throw std::runtime_error(msg.c_str());
+                throw tgctl::runtime_error(monitor::reason::connection_failure, msg);
         }
     }
 
@@ -386,7 +386,7 @@ public:
             name += std::to_string(session_id);
             return name;
         }
-        throw std::runtime_error("IPC connection establishment failure");
+        throw tgctl::runtime_error(monitor::reason::connection_failure, "IPC connection establishment failure");
     }
     
 private:

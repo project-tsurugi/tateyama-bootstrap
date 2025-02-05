@@ -26,6 +26,7 @@
 
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/transport/transport.h"
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/test_utils/server_mock.h"
 
 #include <tateyama/utils/protobuf_utils.h>
@@ -167,7 +168,7 @@ TEST_F(timeout_test, response_dead_case) {
     worker w(wire, digest_);
     funlock();
 
-    EXPECT_THROW(w.send(6), std::runtime_error);
+    EXPECT_THROW(w.send(6), tgctl::runtime_error);
 
     wire.close();
 }

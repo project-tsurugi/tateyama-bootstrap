@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 #include <tateyama/logging.h>
 
+#include "tateyama/tgctl/runtime_error.h"
 #include "endpoint.h"
 #include "status_mock.h"
 
@@ -75,7 +76,7 @@ private:
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";
         if (system(cmd.c_str())) {
-            throw std::runtime_error("error in clearing shared memory file");
+            throw tgctl::runtime_error(monitor::reason::internal, "error in clearing shared memory file");
         }
     }
 };

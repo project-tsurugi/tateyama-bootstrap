@@ -29,6 +29,7 @@
 #include <tateyama/logging_helper.h>
 
 #include "tateyama/transport/wire.h"
+#include "tateyama/tgctl/runtime_error.h"
 
 namespace tateyama::test_utils {
 
@@ -96,7 +97,7 @@ public:
             } catch(const boost::interprocess::interprocess_exception& ex) {
                 LOG(ERROR) << ex.what() << " on resultset_wires_container::resultset_wires_container()";
                 pthread_exit(nullptr);  // FIXME
-            } catch (std::runtime_error &ex) {
+            } catch (std::exception &ex) {
                 LOG(ERROR) << "running out of boost managed shared memory";
                 pthread_exit(nullptr);  // FIXME
             }
@@ -106,7 +107,7 @@ public:
             : managed_shm_ptr_(managed_shm_ptr), rsw_name_(name), server_(false), mtx_shm_(mtx_shm) {
             shm_resultset_wires_ = managed_shm_ptr_->find<shm_resultset_wires>(rsw_name_.c_str()).first;
             if (shm_resultset_wires_ == nullptr) {
-                throw std::runtime_error("cannot find the resultset wire");
+                throw tgctl::runtime_error(monitor::reason::connection_failure, "cannot find the resultset wire");
             }
         }
         ~resultset_wires_container() {
@@ -131,7 +132,7 @@ public:
             } catch(const boost::interprocess::interprocess_exception& ex) {
                 LOG(ERROR) << ex.what() << " on resultset_wires_container::acquire()";
                 pthread_exit(nullptr);  // FIXME
-            } catch (std::runtime_error &ex) {
+            } catch (std::exception &ex) {
                 LOG(ERROR) << "running out of boost managed shared memory";
                 pthread_exit(nullptr);  // FIXME
             }
@@ -220,7 +221,7 @@ public:
             while (true) {
                 try {
                     return wire_->peep(bip_buffer_);
-                } catch (std::runtime_error &ex) {
+                } catch (tgctl::runtime_error &ex) {
                     if (!suppress_message_) {
                         std::cout << ex.what() << std::endl;
                     }
@@ -281,7 +282,7 @@ public:
             while (true) {
                 try {
                     return wire_->await(bip_buffer_);
-                } catch (std::runtime_error &ex) {
+                } catch (tgctl::runtime_error &ex) {
                     if (!suppress_message_) {
                         std::cout << ex.what() << std::endl;
                     }
@@ -334,8 +335,8 @@ public:
             response_wire_.initialize(res_wire, res_wire->get_bip_address(managed_shared_memory_.get()));
         } catch(const boost::interprocess::interprocess_exception& ex) {
             LOG_LP(ERROR) << ex.what() << " on server_wire_container_mock::server_wire_container_mock()";
-            throw std::runtime_error(ex.what());
-        } catch (std::runtime_error &ex) {
+            throw tgctl::runtime_error(monitor::reason::connection_failure, ex.what());
+        } catch (std::exception &ex) {
             LOG_LP(ERROR) << "running out of boost managed shared memory";
             throw ex;
         }
@@ -407,7 +408,7 @@ public:
 
             std::stringstream ss{};
             ss << "cannot create a database connection outlet named "sv << name << ", probably another server is running using the same database name"sv;
-            throw std::runtime_error(ss.str());
+            throw tgctl::runtime_error(monitor::reason::connection_failure, ss.str());
         }
     }
 

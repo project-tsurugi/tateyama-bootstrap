@@ -20,7 +20,6 @@
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
-#include <stdexcept>
 
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS  // to retain the current behavior
 #include <boost/property_tree/json_parser.hpp>  // for printing out the configuration
@@ -44,6 +43,7 @@
 
 #include "tateyama/process/proc_mutex.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
+#include "tateyama/tgctl/runtime_error.h"
 #include "server.h"
 #include "utils.h"
 #include "logging.h"
@@ -128,7 +128,7 @@ int backend_main(int argc, char **argv) {
     auto mutex = std::make_unique<process::proc_mutex>(mutex_file);
     try {
         mutex->lock();
-    } catch (std::runtime_error& e) {
+    } catch (tgctl::runtime_error& e) {
         LOG(ERROR) << e.what() << " on " << mutex_file.string();
         exit(1);
     }
@@ -197,7 +197,7 @@ int backend_main(int argc, char **argv) {
                 conf->get_section("system")->get<std::filesystem::path>("pid_directory").value() /
                 tateyama::process::shm_mutex::lock_file_name(database_name_opt.value())
             );
-        } catch (std::runtime_error &ex) {
+        } catch (tgctl::runtime_error &ex) {
             status_info->whole(tateyama::status_info::state::boot_error);
             LOG(ERROR) << "A tsurugidb process is already running using the same database name (" << database_name_opt.value() << ")";
             tgsv.shutdown();

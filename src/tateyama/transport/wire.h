@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include <memory>
 #include <exception>
 #include <atomic>
-#include <stdexcept> // std::runtime_error
 #include <vector>
 #include <string>
 #include <string_view>
@@ -32,6 +31,8 @@
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/thread/thread_time.hpp>
+
+#include "tateyama/tgctl/runtime_error.h"
 
 namespace tateyama::common::wire {
 
@@ -153,7 +154,7 @@ public:
     simple_wire(boost::interprocess::managed_shared_memory* managed_shm_ptr, std::size_t capacity) : capacity_(capacity) {
         auto buffer = static_cast<char*>(managed_shm_ptr->allocate_aligned(capacity_, Alignment));
         if (!buffer) {
-            throw std::runtime_error("cannot allocate shared memory");
+            throw tgctl::runtime_error(monitor::reason::internal, "cannot allocate shared memory");
         }
         buffer_handle_ = managed_shm_ptr->get_handle_from_address(buffer);
     }
@@ -379,7 +380,7 @@ public:
      * @brief wait a request message arives and peep the current header.
      * @return the essage_header if request message has been received, for normal reception of request message.
      *  otherwise, dummy request message whose length is 0 and index is message_header::termination_request for termination request
-     * @throws std::runtime_error when timeout occures.
+     * @throws tateyama::tgctl::runtime_error when timeout occures.
      */
     message_header peep(const char* base) {
         while (true) {
@@ -395,7 +396,7 @@ public:
                 return {message_header::terminate_request, 0};
             }
             if (onetime_notification) {
-                throw std::runtime_error("received shutdown request from outside the communication partner");
+                throw tgctl::runtime_error(monitor::reason::server, "received shutdown request from outside the communication partner");
             }
             boost::interprocess::scoped_lock lock(m_mutex_);
             wait_for_read_ = true;
@@ -404,7 +405,7 @@ public:
                                      boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(watch_interval * 1000 * 1000))),
                                      [this](){ return (stored() >= message_header::size) || termination_requested_.load() || onetime_notification_.load(); })) {
                 wait_for_read_ = false;
-                throw std::runtime_error("request has not been received within the specified time");
+                throw tgctl::runtime_error(monitor::reason::connection_timeout, "request has not been received within the specified time");
             }
             wait_for_read_ = false;
         }
@@ -492,7 +493,7 @@ public:
 
                 if (!c_empty_.timed_wait(lock, boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))), [this](){ return (stored() >= response_header::size) || closed_.load() || shutdown_.load(); })) {
                     wait_for_read_ = false;
-                    throw std::runtime_error("response has not been received within the specified time");
+                    throw tgctl::runtime_error(monitor::reason::connection_timeout, "response has not been received within the specified time");
                 }
                 wait_for_read_ = false;
             }
@@ -756,7 +757,7 @@ public:
             wire.set_environments(this, managed_shm_ptr);
         }
         if (!reserved_) {
-            throw std::runtime_error("cannot allocate shared memory");
+            throw tgctl::runtime_error(monitor::reason::internal, "cannot allocate shared memory");
         }
     }
     ~unidirectional_simple_wires() {
@@ -799,7 +800,7 @@ public:
         } else {
             buffer = static_cast<char*>(managed_shm_ptr_->allocate_aligned(buffer_size_, Alignment));
             if (!buffer) {
-                throw std::runtime_error("cannot allocate shared memory");
+                throw tgctl::runtime_error(monitor::reason::internal, "cannot allocate shared memory");
             }
         }
         auto index = search_free_wire();
@@ -857,7 +858,7 @@ public:
                                               return eor;
                                           })) {
                     wait_for_record_ = false;
-                    throw std::runtime_error("record has not been received within the specified time");
+                    throw tgctl::runtime_error(monitor::reason::connection_timeout, "record has not been received within the specified time");
                 }
                 wait_for_record_ = false;
                 if (active_wire != nullptr) {
@@ -1033,7 +1034,7 @@ public:
             while (true) {
                 auto ps = pushed_.load(std::memory_order_acquire);
                 if ((ps + admin_slots_in_use_.load()) <= current) {
-                    throw std::runtime_error("no request slot is available for normal request");
+                    throw tgctl::runtime_error(monitor::reason::internal, "no request slot is available for normal request");
                 }
                 if (poped_.compare_exchange_strong(current, current + 1)) {
                     return queue_.at(index(current));
@@ -1046,7 +1047,7 @@ public:
             while (true) {
                 auto ps = pushed_.load(std::memory_order_acquire);
                 if ((ps + (admin_slots - admin_slots_in_use_.load())) <= current) {
-                    throw std::runtime_error("no request slot is available for admin request");
+                    throw tgctl::runtime_error(monitor::reason::internal, "no request slot is available for admin request");
                 }
                 if (poped_.compare_exchange_strong(current, current + 1)) {
                     admin_slots_in_use_.fetch_add(1);
@@ -1125,7 +1126,7 @@ public:
                                         boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(timeout))),
 #endif
                                         [this](){ return (session_id_ != 0); })) {
-                    throw std::runtime_error("connection response has not been accepted within the specified time");
+                    throw tgctl::runtime_error(monitor::reason::connection_timeout, "connection response has not been accepted within the specified time");
                 }
             }
             return session_id_;
@@ -1191,7 +1192,7 @@ public:
             auto rtnv = entry.wait(timeout);
             entry.reuse();
             return rtnv;
-        } catch (std::runtime_error &ex) {
+        } catch (tgctl::runtime_error &ex) {
             entry.reuse();
             throw ex;
         }

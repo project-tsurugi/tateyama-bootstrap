@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <unistd.h>
-#include <stdexcept> // std::runtime_error
 #include <sys/wait.h>
 
 #include <gflags/gflags.h>
@@ -30,6 +29,7 @@
 
 #include "tateyama/server/status_info.h"
 #include "tateyama/transport/client_wire.h"
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/monitor/monitor.h"
 #include "process.h"
 
@@ -192,6 +192,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         monitor_output->start();
     }
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
 
     if (bst_conf.valid()) {
@@ -201,14 +202,14 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                 if (rtnv = tgctl_kill(file_mutex.get(), bst_conf); rtnv != tgctl::return_code::ok) {
                     std::cerr << "cannot tgctl kill before start" << std::endl;
                     if (monitor_output) {
-                        monitor_output->finish(false);
+                        monitor_output->finish(monitor::reason::initialization);
                     }
                     return tgctl::return_code::err;
                 }
             } else {
                 std::cerr << "only \"force\" can be specified for the start-mode" << std::endl;
                 if (monitor_output) {
-                    monitor_output->finish(false);
+                    monitor_output->finish(monitor::reason::invalid_argument);
                 }
                 return tgctl::return_code::err;
             }
@@ -224,7 +225,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                           << server_name_string << " is already running." << std::endl;
             }
             if (monitor_output) {
-                monitor_output->finish(false);
+                monitor_output->finish(monitor::reason::another_process);
             }
             return tgctl::return_code::err;
         }
@@ -232,7 +233,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
         boost::filesystem::path base_path{};
         try {
             base_path = get_base_path(argv0);
-        } catch (std::runtime_error &e) {
+        } catch (tgctl::runtime_error &e) {
             std::cerr << e.what() << std::endl;
             return tgctl::return_code::err;
         }
@@ -276,7 +277,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     if (!file_mutex) {
                         try {
                             file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-                        } catch (std::runtime_error &e) {
+                        } catch (tgctl::runtime_error &e) {
                             usleep(sleep_time_unit_regular * 1000);
                             continue;
                         }
@@ -324,7 +325,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::ready:
                                 case status_check_result::activated:
                                     if (monitor_output) {
-                                        monitor_output->finish(true);
+                                        monitor_output->finish(monitor::reason::absent);
                                     }
                                     if (!FLAGS_quiet) {
                                         std::cout << "successfully launched " << server_name_string << "." << std::endl;
@@ -334,7 +335,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 case status_check_result::not_locked:
                                 case status_check_result::boot_error:
                                     if (monitor_output) {
-                                        monitor_output->finish(false);
+                                        monitor_output->finish(monitor::reason::ambiguous);
                                     }
                                     if (!FLAGS_quiet) {
                                         std::cout << "could not launch " << server_name_string << ", as "
@@ -354,6 +355,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                                   << "shutdown procedure for " << server_name_string << " is taking place now." << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
+                                    reason = monitor::reason::another_process;
                                     break;
 
                                 case status_check_result::status_check_count_over:
@@ -369,6 +371,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                                   << "the status information is inconsistent." << std::endl;
                                     }
                                     rtnv = tgctl::return_code::err;
+                                    reason = monitor::reason::timeout;
                                     break;
                                 }
                             } else {
@@ -378,6 +381,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                               << "the pid stored in status_info(" << pid_in_status_info << ") and file_mutex(" << pid_in_file_mutex << ") do not match." << std::endl;
                                 }
                                 rtnv = tgctl::return_code::err;
+                                reason = monitor::reason::ambiguous;
                             }
                             break;
                         }
@@ -386,6 +390,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                       << "the launch is still in progres." << std::endl;
                         }
                         rtnv = tgctl::return_code::err;
+                        reason = monitor::reason::timeout;
                     } else {
                         if (!FLAGS_quiet) {
                             if (file_mutex->check() == proc_mutex::lock_state::locked) {
@@ -396,29 +401,34 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             }
                         }
                         rtnv = tgctl::return_code::err;
+                        reason = monitor::reason::timeout;
                     }
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
                         std::cout << "could not launch " << server_name_string << " as " << server_name_string << " is already running." << std::endl;
                     }
                     rtnv = tgctl::return_code::err;
+                    reason = monitor::reason::another_process;
                 } else if (check_result == dead_abnormally) {
                     if (!FLAGS_quiet) {
                         std::cout << "could not launch " << server_name_string << ", as " << server_name_string << " has exited abnormally." << std::endl;
                     }
                     rtnv = tgctl::return_code::err;
+                    reason = monitor::reason::internal;
                 } else {  // case in which check_result == init, meaning status check error
                     if (!FLAGS_quiet) {
                         std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, because "
                                   << "it failed to check server status." << std::endl;
                     }
                     rtnv = tgctl::return_code::err;
+                    reason = monitor::reason::ambiguous;
                 }
             } else {  // case in which bst_conf.create_configuration() returns nullptr
                 if (!FLAGS_quiet) {
                     std::cout << "could not launch " << server_name_string << ", as the configuration file cannot be found." << std::endl;
                 }
                 rtnv = tgctl::return_code::err;
+                reason = monitor::reason::not_found;
             }
         } else {  // case in which need_check is false
             return tgctl::return_code::ok;
@@ -428,11 +438,12 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
             std::cout << "could not launch " << server_name_string << ", as there is no valid configuration file." << std::endl;
         }
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::not_found;
     }
 
     if (monitor_output) {
         // records error to the monitor_output even if rtnv == tgctl::return_code::ok
-        monitor_output->finish(rtnv == tgctl::return_code::ok);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -539,6 +550,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
@@ -551,7 +563,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                         std::cout << (force ? "kill " : "shutdown ") << "was not performed, as no " << server_name_string << " was running." << std::endl;
                     }
                     if (monitor_output) {
-                        monitor_output->finish(true);
+                        monitor_output->finish(monitor::reason::absent);
                     }
                     return tgctl::return_code::ok;
                 }
@@ -560,7 +572,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                     rtnv = tgctl_kill(file_mutex.get(), bst_conf);
                     if (rtnv == tgctl::return_code::ok) {
                         if (monitor_output) {
-                            monitor_output->finish(true);
+                            monitor_output->finish(monitor::reason::absent);
                         }
                         return rtnv;
                     }
@@ -570,7 +582,7 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                         rtnv = tgctl_shutdown(file_mutex.get(), status_info.get());
                         if (rtnv == tgctl::return_code::ok) {
                             if (monitor_output) {
-                                monitor_output->finish(true);
+                                monitor_output->finish(monitor::reason::absent);
                             }
                             return rtnv;
                         }
@@ -579,14 +591,17 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                             std::cout << "shutdown was not performed, as shutdown is already requested." << std::endl;
                         }
                         rtnv = tgctl::return_code::err;
+                        reason = monitor::reason::invalid_status;
                     }
                 }
-            } catch (std::runtime_error &e) {
+            } catch (tgctl::runtime_error &e) {
                 if (!FLAGS_quiet) {
                     if (std::string("the lock file does not exist") == e.what()) {
                         std::cout << (force ? "kill" : "shutdown") << " was not performed, as no " << server_name_string << " was running." << std::endl;
+                        reason = monitor::reason::invalid_status;
                     } else {
                         std::cout << (force ? "kill" : "shutdown") << " was not performed, as " << e.what() << "." << std::endl;
+                        reason = monitor::reason::ambiguous;
                     }
                 }
                 rtnv = tgctl::return_code::err;
@@ -596,16 +611,18 @@ tgctl::return_code tgctl_shutdown_kill(bool force, bool status_output) { //NOLIN
                 std::cout << (force ? "kill" : "shutdown") << " was not performed, as error in create_configuration." << std::endl;
             }
             rtnv = tgctl::return_code::err;
+            reason = monitor::reason::initialization;
         }
     } else {
         if (!FLAGS_quiet) {
             std::cout << (force ? "kill" : "shutdown") << " was not performed, as any valid configuration file cannot be found." << std::endl;
         }
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::not_found;
     }
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -619,6 +636,7 @@ tgctl::return_code tgctl_status() {
     }
 
     auto rtnv = tgctl::return_code::ok;
+    auto reason = monitor::reason::absent;
     switch(status_check_internal()) {
     case status_check_result::no_file:
         if (monitor_output) {
@@ -659,6 +677,7 @@ tgctl::return_code tgctl_status() {
     case status_check_result::status_check_count_over:
         std::cerr << "cannot check the state within the specified time" << std::endl;
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::timeout;
         break;
     case status_check_result::not_locked:
         if (monitor_output) {
@@ -670,26 +689,29 @@ tgctl::return_code tgctl_status() {
     case status_check_result::error_in_create_conf:
         std::cerr << "error in create_configuration" << std::endl;
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::initialization;
         break;
     case status_check_result::error_in_conf_file_name:
         std::cerr << "cannot find any valid configuration file" << std::endl;
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::not_found;
         break;
     default:
         std::cerr << "should not reach here" << std::endl;
         rtnv = tgctl::return_code::err;
+        reason = monitor::reason::ambiguous;
         break;
     }
 
     if (rtnv == tgctl::return_code::ok) {
         if (monitor_output) {
-            monitor_output->finish(true);
+            monitor_output->finish(monitor::reason::absent);
         }
         return rtnv;
     }
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return rtnv;
 }
@@ -699,18 +721,18 @@ static pid_t get_pid() {
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-            return file_mutex->pid(false);  // may throws std::runtime_error
+            return file_mutex->pid(false);  // may throws tgctl::runtime_error
         }
-        throw std::runtime_error("error in create_configuration");
+        throw tgctl::runtime_error(monitor::reason::internal, "error in create_configuration");
     }
-    throw std::runtime_error("cannot find any valid configuration file");
+    throw tgctl::runtime_error(monitor::reason::internal, "cannot find any valid configuration file");
 }
 
 tgctl::return_code tgctl_diagnostic() {
     try {
         kill(get_pid(), SIGHUP);
         return tgctl::return_code::ok;
-    } catch (std::runtime_error &e) {
+    } catch (tgctl::runtime_error &e) {
         std::cerr << e.what() << std::endl;
         return tgctl::return_code::err;
     }
@@ -720,7 +742,7 @@ tgctl::return_code tgctl_pid() {
     try {
         std::cout << get_pid() << std::endl;
         return tgctl::return_code::ok;
-    } catch (std::runtime_error &e) {
+    } catch (tgctl::runtime_error &e) {
         std::cerr << e.what() << std::endl;
         return tgctl::return_code::err;
     }

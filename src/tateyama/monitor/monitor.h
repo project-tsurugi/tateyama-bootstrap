@@ -38,7 +38,6 @@ public:
     monitor& operator=(monitor&& other) noexcept = delete;
 
     void start();
-    void finish(bool status);
     void finish(reason rc);
     void progress(float ratio);
     void status(status stat);

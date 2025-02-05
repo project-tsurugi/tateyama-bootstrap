@@ -22,6 +22,8 @@
 
 #include <tateyama/status/resource/core.h>
 
+#include "tateyama/tgctl/runtime_error.h"
+
 namespace tateyama::test_utils {
 
 class status_mock {
@@ -50,7 +52,7 @@ public:
             ss << "could not create shared memory to inform tsurugidb status (cause; '"
                << ex.what()
                << "'), review the shared memory settings.";
-            throw std::runtime_error(ss.str());
+            throw tgctl::runtime_error(monitor::reason::connection_failure, ss.str());
         }
     }
     ~status_mock() {

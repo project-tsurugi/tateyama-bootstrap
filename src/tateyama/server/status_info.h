@@ -16,10 +16,10 @@
 #pragma once
 
 #include <exception>
-#include <stdexcept> // std::runtime_error
 
 #include <tateyama/status/resource/core.h>
 
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
 
 namespace tateyama::server {
@@ -32,7 +32,7 @@ public:
 
     explicit status_info_bridge(const std::string& digest) {
         if (!attach(digest)) {
-            throw std::runtime_error("can't find shared memory for status_info");
+            throw tgctl::runtime_error(monitor::reason::internal, "can't find shared memory for status_info");
         }
     }
     /**

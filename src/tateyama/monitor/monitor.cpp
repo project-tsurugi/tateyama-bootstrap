@@ -38,17 +38,6 @@ void monitor::start() {
     strm_.flush();
 }
 
-void monitor::finish(bool status) {
-    if (status) {
-        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << R"(success" })" << std::endl;
-    } else {
-        strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << R"(failure" })" << std::endl;
-    }
-    strm_.flush();
-}
-
 void monitor::finish(reason rc) {
     if (rc == reason::absent) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
