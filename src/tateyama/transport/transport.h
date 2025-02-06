@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@
 #include <tateyama/proto/request/response.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
+
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "client_wire.h"
 #include "timer.h"
@@ -91,11 +93,11 @@ public:
 
         auto handshake_response_opt = handshake();
         if (!handshake_response_opt) {
-            throw std::runtime_error("handshake error");
+            throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
         }
         auto& handshake_response = handshake_response_opt.value();
         if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
-            throw std::runtime_error("handshake error");
+            throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
         }
         session_id_ = handshake_response.success().session_id();
         header_.set_session_id(session_id_);
@@ -416,11 +418,11 @@ public:
                     if (auto database_name_opt = endpoint_config->get<std::string>("database_name"); database_name_opt) {
                         return database_name_opt.value();
                     }
-                    throw std::runtime_error("cannot find database_name at the section in the configuration");
+                    throw tgctl::runtime_error(monitor::reason::connection_failure, "cannot find database_name at the section in the configuration");
                 }
-                throw std::runtime_error("cannot find ipc_endpoint section in the configuration");
+                throw tgctl::runtime_error(monitor::reason::connection_failure, "cannot find ipc_endpoint section in the configuration");
             }
-            throw std::runtime_error("error in create_configuration");
+            throw tgctl::runtime_error(monitor::reason::internal, "error in create_configuration");
         }
         if (output_error) {
             std::cerr << "cannot find any valid configuration file, database name has been set to brank" << std::endl;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,32 +31,39 @@ enum class status : std::int64_t {
 };
 
 enum class reason : std::int64_t {
-    absent,  // no error
+    absent = 0,  // no error
 
-        // old type reason
-        connection,
-        not_found,
-        ambiguous,
-        permission,
-        variable_not_defined,
-        variable_invalid_value,
+    // old type reason
+    connection,
+    not_found,
+    ambiguous,
+    permission,
+    variable_not_defined,
+    variable_invalid_value,
 
-        // general
-        authentication_failure,
-        connection_timeout,
-        connection_failure,
-        io,
-        server,
-        interrupted,
-        internal,
+    // general
+    authentication_failure,
+    connection_timeout,
+    connection_failure,
+    io,
+    server,
+    interrupted,
+    internal,
 
-        // request
-        request_missing,
-        payload_broken,
-        sql_missing,
-        sql_unresolved,
-        
-        unknown = -1,
+    // request
+    request_missing,
+    payload_broken,
+    sql_missing,
+    sql_unresolved,
+
+    // process control, etc.
+    initialization,
+    another_process,
+    invalid_status,
+    invalid_argument,
+    timeout,
+
+    unknown = -1,
 };
 
 /**
@@ -108,6 +115,13 @@ enum class reason : std::int64_t {
     case reason::payload_broken: return "payload_broken"sv;
     case reason::sql_missing: return "sql_missing"sv;
     case reason::sql_unresolved: return "sql_unresolved"sv;
+
+    // process control
+    case reason::initialization: return "initialization"sv;
+    case reason::another_process: return "another_process"sv;
+    case reason::invalid_status: return "invalid_status"sv;
+    case reason::invalid_argument: return "invalid_argument"sv;
+    case reason::timeout: return "timeout"sv;
 
     case reason::unknown: return "unknown"sv;
     }

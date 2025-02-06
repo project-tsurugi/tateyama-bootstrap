@@ -26,6 +26,7 @@
 
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/transport/transport.h"
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/test_utils/server_mock.h"
 
 #include <tateyama/utils/protobuf_utils.h>
@@ -89,7 +90,7 @@ class timer_test : public ::testing::Test {
                 try {
                     wire_.receive(response_message, index);
                     break;
-                } catch (std::runtime_error &e) {
+                } catch (tgctl::runtime_error &e) {
                     continue;
                 }
             }
@@ -139,7 +140,7 @@ class timer_test : public ::testing::Test {
                 try {
                     wire_.receive(res_message, slot_index);
                     break;
-                } catch (std::runtime_error &e) {
+                } catch (tgctl::runtime_error &e) {
                     std::cerr << e.what() << std::endl;
                     continue;
                 }

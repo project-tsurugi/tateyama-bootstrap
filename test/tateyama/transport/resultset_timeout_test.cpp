@@ -28,6 +28,7 @@
 
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/transport/transport.h"
+#include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/test_utils/server_mock.h"
 
 #include <tateyama/utils/protobuf_utils.h>
@@ -72,7 +73,7 @@ class resultset_timeout_test : public ::testing::Test {
             auto rw = wire_.create_resultset_wire();
             try {
                 rw->connect(name);
-            } catch (std::runtime_error& e) {
+            } catch (tgctl::runtime_error& e) {
                 std::cerr << e.what() << std::endl;
             }
             return rw;
@@ -186,7 +187,7 @@ TEST_F(resultset_timeout_test, response_dead_case) {
 
     w.send(6);
     auto resultset_wire = w.create_resultset_wire("resultset");
-    EXPECT_THROW(resultset_wire->get_chunk(), std::runtime_error);
+    EXPECT_THROW(resultset_wire->get_chunk(), tgctl::runtime_error);
 
     wire.close();
 }

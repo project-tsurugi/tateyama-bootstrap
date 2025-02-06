@@ -32,6 +32,7 @@
 #include <tateyama/proto/core/response.pb.h>
 #include <tateyama/proto/endpoint/request.pb.h>
 #include <tateyama/proto/endpoint/response.pb.h>
+#include "tateyama/tgctl/runtime_error.h"
 #include "server_wires_mock.h"
 #include "endpoint_proto_utils.h"
 
@@ -86,20 +87,20 @@ public:
                 ::tateyama::proto::framework::request::Header req_header{};
                 google::protobuf::io::ArrayInputStream in{message.data(), static_cast<int>(message.length())};
                 if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(req_header), std::addressof(in), nullptr); ! res) {
-                    throw std::runtime_error("error parsing request message");
+                    throw tgctl::runtime_error(monitor::reason::internal, "error parsing request message");
                 }
                 std::stringstream ss{};
                 if (data_for_check_.component_id_ = req_header.service_id(); data_for_check_.component_id_ == tateyama::framework::service_id_endpoint_broker) {
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     tateyama::proto::endpoint::response::Handshake rp{};
                     auto rs = rp.mutable_success();
                     rs->set_session_id(1);  // session id is dummy, as this is a test
                     auto body = rp.SerializeAsString();
                     if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     rp.clear_success();
                     auto reply_message = ss.str();
@@ -108,14 +109,14 @@ public:
                 } else if (req_header.service_id() == tateyama::framework::service_id_routing) {
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     data_for_check_.uet_count_++;
                     tateyama::proto::core::response::UpdateExpirationTime rp{};
                     (void) rp.mutable_success();
                     auto body = rp.SerializeAsString();
                     if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     rp.clear_success();
                     auto reply_message = ss.str();
@@ -124,14 +125,14 @@ public:
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(1234)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-                        throw std::runtime_error("error reading payload");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
                     }
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     if(auto res = tateyama::utils::PutDelimitedBodyToOstream(payload, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
@@ -139,7 +140,7 @@ public:
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(2468)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-                        throw std::runtime_error("error reading payload");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
                     }
                     auto t = std::stoi(std::string(payload));
                     reply_thread_ = std::thread([this, t, index]{
@@ -147,10 +148,10 @@ public:
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                            throw std::runtime_error("error formatting response message");
+                            throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                         }
                         if(auto res = tateyama::utils::PutDelimitedBodyToOstream(std::string("OK"), std::addressof(ss)); ! res) {
-                            throw std::runtime_error("error formatting response message");
+                            throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                         }
                         auto reply_message = ss.str();
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
@@ -159,7 +160,7 @@ public:
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(3072)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-                        throw std::runtime_error("error reading payload");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
                     }
                     auto t = std::stoi(std::string(payload));
                     // does not send resultset, as it is for timeout test
@@ -168,10 +169,10 @@ public:
                     std::stringstream ss{};
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     if(auto res = tateyama::utils::PutDelimitedBodyToOstream(std::string("OK"), std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
@@ -185,11 +186,11 @@ public:
                 {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
-                        throw std::runtime_error("error reading payload");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
                     }
                     data_for_check_.current_request_ = payload;
                     if (data_for_check_.responses_.empty()) {
-                        throw std::runtime_error("response queue is empty");
+                        throw tgctl::runtime_error(monitor::reason::internal, "response queue is empty");
                     }
                     auto reply = data_for_check_.responses_.front();
                     data_for_check_.responses_.pop();
@@ -198,10 +199,10 @@ public:
                     header.set_payload_type(reply.get_type());
                     header.set_session_id(session_id_);
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     if(auto res = tateyama::utils::PutDelimitedBodyToOstream(reply.get_response(), std::addressof(ss)); ! res) {
-                        throw std::runtime_error("error formatting response message");
+                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));

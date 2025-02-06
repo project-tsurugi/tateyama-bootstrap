@@ -24,12 +24,13 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <gflags/gflags.h>
 
-#include "tateyama/authentication/authentication.h"
-#include <tateyama/transport/transport.h>
-#include "tateyama/monitor/monitor.h"
-
 #include <tateyama/proto/metrics/request.pb.h>
 #include <tateyama/proto/metrics/response.pb.h>
+
+#include "tateyama/authentication/authentication.h"
+#include "tateyama/transport/transport.h"
+#include "tateyama/monitor/monitor.h"
+#include "tateyama/tgctl/runtime_error.h"
 
 #include "metrics.h"
 
@@ -46,6 +47,7 @@ tgctl::return_code list() {
         monitor_output->start();
     }
 
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
@@ -72,7 +74,7 @@ tgctl::return_code list() {
                 std::cout << "}" << std::endl;
 
                 if (monitor_output) {
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
                 return tateyama::tgctl::return_code::ok;
             }
@@ -106,20 +108,23 @@ tgctl::return_code list() {
                 }
 
                 if (monitor_output) {
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
                 return tateyama::tgctl::return_code::ok;
             }
             std::cerr << "format " << FLAGS_format << " is not supported" << std::endl;
+            reason = monitor::reason::invalid_argument;
         } else {
             std::cerr << "could not receive a valid response" << std::endl;
+            reason = monitor::reason::payload_broken;
         }
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        reason = ex.code();
     }
     
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return tgctl::return_code::err;
 }
@@ -131,6 +136,7 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
         monitor_output->start();
     }
 
+    auto reason = monitor::reason::absent;
     authentication::auth_options();
     try {
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
@@ -190,25 +196,29 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
                 std::cout << std::endl << "}" << std::endl;
 
                 if (monitor_output) {
-                    monitor_output->finish(true);
+                    monitor_output->finish(monitor::reason::absent);
                 }
 
                 return tateyama::tgctl::return_code::ok;
             }
             if (FLAGS_format == "text") {
                 std::cerr << "human readable format has not been supported" << std::endl;
+                reason = monitor::reason::invalid_argument;
             } else {
                 std::cerr << "format " << FLAGS_format << " is not supported" << std::endl;
+                reason = monitor::reason::invalid_argument;
             }
         } else {
             std::cerr << "could not receive a valid response" << std::endl;
+            reason = monitor::reason::payload_broken;
         }
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        reason = ex.code();
     }
 
     if (monitor_output) {
-        monitor_output->finish(false);
+        monitor_output->finish(reason);
     }
     return tgctl::return_code::err;
 }

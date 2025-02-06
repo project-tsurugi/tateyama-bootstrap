@@ -24,6 +24,8 @@
 
 #include <tateyama/api/configuration.h>
 
+#include "tateyama/tgctl/runtime_error.h"
+
 namespace tateyama::configuration {
 
 static const std::string_view PID_FILE_PREFIX = "tsurugi";
@@ -37,7 +39,7 @@ public:
     static bootstrap_configuration create_bootstrap_configuration(std::string_view file) {
         try {
             return bootstrap_configuration(file);
-        } catch (std::runtime_error &e) {
+        } catch (tgctl::runtime_error &e) {
             return {};
         }
     }
@@ -78,7 +80,7 @@ private:
                 if (env_home != nullptr) {
                     conf_file_ = std::filesystem::path(env_home) / HOME_CONF_FILE;
                 } else {
-                    throw std::runtime_error("no configuration file specified");
+                    throw tgctl::runtime_error(monitor::reason::internal, "no configuration file specified");
                 }
             }
         }
@@ -86,10 +88,10 @@ private:
         std::error_code error;
         const bool result = std::filesystem::exists(conf_file_, error);
         if (!result || error) {
-            throw std::runtime_error(std::string("cannot find configuration file: ") + conf_file_.string());
+            throw tgctl::runtime_error(monitor::reason::internal, std::string("cannot find configuration file: ") + conf_file_.string());
         }
         if (std::filesystem::is_directory(conf_file_)) {
-            throw std::runtime_error(conf_file_.string() + " is a directory");
+            throw tgctl::runtime_error(monitor::reason::internal, conf_file_.string() + " is a directory");
         }
         configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
 
@@ -109,7 +111,7 @@ private:
                 return;
             }
         }
-        throw std::runtime_error("error in lock file location");
+        throw tgctl::runtime_error(monitor::reason::internal, "error in lock file location");
     }
     std::string digest(const std::string& path_string) {
         auto hash = std::hash<std::string>{}(path_string);

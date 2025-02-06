@@ -18,11 +18,12 @@
 #include <sys/file.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdexcept> // std::runtime_error
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+
+#include "tateyama/tgctl/runtime_error.h"
 
 namespace tateyama::process {
 
@@ -39,13 +40,13 @@ class proc_mutex {
         if (create_file) {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {  // NOLINT
                 if (throw_exception) {
-                    throw std::runtime_error("the lock file already exist");
+                    throw tgctl::runtime_error(monitor::reason::internal, "the lock file already exist");
                 }
             }
         } else {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR)) < 0) {  // NOLINT
                 if (throw_exception) {
-                    throw std::runtime_error("the lock file does not exist");
+                    throw tgctl::runtime_error(monitor::reason::internal, "the lock file does not exist");
                 }
             }
         }
@@ -72,13 +73,13 @@ class proc_mutex {
 
     void lock() {
         if (ftruncate(fd_, 0) < 0) {
-            throw std::runtime_error("ftruncate error");
+            throw tgctl::runtime_error(monitor::reason::internal, "ftruncate error");
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             owner_ = true;
             return;
         }
-        throw std::runtime_error("lock error");
+        throw tgctl::runtime_error(monitor::reason::internal, "lock error");
     }
     void unlock() const {
         flock(fd_, LOCK_UN);
@@ -86,7 +87,7 @@ class proc_mutex {
     void fill_contents() const {
         std::string pid = std::to_string(getpid());
         if (write(fd_, pid.data(), pid.length()) < 0) {
-            throw std::runtime_error("write error");
+            throw tgctl::runtime_error(monitor::reason::internal, "write error");
         }
     }
 
@@ -163,7 +164,7 @@ public:
             shm_mutex_ = std::make_unique<proc_mutex>(std::move(lock_file), true, true);
             shm_mutex_->lock();
             return;
-        } catch (std::runtime_error &ex) {
+        } catch (tgctl::runtime_error &ex) {
             shm_mutex_ = std::make_unique<proc_mutex>(std::move(lock_file), false, true);
             shm_mutex_->lock();
             return;

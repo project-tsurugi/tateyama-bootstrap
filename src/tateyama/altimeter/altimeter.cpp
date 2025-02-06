@@ -19,13 +19,15 @@
 
 #include <gflags/gflags.h>
 
-#include "tateyama/authentication/authentication.h"
 #include <tateyama/proto/altimeter/request.pb.h>
 #include <tateyama/proto/altimeter/response.pb.h>
 #include <tateyama/proto/altimeter/common.pb.h>
 
-#include <tateyama/transport/transport.h>
-#include <tateyama/monitor/monitor.h>
+#include "tateyama/authentication/authentication.h"
+#include "tateyama/transport/transport.h"
+#include "tateyama/monitor/monitor.h"
+#include "tateyama/tgctl/runtime_error.h"
+
 #include "altimeter.h"
 
 DECLARE_string(monitor);
@@ -45,11 +47,11 @@ static monitor::reason post_processing(std::optional<T>& response_opt, const std
             return monitor::reason::server;
         default:
             std::cerr << "altimeter " << sub_command << " returns illegal response" << std::endl;
-            return monitor::reason::unknown;
+            return monitor::reason::payload_broken;
         }
     }
     std::cerr << "altimeter " << sub_command << " returns nullopt" << std::endl;
-    return monitor::reason::server;
+    return monitor::reason::payload_broken;
 }
 
 tgctl::return_code set_enabled(const std::string& type, bool enabled) {
@@ -71,15 +73,15 @@ tgctl::return_code set_enabled(const std::string& type, bool enabled) {
         } else if(type == "audit") {
             mutable_configure->mutable_audit_log()->set_enabled(enabled);
         } else {
-            throw std::runtime_error("illegal type for altimeter set_enabled");
+            throw tgctl::runtime_error(monitor::reason::internal, "illegal type for altimeter set_enabled");
         }
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::Configure>(request);
         request.clear_configure();
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_enabled");
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        reason = monitor::reason::connection;
+        reason = ex.code();
     }
 
     if (monitor_output) {
@@ -108,15 +110,15 @@ tgctl::return_code set_log_level(const std::string& type, const std::string& lev
         } else if(type == "audit") {
             mutable_configure->mutable_audit_log()->set_level(l);
         } else {
-            throw std::runtime_error("illegal type for altimeter set_log_level");
+            throw tgctl::runtime_error(monitor::reason::internal, "illegal type for altimeter set_log_level");
         }
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::Configure>(request);
         request.clear_configure();
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_log_level");
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        reason = monitor::reason::connection;
+        reason = ex.code();
     }
 
     if (monitor_output) {
@@ -145,9 +147,9 @@ tgctl::return_code set_statement_duration(const std::string& value) {
         request.clear_configure();
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_statement_duration");
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        reason = monitor::reason::connection;
+        reason = ex.code();
     }
 
     if (monitor_output) {
@@ -176,16 +178,16 @@ tgctl::return_code rotate(const std::string& type) {
         } else if(type == "audit") {
             category = ::tateyama::proto::altimeter::common::LogCategory::AUDIT;
         } else {
-            throw std::runtime_error("illegal type for altimeter rotate");
+            throw tgctl::runtime_error(monitor::reason::internal, "illegal type for altimeter rotate");
         }
         mutable_log_rotate->set_category(category);
         auto response_opt = transport->send<::tateyama::proto::altimeter::response::LogRotate>(request);
         request.clear_log_rotate();
 
         reason = post_processing<::tateyama::proto::altimeter::response::LogRotate>(response_opt, "rotete");
-    } catch (std::runtime_error &ex) {
+    } catch (tgctl::runtime_error &ex) {
         std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
-        reason = monitor::reason::connection;
+        reason = ex.code();
     }
 
     if (monitor_output) {
