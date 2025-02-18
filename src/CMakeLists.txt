@@ -19,7 +19,7 @@ add_executable(server
 
 set_target_properties(server
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "tsurugidb"
         )
 
@@ -150,7 +150,6 @@ add_dependencies(tgctl
 
 set_target_properties(tgctl
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
                 RUNTIME_OUTPUT_NAME "tgctl"
         )
 
