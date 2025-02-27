@@ -64,4 +64,4 @@ private:
     boost::property_tree::ptree pt_;
 };
 
-} // namespace tateyama::bootstrap::utils
+} // namespace tateyama::datastore

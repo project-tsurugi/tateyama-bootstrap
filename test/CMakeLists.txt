@@ -41,7 +41,7 @@ endfunction (add_test_executable)
 
 file(GLOB SRCS
         "tateyama/monitor/*_test.cpp"
-        "tateyama/include/*_test.cpp"
+        "tateyama/datastore/*_test.cpp"
         "tateyama/tgctl/*_test.cpp"
         "tateyama/configuration/*_test.cpp"
         "tateyama/version/*_test.cpp"

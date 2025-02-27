@@ -20,6 +20,7 @@
 #include <termios.h>
 #include <filesystem>
 #include <memory>
+#include <exception>
 
 #include <gflags/gflags.h>
 
@@ -33,6 +34,7 @@
 #include "tateyama/monitor/monitor.h"
 #include "backup.h"
 #include "file_list.h"
+#include "path_util.h"
 
 // common
 DECLARE_string(conf);  // NOLINT
@@ -97,7 +99,7 @@ static bool prompt(std::string_view msg)
     return rtnv;
 }
 
-tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
+tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) { //NOLINT(readability-function-cognitive-complexity)
     std::unique_ptr<monitor::monitor> monitor_output{};
 
     if (!FLAGS_monitor.empty()) {
@@ -147,17 +149,43 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
                     }
                 }
 
+                auto pu = path_util(location);
                 std::size_t completed_bytes = 0;
                 for (auto&& file : rbgn.success().simple_source().files()) {
                     auto src = std::filesystem::path(file);
-                    std::filesystem::copy_file(src, location / src.filename());
-                    if(!FLAGS_monitor.empty()) {
-                        completed_bytes += std::filesystem::file_size(src);
-                        if (total_bytes > 0) {
-                            monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
-                        } else {
-                            monitor_output->progress(1.0);
+                    if (std::filesystem::is_directory(src)) {
+                        try {
+                            auto rel = pu.omit(src);
+                            pu.create_directories(rel);
+                        } catch (std::runtime_error &ex) {
+                            std::cerr << ex.what() << std::endl;
+                            rtnv = tgctl::return_code::err;
+                            reason = monitor::reason::permission;
                         }
+                        continue;
+                    }
+                    try {
+                        auto parent = pu.omit(src.parent_path());
+                        if (!parent.empty()) {
+                            pu.create_directories(parent);
+                        }
+                        if (parent.empty()) {
+                            std::filesystem::copy_file(src, location / src.filename());
+                        } else {
+                            std::filesystem::copy_file(src, location / parent / src.filename());
+                        }
+                        if(!FLAGS_monitor.empty()) {
+                            completed_bytes += std::filesystem::file_size(src);
+                            if (total_bytes > 0) {
+                                monitor_output->progress(static_cast<float>(completed_bytes) / static_cast<float>(total_bytes));
+                            } else {
+                                monitor_output->progress(1.0);
+                            }
+                        }
+                    } catch (std::runtime_error &ex) {
+                        std::cerr << ex.what() << std::endl;
+                        rtnv = tgctl::return_code::err;
+                        reason = monitor::reason::permission;
                     }
                 }
 
