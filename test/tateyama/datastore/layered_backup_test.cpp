@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,9 @@
 
 #include "test_root.h"
 
+#include <string>
+#include <vector>
 #include <iostream>
-// #include <chrono>
-// #include <sstream>
-// #include <array>
-// #include <sys/types.h>
-// #include <unistd.h>
 
 #include <boost/thread/barrier.hpp>
 
@@ -31,119 +28,6 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "tateyama/test_utils/server_mock.h"
 
-namespace tateyama::test_utils {
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::BackupBegin>(tateyama::proto::datastore::request::BackupBegin& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kBackupBegin);
-    rq = r.backup_begin();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::BackupEnd>(tateyama::proto::datastore::request::BackupEnd& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kBackupEnd);
-    rq = r.backup_end();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::BackupEstimate>(tateyama::proto::datastore::request::BackupEstimate& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kBackupEstimate);
-    rq = r.backup_estimate();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::BackupDetailBegin>(tateyama::proto::datastore::request::BackupDetailBegin& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kBackupDetailBegin);
-    rq = r.backup_detail_begin();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::TagList>(tateyama::proto::datastore::request::TagList& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kTagList);
-    rq = r.tag_list();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::TagAdd>(tateyama::proto::datastore::request::TagAdd& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kTagAdd);
-    rq = r.tag_add();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::TagGet>(tateyama::proto::datastore::request::TagGet& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kTagGet);
-    rq = r.tag_get();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::TagRemove>(tateyama::proto::datastore::request::TagRemove& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kTagRemove);
-    rq = r.tag_remove();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::RestoreBegin>(tateyama::proto::datastore::request::RestoreBegin& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kRestoreBegin);
-    rq = r.restore_begin();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::RestoreStatus>(tateyama::proto::datastore::request::RestoreStatus& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kRestoreStatus);
-    rq = r.restore_status();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::RestoreCancel>(tateyama::proto::datastore::request::RestoreCancel& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kRestoreCancel);
-    rq = r.restore_cancel();
-}
-
-template<>
-inline void server_mock::request_message<tateyama::proto::datastore::request::RestoreDispose>(tateyama::proto::datastore::request::RestoreDispose& rq) {
-    tateyama::proto::datastore::request::Request r{};
-    auto s = current_request();
-    EXPECT_TRUE(r.ParseFromString(s));
-    EXPECT_EQ(r.command_case(), tateyama::proto::datastore::request::Request::CommandCase::kRestoreDispose);
-    rq = r.restore_dispose();
-}
-
-}  // tateyama::test_utils
-
-
 namespace tateyama::datastore {
 
 class layered_backup_test : public ::testing::Test {
@@ -151,9 +35,6 @@ public:
     virtual void SetUp() {
         helper_ = std::make_unique<directory_helper>("layered_backup_test", 20501);
         helper_->set_up();
-        auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
-        server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("layered_backup_test", bst_conf.digest(), sync_);
-        sync_.wait();
     }
 
     virtual void TearDown() {
@@ -162,8 +43,6 @@ public:
 
 protected:
     std::unique_ptr<directory_helper> helper_{};
-    std::unique_ptr<tateyama::test_utils::server_mock> server_mock_{};
-    boost::barrier sync_{2};
 
     std::string read_pipe(FILE* fp) {
         std::stringstream ss{};
@@ -179,28 +58,63 @@ TEST_F(layered_backup_test, backup) {
     std::string command;
     FILE *fp;
 
+    std::vector<std::string> files{
+        "epoch",
+        "pwal_0000",
+        "blob/dir_01/0000000000000001.blob",
+        "compaction_catalog",
+        "pwal_0001",
+        "limestone-manifest.json"
+    };
+
+    // setup
     {
-        tateyama::proto::datastore::response::BackupBegin response{};
-        auto* success = response.mutable_success();
-        auto* sources = success->mutable_simple_source();
+        std::string testdata = {
+            "H4sICBu8v2cAA3Rlc3RkYXRhLnRhcgDt2E1vmzAYB3AadZd8CpTjtBkbMEi70TRbK7WjmnLYDbmU\n"
+            "tmy8CWh3mPbdBy1sa1iHosWmW/8/KXGITWz08BjHxNCkow3X5W3JXE5/LXsas13uuhZv3jXKGHVt\n"
+            "Tefyh6ZpN1UtSl3XbtLoSmTR4+1G6v9RxAjrMpF7E2wff5PaFPFXgRhRkYfXUvtoA+w49uPxZ2wz\n"
+            "/oxyTadSR9V55vHffzn1CGBKxCi+iCS4m4NlGc1/7mzmv22ayH8VZn3+783ao+7V+kz7qv2uvFUS\n"
+            "EFCJGOdJfv701n/MxPpPhS7+F3EZUCbpNtg+/hZ1sf5X4mH86UOMtJV/3cfo89/cXP9zmzI8/1Vo\n"
+            "A6zHWVzHItEvRC2mHhAoRYw26E/v+d/+/8f8L18X/yoTRXWd11L62H7/x+JNgflfgdl4E/iPESPM\n"
+            "00KEdZxnQdhMBUl+tes+xvKfDdZ/tmMh/5VY+qdn3nJ97L8Plt7aO/HfBUcr73D1YX7qfQxWZ/7y\n"
+            "KDg+1Ond4cGJf3B/9JvT3vr+ujlt6guCrfzc/2XS+hjNfz5Y/9nMQf6r8If9XzbY/2U/Ws8Hrc2+\n"
+            "6kXf2txrf1bKqGFXiJHEaVTVeRa9TkUWXzafyacqz3bYx2j+U2tz/4c3zZH/Cnyd643FZV6mog5u\n"
+            "o7JqFoKLN/qCEbp4dV9ZtN9WdZTVwaCdOf829SUAAAAAAAAAAAAAAAAAAAAAAAAAAAA8G98BNqYZ\n"
+            "zgBQAAA=\n" };
 
-        server_mock_->push_response(response.SerializeAsString());
+        try {
+            std::ofstream mf(helper_->abs_path("test_data"));
+            mf.exceptions(std::ios_base::failbit);
+            mf << testdata;
+            mf.close();
+        } catch (const std::exception& e) {
+            std::cerr << "error in limestone-manifest.json" << std::endl;
+            FAIL();
+        }
+        command = "base64 -d ";
+        command += helper_->abs_path("test_data");
+        command += " | tar xzf - -C ";
+        command += helper_->abs_path("log");
+        if (system(command.c_str()) != 0) {
+            std::cerr << "cannot make directory" << std::endl;
+            FAIL();
+        }
     }
     {
-        tateyama::proto::datastore::response::BackupEnd response{};
-        auto* success = response.mutable_success();
+        command = "tgctl  backup create ";
+        command += helper_->abs_path("backup");
+        command += " --conf ";
+        command += helper_->conf_file_path();
+        std::cout << command << std::endl;
+        if((fp = popen(command.c_str(), "r")) == nullptr){
+            std::cerr << "cannot tgctl backup create" << std::endl;
+        }
+        auto result = read_pipe(fp);
 
-        server_mock_->push_response(response.SerializeAsString());
+        for(auto&& f : files) {
+            EXPECT_TRUE(std::filesystem::exists(helper_->abs_path("backup/" + f)));
+        }
     }
-
-    command = "tgctl  backup create ";
-    command += " --conf ";
-    command += helper_->conf_file_path();
-    std::cout << command << std::endl;
-    if((fp = popen(command.c_str(), "r")) == nullptr){
-        std::cerr << "cannot tgctl backup create" << std::endl;
-    }
-    auto result = read_pipe(fp);
 }
 
 }  // namespace tateyama::datastore

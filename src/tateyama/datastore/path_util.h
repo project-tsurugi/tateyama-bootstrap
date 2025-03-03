@@ -75,7 +75,7 @@ public:
             throw std::runtime_error(ss.str());
         }
     }
-    
+
 private:
     std::filesystem::path log_location_{};
     std::filesystem::path backup_location_;

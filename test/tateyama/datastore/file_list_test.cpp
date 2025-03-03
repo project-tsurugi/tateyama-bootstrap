@@ -29,7 +29,7 @@ TEST_F(file_list_test, simple) {
     const bool detached[] = { true, false, true };
 
     auto parser = std::make_unique<tateyama::datastore::file_list>();
-    EXPECT_TRUE(parser->read_json("../../test/tateyama/include/json/file_list.json"));
+    EXPECT_TRUE(parser->read_json("../../test/tateyama/datastore/json/file_list.json"));
 
     int i = 0;
     parser->for_each([source, destination, detached, &i](const std::string src, const std::string dst, bool det) {
