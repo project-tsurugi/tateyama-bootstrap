@@ -54,7 +54,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_inplace_dag_schedule=true\n"
         "enable_join_scan=true\n"
         "dev_rtx_key_distribution=uniform\n"
-        "dev_enable_blob_cast=false\n"
+        "dev_enable_blob_cast=true\n"
         "max_result_set_writers=64\n"
 
     "[ipc_endpoint]\n"
