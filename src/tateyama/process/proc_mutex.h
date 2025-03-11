@@ -40,7 +40,7 @@ class proc_mutex {
         if (create_file) {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {  // NOLINT
                 if (throw_exception) {
-                    throw tgctl::runtime_error(monitor::reason::internal, "the lock file already exist");
+                    throw tgctl::runtime_error(monitor::reason::internal, "cannot create the lock file");
                 }
             }
         } else {
