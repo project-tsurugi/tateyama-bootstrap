@@ -40,7 +40,7 @@ class proc_mutex {
         if (create_file) {
             if ((fd_ = open(lock_file_.generic_string().c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {  // NOLINT
                 if (throw_exception) {
-                    throw tgctl::runtime_error(monitor::reason::internal, "cannot create the lock file");
+                    throw tgctl::runtime_error(monitor::reason::internal, "cannot create brand new lock file");
                 }
             }
         } else {
@@ -73,13 +73,13 @@ class proc_mutex {
 
     void lock() {
         if (ftruncate(fd_, 0) < 0) {
-            throw tgctl::runtime_error(monitor::reason::internal, "ftruncate error");
+            throw tgctl::runtime_error(monitor::reason::internal, "cannot truncate the lock file");
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
             owner_ = true;
             return;
         }
-        throw tgctl::runtime_error(monitor::reason::internal, "lock error");
+        throw tgctl::runtime_error(monitor::reason::internal, "cannot lock the lock file");
     }
     void unlock() const {
         flock(fd_, LOCK_UN);

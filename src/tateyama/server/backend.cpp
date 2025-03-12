@@ -125,11 +125,12 @@ int backend_main(int argc, char **argv) {
     LOG(INFO) << system_config_prefix
               << "pid_directory: " << mutex_file.parent_path().string() << ", "
               << "location of pid file.";
-    auto mutex = std::make_unique<process::proc_mutex>(mutex_file);
+    std::unique_ptr<process::proc_mutex> mutex{};
     try {
+        mutex = std::make_unique<process::proc_mutex>(mutex_file);
         mutex->lock();
     } catch (tgctl::runtime_error& e) {
-        LOG(ERROR) << e.what() << " on " << mutex_file.string();
+        LOG(ERROR) << e.what() << ": " << mutex_file.string();
         exit(1);
     }
 
