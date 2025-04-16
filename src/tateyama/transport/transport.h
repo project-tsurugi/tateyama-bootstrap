@@ -77,7 +77,7 @@ constexpr static std::size_t ALTIMETER_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t REQUEST_MESSAGE_VERSION_MAJOR = 0;
 constexpr static std::size_t REQUEST_MESSAGE_VERSION_MINOR = 0;
 constexpr static std::size_t SQL_MESSAGE_VERSION_MAJOR = 1;
-constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 4;
+constexpr static std::size_t SQL_MESSAGE_VERSION_MINOR = 5;
 constexpr static std::int64_t EXPIRATION_SECONDS = 60;
 
 class transport {
