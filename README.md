@@ -52,7 +52,7 @@ available options:
 * `-DCMAKE_INSTALL_PREFIX=<installation directory>` - change install location
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequisite installation directory
 * `-DCMAKE_IGNORE_PATH="/usr/local/include;/usr/local/lib/"` - specify the libraries search paths to ignore. This is convenient if the environment has conflicting version installed on system default search paths. (e.g. gflags in /usr/local)
-* `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
+* `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * `-DOGAWAYAMA=ON` - enable ogawayama bridge
 * `-DENABLE_JEMALLOC` - use jemalloc instead of default `malloc`
 * for debugging only
