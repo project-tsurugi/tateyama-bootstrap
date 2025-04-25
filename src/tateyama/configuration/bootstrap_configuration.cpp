@@ -56,6 +56,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_rtx_key_distribution=uniform\n"
         "dev_enable_blob_cast=true\n"
         "max_result_set_writers=64\n"
+        "dev_initial_core=\n"
+        "dev_core_affinity=false\n"
+        "assign_numa_nodes_uniformly=false\n"
+        "dev_force_numa_node=\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
