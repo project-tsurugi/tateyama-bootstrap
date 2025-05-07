@@ -287,8 +287,9 @@ public:
                         std::cout << ex.what() << std::endl;
                     }
                     if (finish_) {
-                        break;
+                        return {0, 0, 0};
                     }
+                    throw ex;
                 }
             }
         }
