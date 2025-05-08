@@ -28,12 +28,17 @@ if(ENABLE_COVERAGE)
 endif()
 
 function(set_compile_options target_name)
-    target_compile_options(${target_name}
-        PRIVATE -Wall -Wextra -Werror)
+    if (BUILD_STRICT)
+        target_compile_options(${target_name}
+            PRIVATE -Wall -Wextra -Werror)
+    else()
+        target_compile_options(${target_name}
+            PRIVATE -Wall -Wextra)
+    endif()
 endfunction(set_compile_options)
 
 if(ENABLE_ALTIMETER)
     message("altimeter enabled")
     add_definitions(-DENABLE_ALTIMETER)
 endif()
-  
+
