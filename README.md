@@ -55,6 +55,7 @@ available options:
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * `-DOGAWAYAMA=ON` - enable ogawayama bridge
 * `-DENABLE_JEMALLOC` - use jemalloc instead of default `malloc`
+* `-DBUILD_STRICT=OFF` - don't treat compile warnings as build errors
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
