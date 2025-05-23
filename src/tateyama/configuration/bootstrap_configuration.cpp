@@ -80,6 +80,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "refresh_timeout=300\n"
         "max_refresh_timeout=86400\n"
         "zone_offset=\n"
+        "authentication_timeout=0\n"
 
     "[datastore]\n"
         "log_location=\n"
@@ -93,6 +94,11 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[system]\n"
         "pid_directory=/var/lock\n"
+
+    "[authentication]\n"
+        "enabled=false\n"
+        "url=http::/localhost:8080/harinoki\n"
+        "request_timeout=0\n"
 
     "[glog]\n"
         "dummy=\n"  // just for retain glog section in default configuration
