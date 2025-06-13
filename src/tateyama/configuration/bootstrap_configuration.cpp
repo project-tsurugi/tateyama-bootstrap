@@ -97,7 +97,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[authentication]\n"
         "enabled=false\n"
-        "url=http::/localhost:8080/harinoki\n"
+        "url=http://localhost:8080/harinoki\n"
         "request_timeout=0\n"
 
     "[glog]\n"
