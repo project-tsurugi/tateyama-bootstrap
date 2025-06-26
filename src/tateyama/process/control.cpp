@@ -17,6 +17,8 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -721,7 +723,12 @@ static pid_t get_pid() {
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
-            return file_mutex->pid(false);  // may throws tgctl::runtime_error
+            while (true) {
+                if (auto pid = file_mutex->pid(); pid != 0) {
+                    return pid;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
         }
         throw tgctl::runtime_error(monitor::reason::internal, "error in create_configuration");
     }

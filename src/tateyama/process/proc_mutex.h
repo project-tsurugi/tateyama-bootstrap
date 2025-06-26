@@ -72,6 +72,8 @@ class proc_mutex {
     proc_mutex& operator=(proc_mutex&& other) noexcept = delete;
 
     void lock() {
+        std::unique_lock<std::mutex> lock(mtx_);
+
         if (ftruncate(fd_, 0) < 0) {
             throw tgctl::runtime_error(monitor::reason::internal, "cannot truncate the lock file");
         }
@@ -81,7 +83,11 @@ class proc_mutex {
         }
         throw tgctl::runtime_error(monitor::reason::internal, "cannot lock the lock file");
     }
-    void unlock() const {
+    void unlock(bool has_lock = false) const {
+        std::unique_lock<std::mutex> lock(mtx_, std::defer_lock);
+        if (!has_lock) {
+            lock.lock();
+        }
         flock(fd_, LOCK_UN);
     }
     void fill_contents() const {
@@ -96,9 +102,12 @@ class proc_mutex {
     }
 
     [[nodiscard]] int pid(bool do_check = true) {
-        std::string str;
+        std::string str{};
         if (contents(str, do_check)) {
             try {
+                if (str.empty()) {
+                    return 0;
+                }
                 return stoi(str);
             } catch (std::invalid_argument& e) {
                 return 0;
@@ -108,6 +117,8 @@ class proc_mutex {
     }
 
     [[nodiscard]] lock_state check() {
+        std::unique_lock<std::mutex> lock(mtx_);
+
         std::error_code error;
         const bool result = std::filesystem::exists(lock_file_, error);
         if (!result || error) {
@@ -122,7 +133,7 @@ class proc_mutex {
             }
         }
         if (flock(fd_, LOCK_EX | LOCK_NB) == 0) {  // NOLINT
-            unlock();
+            unlock(true);
             return lock_state::not_locked;
         }
         return lock_state::locked;
@@ -143,6 +154,7 @@ private:
     int fd_{not_opened};
     std::filesystem::path lock_file_;
     bool owner_{};
+    mutable std::mutex mtx_{};
     static constexpr int not_opened = -1;
 
     [[nodiscard]] bool contents(std::string& str, bool do_check = true) {
