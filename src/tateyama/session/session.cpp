@@ -47,9 +47,11 @@ static std::string to_timepoint_string(std::uint64_t msu) {
     std::stringstream stream;
     time_t epoch_seconds = std::chrono::system_clock::to_time_t(t);
     struct tm buf{};
-    gmtime_r(&epoch_seconds, &buf);
-    stream << std::put_time(&buf, "%FT%TZ");
-    return stream.str();
+    if (gmtime_r(&epoch_seconds, &buf) == &buf) {
+        stream << std::put_time(&buf, "%FT%TZ");
+        return stream.str();
+    }
+    return {};
 }
 
 tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-complexity)
