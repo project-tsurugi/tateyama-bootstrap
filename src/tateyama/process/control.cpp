@@ -148,7 +148,7 @@ bool is_running() {
     return status_check_internal() == status_check_result::activated;
 }
 
-void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
+static void build_args(std::vector<std::string>& args, tateyama::framework::boot_mode mode) {
     switch (mode) {
     case tateyama::framework::boot_mode::database_server:
         break;
@@ -493,7 +493,7 @@ tgctl::return_code tgctl_kill(proc_mutex* file_mutex, configuration::bootstrap_c
     return tgctl::return_code::err;
 }
 
-tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_bridge* status_info) {
+static tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_info_bridge* status_info) {
     auto rtnv = tgctl::return_code::ok;
     bool dot = false;
 

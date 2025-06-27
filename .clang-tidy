@@ -37,6 +37,7 @@ misc-*,\
 -misc-include-cleaner,\
 -misc-unused-parameters,\
 -misc-use-anonymous-namespace,\
+-misc-use-internal-linkage,\
 modernize-*,\
 -modernize-use-trailing-return-type,\
 performance-*,\
