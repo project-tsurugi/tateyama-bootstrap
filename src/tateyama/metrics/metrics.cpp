@@ -66,7 +66,7 @@ tgctl::return_code list() {
                     auto&& item = info_list.items(i);
                     std::cout << "  \"" << item.key() << "\": \"" << item.description() << "\"";
                     if (i == (len - 1)) {
-                        std::cout << std::endl;
+                        std::cout << "\n" << std::flush;
                     } else {
                         std::cout << ",\n" << std::flush;
                     }
@@ -98,7 +98,7 @@ tgctl::return_code list() {
                         std::cout << " : ";
                         std::cout << std::left;
                         std::cout << std::setw(static_cast<int>(description_max)) << item.description();
-                        std::cout << std::endl;
+                        std::cout << '\n' << std::flush;
                         prev_key = item.key();
                     }
                 }
@@ -172,8 +172,8 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
                             } else {
                                 std::cout.precision(6);
                             }
-                            std::cout << "      \"value\": " << std::fixed << element.value() << std::endl;
-                            std::cout << ((j < (alen - 1)) ? "    }," : "    }" ) << std::endl;
+                            std::cout << "      \"value\": " << std::fixed << element.value() << '\n' << std::flush;
+                            std::cout << ((j < (alen - 1)) ? "    }," : "    }" ) << '\n' << std::flush;
                         }
                     } else {
                         auto v = value.value();
@@ -189,7 +189,7 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
                         separator = "";
                     }
                 }
-                std::cout << std::endl << "}\n" << std::flush;
+                std::cout << "\n}\n" << std::flush;
 
                 if (monitor_output) {
                     monitor_output->finish(monitor::reason::absent);

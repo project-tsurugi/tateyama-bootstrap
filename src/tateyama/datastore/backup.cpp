@@ -124,7 +124,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
             case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::datastore::response::BackupBegin::ResultCase::kUnknownError:
-                std::cerr << "BackupBegin error: " << rbgn.unknown_error().message() << std::endl;
+                std::cerr << "BackupBegin error: " << rbgn.unknown_error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
@@ -174,7 +174,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
                     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kSuccess:
                         break;
                     case ::tateyama::proto::datastore::response::BackupEnd::ResultCase::kUnknownError:
-                        std::cerr << "BackupEnd error: " << rend.unknown_error().message() << std::endl;
+                        std::cerr << "BackupEnd error: " << rend.unknown_error().message() << '\n' << std::flush;
                         rtnv = tgctl::return_code::err;
                         reason = monitor::reason::server;
                         break;
@@ -201,7 +201,7 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << ex.what() << '\n' << std::flush;
         rtnv = tgctl::return_code::err;
         reason = ex.code();
     }
@@ -237,12 +237,12 @@ tgctl::return_code tgctl_backup_estimate() {
             case ::tateyama::proto::datastore::response::BackupEstimate::kSuccess: {
                 auto success = response.value().success();
                 std::cout << "number_of_files = " << success.number_of_files()
-                          << ", number_of_bytes = " << success.number_of_bytes() << std::endl;
+                          << ", number_of_bytes = " << success.number_of_bytes() << '\n' << std::flush;
                 break;
             }
             case ::tateyama::proto::datastore::response::BackupEstimate::kUnknownError:
             case ::tateyama::proto::datastore::response::BackupEstimate::RESULT_NOT_SET:
-                std::cerr << " ends up with " << response.value().result_case() << std::endl;
+                std::cerr << " ends up with " << response.value().result_case() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
             }
@@ -278,7 +278,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
                 return tgctl::return_code::err;
             }
         } catch (std::runtime_error &ex) {
-            std::cerr << "prompt fail, cause: " << ex.what() << std::endl;
+            std::cerr << "prompt fail, cause: " << ex.what() << '\n' << std::flush;
             return tgctl::return_code::err;
         }
     }
@@ -314,7 +314,7 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                std::cerr << " ends up with " << response.value().result_case() << std::endl;
+                std::cerr << " ends up with " << response.value().result_case() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
             }
@@ -349,7 +349,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
                 return tgctl::return_code::err;
             }
         } catch (std::runtime_error &ex) {
-            std::cerr << "prompt fail, cause: " << ex.what() << std::endl;
+            std::cerr << "prompt fail, cause: " << ex.what() << '\n' << std::flush;
             return tgctl::return_code::err;
         }
     }
@@ -405,7 +405,7 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                std::cerr << " ends up with " << response.value().result_case() << std::endl;
+                std::cerr << " ends up with " << response.value().result_case() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
             }
@@ -460,7 +460,7 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
             case ::tateyama::proto::datastore::response::RestoreBegin::kBrokenData:
             case ::tateyama::proto::datastore::response::RestoreBegin::kUnknownError:
             case ::tateyama::proto::datastore::response::RestoreBegin::RESULT_NOT_SET:
-                std::cerr << " ends up with " << response.value().result_case() << std::endl;
+                std::cerr << " ends up with " << response.value().result_case() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
             }

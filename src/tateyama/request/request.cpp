@@ -61,17 +61,17 @@ tgctl::return_code request_list() { // NOLINT(readability-function-cognitive-com
         request.clear_list_request();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             switch(response.result_case()) {
             case ::tateyama::proto::request::response::ListRequest::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::request::response::ListRequest::ResultCase::kError:
-                std::cerr << "ListRequest error: " << response.error().message() << std::endl;
+                std::cerr << "ListRequest error: " << response.error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
             default:
-                std::cerr << "ListRequest result_case() error: " << std::endl;
+                std::cerr << "ListRequest result_case() error: \n" << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::payload_broken;
             }
@@ -83,8 +83,8 @@ tgctl::return_code request_list() { // NOLINT(readability-function-cognitive-com
                 auto nms = secs.time_since_epoch().count() * 1000 + (ns.count() + 500000) / 1000000;
                 if (!FLAGS_quiet) {
                     //                    10          10          10            12                 17
-                    std::cout << "session-id  request-id  service-id  payload-size  elapsed-time (ms)" << std::endl;
-                    std::cout << "----------  ----------  ----------  ------------  -----------------" << std::endl;
+                    std::cout << "session-id  request-id  service-id  payload-size  elapsed-time (ms)\n";
+                    std::cout << "----------  ----------  ----------  ------------  -----------------\n";
                 }
                 for (auto&& e : response.success().requests()) {
                     std::size_t elapsed = nms - e.started_time();
@@ -94,7 +94,7 @@ tgctl::return_code request_list() { // NOLINT(readability-function-cognitive-com
                                   << std::setw(10 + 2) << e.service_id()
                                   << std::setw(12 + 2) << e.payload_size()
                                   << std::setw(17 + 2) << elapsed
-                                  << std::endl;
+                                  << '\n' << std::flush;
                     }
                     if (!FLAGS_monitor.empty()) {
                         monitor_output->request_list(e.session_id(), e.request_id(), e.service_id(), e.payload_size(), elapsed);
@@ -109,7 +109,7 @@ tgctl::return_code request_list() { // NOLINT(readability-function-cognitive-com
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
@@ -141,17 +141,17 @@ tgctl::return_code request_payload(std::size_t session_id, std::size_t request_i
         request.clear_get_payload();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             switch(response.result_case()) {
             case ::tateyama::proto::request::response::GetPayload::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::request::response::GetPayload::ResultCase::kError:
-                std::cerr << "GetPayload error: " << response.error().message() << std::endl;
+                std::cerr << "GetPayload error: " << response.error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
             default:
-                std::cerr << "GetPayload result_case() error: " << std::endl;
+                std::cerr << "GetPayload result_case() error: \n" << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::payload_broken;
             }
@@ -175,7 +175,7 @@ tgctl::return_code request_payload(std::size_t session_id, std::size_t request_i
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
@@ -212,19 +212,19 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
         request.clear_extract_statement_info();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             if (response.response_case() == ::jogasaki::proto::sql::response::Response::ResponseCase::kExtractStatementInfo) {
                 const auto& extract_statement_info = response.extract_statement_info();    
                 switch(extract_statement_info.result_case()) {
                 case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kSuccess:
                     break;
                 case ::jogasaki::proto::sql::response::ExtractStatementInfo::ResultCase::kError:
-                    std::cerr << "ExtractStatementInfo error: " << extract_statement_info.error().detail() << std::endl;
+                    std::cerr << "ExtractStatementInfo error: " << extract_statement_info.error().detail() << '\n' << std::flush;
                     rtnv = tgctl::return_code::err;
                     reason = monitor::reason::server;
                     break;
                 default:
-                    std::cerr << "ExtractStatementInfo result_case() error: " << std::endl;
+                    std::cerr << "ExtractStatementInfo result_case() error: \n" << std::flush;
                     rtnv = tgctl::return_code::err;
                     reason = monitor::reason::payload_broken;
                 }
@@ -243,7 +243,7 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
                         jogasaki::proto::sql::response::ExtractStatementInfo_Success::SqlOptCase::kSql) {
                         sql = success.sql();
                         if (!FLAGS_quiet) {
-                            std::cout << sql.value() << std::endl;
+                            std::cout << sql.value() << '\n' << std::flush;
                         }
                     }
                     if (monitor_output) {
@@ -253,14 +253,14 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
                     return rtnv;
                 }
             } else {
-                std::cerr << "the response type does not match with that expected" << std::endl;                
+                std::cerr << "the response type does not match with that expected\n" << std::flush;                
                 reason = monitor::reason::payload_broken;
             }
         } else {
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
