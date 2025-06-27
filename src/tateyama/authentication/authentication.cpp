@@ -36,32 +36,32 @@ constexpr std::string_view pre_defined_auth_file_name = "/tmp/auth";  // FIXME s
 void auth_options() {
     if (!FLAGS_auth) {
 #ifndef NDEBUG
-        std::cout << "no-auth" << std::endl;
+        std::cout << "no-auth\n" << std::flush;
 #endif
         return;
     }
     if (!FLAGS_user.empty()) {
 #ifndef NDEBUG
-        std::cout << "auth user:= " << FLAGS_user << std::endl;
+        std::cout << "auth user:= " << FLAGS_user << '\n' << std::flush;
 #endif
         return;
     }
     if (!FLAGS_auth_token.empty()) {
 #ifndef NDEBUG
-        std::cout << "auth token: " << FLAGS_auth_token << std::endl;
+        std::cout << "auth token: " << FLAGS_auth_token << '\n' << std::flush;
 #endif
         return;
     }
     if (!FLAGS_credentials.empty()) {
 #ifndef NDEBUG
-        std::cout << "auth credentials: " << FLAGS_credentials << std::endl;
+        std::cout << "auth credentials: " << FLAGS_credentials << '\n' << std::flush;
 #endif
         return;
     }
 
     if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
 #ifndef NDEBUG
-        std::cout << "auth token fron TSURUGI_AUTH_TOKEN: " << token << std::endl;
+        std::cout << "auth token fron TSURUGI_AUTH_TOKEN: " << token << '\n' << std::flush;
 #endif
         return;
     }
@@ -80,7 +80,7 @@ void auth_options() {
         istrm.close();
 
 #ifndef NDEBUG
-        std::cout << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents << std::endl;
+        std::cout << "auth token fron pre_defined_auth_file (" << pre_defined_auth_file.string() << "): " << contents << '\n' << std::flush;
 #endif
     }
 }

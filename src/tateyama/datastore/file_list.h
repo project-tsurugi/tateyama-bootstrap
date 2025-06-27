@@ -41,7 +41,7 @@ public:
             boost::property_tree::read_json(file_name, pt_);
             return true;
         } catch (std::exception const& e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what() << '\n' << std::flush;
             return false;
         }
     }

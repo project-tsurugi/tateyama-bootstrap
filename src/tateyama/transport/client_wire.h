@@ -58,7 +58,7 @@ public:
                     if (current_wire_ != nullptr) {
                         std::string_view extrusion{};
                         auto rtnv = current_wire_->get_chunk(current_wire_->get_bip_address(managed_shm_ptr_), extrusion);
-                        if (extrusion.length() == 0) {
+                        if (extrusion.empty()) {
                             return rtnv;
                         }
                         wrap_around_ = rtnv;
@@ -70,7 +70,7 @@ public:
                     if (envelope_->get_status_provider().is_alive().empty()) {
                         continue;
                     }
-                    std::cerr << ex.what() << std::endl;
+                    std::cerr << ex.what() << '\n' << std::flush;
                     throw ex;
                 }
             }
@@ -321,7 +321,7 @@ public:
                 if (status_provider_->is_alive().empty()) {
                     continue;
                 }
-                std::cerr << ex.what() << std::endl;
+                std::cerr << ex.what() << '\n' << std::flush;
                 using_wire_.store(false);
                 cnd_receive_.notify_all();
                 throw ex;

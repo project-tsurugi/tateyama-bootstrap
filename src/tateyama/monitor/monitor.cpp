@@ -34,31 +34,31 @@ monitor::~monitor() {
 
 void monitor::start() {
     strm_ << "{ " << TIME_STAMP << time(nullptr)
-          << ", " << KIND_START << " }" << std::endl;
+          << ", " << KIND_START << " }\n";
     strm_.flush();
 }
 
 void monitor::finish(reason rc) {
     if (rc == reason::absent) {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-              << KIND_FINISH << ", " << STATUS << R"(success" })" << std::endl;
+              << KIND_FINISH << ", " << STATUS << R"(success" })" << '\n';
     } else {
         strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
               << KIND_FINISH << ", " << STATUS << R"(failure", )"
-              << REASON << to_string_view(rc) << R"(" })" << std::endl;
+              << REASON << to_string_view(rc) << R"(" })" << '\n';
     }
     strm_.flush();
 }
 
 void monitor::progress(float ratio) {
     strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-          << KIND_PROGRESS << ", " << PROGRESS << ratio << " }" << std::endl;
+          << KIND_PROGRESS << ", " << PROGRESS << ratio << " }\n";
     strm_.flush();
 }
 
 void monitor::status(tateyama::monitor::status stat) {
     strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
-          << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(stat) << "\" }" << std::endl;
+          << KIND_DATA << ", " << FORMAT_STATUS << ", " << STATUS << to_string_view(stat) << "\" }\n";
     strm_.flush();
 }
 
@@ -77,21 +77,21 @@ void monitor::session_info(std::string_view session_id,
           << USER << user << "\", "
           << START_AT << start_at << "\", "
           << CONNECTION_TYPE << connection_type << "\", "
-          << CONNECTION_INFO << connection_info << "\" }" << std::endl;
+          << CONNECTION_INFO << connection_info << "\" }\n";
     strm_.flush();
 }
 
 void monitor::dbstats_description(std::string_view data) {
     strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
           << KIND_DATA << ", " << FORMAT_DBSTATS_DESCRIPTION << ", "
-          << METRICS << data << "\" }" << std::endl;
+          << METRICS << data << "\" }\n";
     strm_.flush();
 }
 
 void monitor::dbstats(std::string_view data) {
     strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
           << KIND_DATA << ", " << FORMAT_DBSTATS << ", "
-          << METRICS << data << "\" }" << std::endl;
+          << METRICS << data << "\" }\n";
     strm_.flush();
 }
 

@@ -81,7 +81,7 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
-int backend_main(int argc, char **argv) {
+static int backend_main(int argc, char **argv) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -193,11 +193,12 @@ int backend_main(int argc, char **argv) {
     std::unique_ptr<tateyama::process::shm_mutex> shm_mutex{};
     if (auto database_name_opt = conf->get_section("ipc_endpoint")->get<std::string>("database_name"); database_name_opt) {
         try {
-            shm_mutex = std::make_unique<tateyama::process::shm_mutex>(
-                // ensured that pid_directoy in system section always exists, see src/tateyama/configuration/bootstrap_configuration.cpp
-                conf->get_section("system")->get<std::filesystem::path>("pid_directory").value() /
-                tateyama::process::shm_mutex::lock_file_name(database_name_opt.value())
-            );
+            // cf. ensured that pid_directoy in system section always exists, see src/tateyama/configuration/bootstrap_configuration.cpp
+            if (auto d_opt = conf->get_section("system")->get<std::filesystem::path>("pid_directory"); d_opt) {
+                shm_mutex = std::make_unique<tateyama::process::shm_mutex>(
+                    d_opt.value() / tateyama::process::shm_mutex::lock_file_name(database_name_opt.value())
+                );
+            }
         } catch (tgctl::runtime_error &ex) {
             status_info->whole(tateyama::status_info::state::boot_error);
             LOG(ERROR) << "A tsurugidb process is already running using the same database name (" << database_name_opt.value() << ")";

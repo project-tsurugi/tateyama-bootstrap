@@ -118,7 +118,7 @@ public:
                 close();
             }
         } catch (std::exception &ex) {
-            std::cerr << ex.what() << std::endl;
+            std::cerr << ex.what() << '\n' << std::flush;
         }
     }
 
@@ -425,7 +425,7 @@ public:
             throw tgctl::runtime_error(monitor::reason::internal, "error in create_configuration");
         }
         if (output_error) {
-            std::cerr << "cannot find any valid configuration file, database name has been set to brank" << std::endl;
+            std::cerr << "cannot find any valid configuration file, database name has been set to brank\n" << std::flush;
         }
         return {};
     }

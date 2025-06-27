@@ -24,7 +24,6 @@
 #include <boost/filesystem/operations.hpp>
 
 #include "tateyama/process/process.h"
-#include "tateyama/version/version.h"
 
 #include "tateyama/tgctl/tgctl.h"
 
@@ -44,17 +43,17 @@ static tgctl::return_code do_show_version(std::istream& stream, std::ostream& co
 
         if (name_opt && version_opt && date_opt) {
             // name
-            cout << name_opt.value() << std::endl;
+            cout << name_opt.value() << '\n';
             // version
-            cout << "version: " << version_opt.value() << std::endl;
+            cout << "version: " << version_opt.value() << '\n';
             // date
-            cout << "date: " << date_opt.value() << std::endl;
+            cout << "date: " << date_opt.value() << '\n' << std::flush;
             return tgctl::return_code::ok;
         }
-        std::cerr << "json is incorrect to identify version" << std::endl;
+        std::cerr << "json is incorrect to identify version" << '\n' << std::flush;
         return tgctl::return_code::err;
     } catch (boost::property_tree::json_parser_error &e) {
-        std::cerr << "parse error : " << e.what() << std::endl;
+        std::cerr << "parse error : " << e.what() << '\n' << std::flush;
     }
     return tgctl::return_code::err;
 }
@@ -70,7 +69,7 @@ static tgctl::return_code show_version(const std::string& argv0)
         stream = std::ifstream{info_file_path.c_str()};
         return do_show_version(stream);
     }
-    std::cerr << "can't find " << info_file_path.string() << std::endl;
+    std::cerr << "can't find " << info_file_path.string() << '\n' << std::flush;
     return tgctl::return_code::err;
 }
 
