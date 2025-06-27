@@ -39,7 +39,7 @@ namespace jogasaki::utils {
         "STOCK"
     };
 
-    std::filesystem::path prepare(const std::string& location) {
+    static std::filesystem::path prepare(const std::string& location) {
         std::filesystem::path dir(location);
         dir = dir / "dump";
         if (!std::filesystem::exists(dir)) {

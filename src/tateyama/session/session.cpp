@@ -71,17 +71,17 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
         request.clear_session_list();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             switch(response.result_case()) {
             case ::tateyama::proto::session::response::SessionList::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::session::response::SessionList::ResultCase::kError:
-                std::cerr << "SessionList error: " << response.error().message() << std::endl;
+                std::cerr << "SessionList error: " << response.error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
             default:
-                std::cerr << "SessionList result_case() error: " << std::endl;
+                std::cerr << "SessionList result_case() error: \n" << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::payload_broken;
             }
@@ -98,28 +98,14 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 std::size_t type_max{4};
                 std::size_t remote_max{6};
                 for(auto& e : session_list) {
-                    if (id_max < e.session_id().length()) {
-                        id_max = e.session_id().length();
-                    }
-                    if (label_max < e.label().length()) {
-                        label_max = e.label().length();
-                    }
-                    if (application_max < e.application().length()) {
-                        application_max = e.application().length();
-                    }
-                    if (user_max < e.user().length()) {
-                        user_max = e.user().length();
-                    }
+                    id_max = std::max(id_max, e.session_id().length());
+                    label_max = std::max(label_max, e.label().length());
+                    application_max = std::max(application_max, e.application().length());
+                    user_max = std::max(user_max, e.user().length());
                     auto ts = to_timepoint_string(e.start_at());
-                    if (start_max < ts.length()) {
-                        start_max = ts.length();
-                    }
-                    if (type_max < e.connection_type().length()) {
-                        type_max = e.connection_type().length();
-                    }
-                    if (remote_max < e.connection_info().length()) {
-                        remote_max = e.connection_info().length();
-                    }
+                    start_max = std::max(start_max, ts.length());
+                    type_max = std::max(type_max, e.connection_type().length());
+                    remote_max = std::max(remote_max, e.connection_info().length());
                     if (!e.label().empty()) {
                         labels.emplace(e.label());
                     }
@@ -141,12 +127,12 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     std::cout << std::setw(static_cast<int>(user_max)) << "user";
                     std::cout << std::setw(static_cast<int>(start_max)) << "start";
                     std::cout << std::setw(static_cast<int>(type_max)) << "type";
-                    std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
-                    std::cout << std::endl;
+                    std::cout << std::setw(static_cast<int>(remote_max)) << "remote\n";
+                    std::cout << std::flush;
                 }
                 std::map<std::size_t, std::string> output{};
                 for(auto& e : session_list) {
-                    auto e_session_id = e.session_id();
+                    const auto& e_session_id = e.session_id();
                     auto session_id = stol(e_session_id.substr(1));
                     if (FLAGS_verbose) {
                         std::ostringstream ss{};
@@ -172,7 +158,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 }
                 if (!output.empty()) {
                     for(auto&& e: output) {
-                        std::cout << e.second << std::endl;
+                        std::cout << e.second << '\n' << std::flush;
                     }
                 }
                 if (monitor_output) {
@@ -184,7 +170,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
@@ -220,12 +206,12 @@ tgctl::return_code session_show(std::string_view session_ref) {
             case ::tateyama::proto::session::response::SessionGet::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::session::response::SessionGet::ResultCase::kError:
-                std::cerr << "SessionShow error: " << response.error().message() << std::endl;
+                std::cerr << "SessionShow error: " << response.error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
             default:
-                std::cerr << "SessionShow result_case() error: " << std::endl;
+                std::cerr << "SessionShow result_case() error: \n" << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::payload_broken;
             }
@@ -234,13 +220,13 @@ tgctl::return_code session_show(std::string_view session_ref) {
                 auto e = response.success().entry();
 
                 std::cout << std::left;
-                std::cout << std::setw(static_cast<int>(13)) << "id" << e.session_id() << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "application" << e.application() << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "label" << e.label() << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "user" << e.user() << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "start" << to_timepoint_string(e.start_at()) << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "type" << e.connection_type() << std::endl;
-                std::cout << std::setw(static_cast<int>(13)) << "remote" << e.connection_info() << std::endl;
+                std::cout << std::setw(static_cast<int>(13)) << "id" << e.session_id() << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "application" << e.application() << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "label" << e.label() << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "user" << e.user() << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "start" << to_timepoint_string(e.start_at()) << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "type" << e.connection_type() << '\n';
+                std::cout << std::setw(static_cast<int>(13)) << "remote" << e.connection_info() << '\n' << std::flush;
                 if (monitor_output) {
                     monitor_output->session_info(e.session_id(), e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
                     monitor_output->finish(monitor::reason::absent);
@@ -251,7 +237,7 @@ tgctl::return_code session_show(std::string_view session_ref) {
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;
@@ -273,7 +259,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     if (FLAGS_graceful && FLAGS_forceful) {
-        std::cerr << "both forceful and graceful options specified" << std::endl;
+        std::cerr << "both forceful and graceful options specified\n" << std::flush;
         rtnv = tgctl::return_code::err;
     } else {
         authentication::auth_options();
@@ -296,12 +282,12 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
                 case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kSuccess:
                     break;
                 case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kError:
-                    std::cerr << "SessionShutdown error: " << response.error().message() << std::endl;
+                    std::cerr << "SessionShutdown error: " << response.error().message() << '\n' << std::flush;
                     rtnv = tgctl::return_code::err;
                     reason = monitor::reason::server;
                     break;
                 default:
-                    std::cerr << "SessionShutdown result_case() error: " << std::endl;
+                    std::cerr << "SessionShutdown result_case() error: \n" << std::flush;
                     rtnv = tgctl::return_code::err;
                     reason = monitor::reason::payload_broken;
                 }
@@ -316,7 +302,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
                 reason = monitor::reason::payload_broken;
             }
         } catch (tgctl::runtime_error &ex) {
-            std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+            std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
             reason = ex.code();
         }
         rtnv = tgctl::return_code::err;
@@ -357,12 +343,12 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
             case ::tateyama::proto::session::response::SessionSetVariable::ResultCase::kSuccess:
                 break;
             case ::tateyama::proto::session::response::SessionSetVariable::ResultCase::kError:
-                std::cerr << "SessionSetVariable error: " << response.error().message() << std::endl;
+                std::cerr << "SessionSetVariable error: " << response.error().message() << '\n' << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::server;
                 break;
             default:
-                std::cerr << "SessionSetVariable result_case() error: " << std::endl;
+                std::cerr << "SessionSetVariable result_case() error: \n" << std::flush;
                 rtnv = tgctl::return_code::err;
                 reason = monitor::reason::payload_broken;
             }
@@ -377,7 +363,7 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
     rtnv = tgctl::return_code::err;

@@ -113,7 +113,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         if (args.at(2) == "estimate") {
             return tateyama::datastore::tgctl_backup_estimate();
         }
-        std::cerr << "unknown backup subcommand '" << args.at(2) << '\n' << std::flush;
+        std::cerr << "unknown backup subcommand '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "restore") {
@@ -146,7 +146,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                     std::cerr << "tag is not specficed\n" << std::flush;
                 }
             } else {
-                std::cerr << "unknown backup subcommand '" << args.at(2) << '\n' << std::flush;
+                std::cerr << "unknown backup subcommand '" << args.at(2) << "'\n" << std::flush;
                 rtnv = -1;
             }
 
@@ -195,7 +195,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
             }
             return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5), true);
         }
-        std::cerr << "unknown session sub command '" << args.at(2) << '\n' << std::flush;
+        std::cerr << "unknown session sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "dbstats") {
@@ -209,7 +209,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         if (args.at(2) == "show") {
             return tateyama::metrics::show();
         }
-        std::cerr << "unknown dbstats-sub command '" << args.at(2) << '\n' << std::flush;
+        std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 #ifdef ENABLE_ALTIMETER
@@ -266,7 +266,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
             }
             return tateyama::altimeter::rotate(args.at(3));
         }
-        std::cerr << "unknown altimeter-sub command '" << args.at(2) << '\n' << std::flush;
+        std::cerr << "unknown altimeter-sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 #endif
@@ -293,11 +293,11 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
             }
             return tateyama::request::request_extract_sql(std::stol(args.at(3)), args.at(4));
         }
-        std::cerr << "unknown request-sub command '" << args.at(2) << '\n' << std::flush;
+        std::cerr << "unknown request-sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 
-    std::cerr << "unknown command '" << args.at(1) << '\n' << std::flush;
+    std::cerr << "unknown command '" << args.at(1) << "'\n" << std::flush;
     return tateyama::tgctl::return_code::err;
 }
 
@@ -319,9 +319,9 @@ int main(int argc, char* argv[]) {
         std::vector<std::string> args(argv, argv + argc);
 
         try {
-            return static_cast<int>(tateyama::tgctl::tgctl_main(args));
+            return tateyama::tgctl::tgctl_main(args);
         } catch (std::exception &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what() << '\n' << std::flush;
         }
     }
     return -1;
