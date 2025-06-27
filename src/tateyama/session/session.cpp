@@ -201,7 +201,7 @@ tgctl::return_code session_show(std::string_view session_ref) {
         request.clear_session_get();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             switch(response.result_case()) {
             case ::tateyama::proto::session::response::SessionGet::ResultCase::kSuccess:
                 break;
@@ -220,13 +220,13 @@ tgctl::return_code session_show(std::string_view session_ref) {
                 auto e = response.success().entry();
 
                 std::cout << std::left;
-                std::cout << std::setw(static_cast<int>(13)) << "id" << e.session_id() << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "application" << e.application() << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "label" << e.label() << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "user" << e.user() << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "start" << to_timepoint_string(e.start_at()) << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "type" << e.connection_type() << '\n';
-                std::cout << std::setw(static_cast<int>(13)) << "remote" << e.connection_info() << '\n' << std::flush;
+                std::cout << std::setw(13) << "id" << e.session_id() << '\n';
+                std::cout << std::setw(13) << "application" << e.application() << '\n';
+                std::cout << std::setw(13) << "label" << e.label() << '\n';
+                std::cout << std::setw(13) << "user" << e.user() << '\n';
+                std::cout << std::setw(13) << "start" << to_timepoint_string(e.start_at()) << '\n';
+                std::cout << std::setw(13) << "type" << e.connection_type() << '\n';
+                std::cout << std::setw(13) << "remote" << e.connection_info() << '\n' << std::flush;
                 if (monitor_output) {
                     monitor_output->session_info(e.session_id(), e.label(), e.application(), e.user(), to_timepoint_string(e.start_at()), e.connection_type(), e.connection_info());
                     monitor_output->finish(monitor::reason::absent);
@@ -277,7 +277,7 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
             request.clear_session_shutdown();
 
             if (response_opt) {
-                auto response = response_opt.value();
+                const auto& response = response_opt.value();
                 switch(response.result_case()) {
                 case ::tateyama::proto::session::response::SessionShutdown::ResultCase::kSuccess:
                     break;
@@ -338,7 +338,7 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
         request.clear_session_set_variable();
 
         if (response_opt) {
-            auto response = response_opt.value();
+            const auto& response = response_opt.value();
             switch(response.result_case()) {
             case ::tateyama::proto::session::response::SessionSetVariable::ResultCase::kSuccess:
                 break;
