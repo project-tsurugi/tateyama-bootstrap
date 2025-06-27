@@ -48,11 +48,11 @@ DECLARE_string(use_file_list);
 
 namespace tateyama::tgctl {
 
-int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-function-cognitive-complexity)
+static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-function-cognitive-complexity)
     FLAGS_quiet |= FLAGS_q;
 
     if (args.size() < 2) {
-        std::cerr << "no subcommand" << std::endl;
+        std::cerr << "no subcommand\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "start") {
@@ -75,12 +75,12 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
     }
     if (args.at(1) == "backup") {
         if (args.size() < 3) {
-            std::cerr << "need to specify backup subcommand" << std::endl;
+            std::cerr << "need to specify backup subcommand\n" << std::flush;
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "create") {
             if (args.size() < 4) {
-                std::cerr << "need to specify path/to/backup" << std::endl;
+                std::cerr << "need to specify path/to/backup\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             bool is_running = tateyama::process::is_running();
@@ -113,19 +113,19 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         if (args.at(2) == "estimate") {
             return tateyama::datastore::tgctl_backup_estimate();
         }
-        std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
+        std::cerr << "unknown backup subcommand '" << args.at(2) << '\n' << std::flush;
         return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "restore") {
         if (FLAGS_timeout != -1) {
-            std::cerr << "timeout option cannot be specified to restore subcommand" << std::endl;
+            std::cerr << "timeout option cannot be specified to restore subcommand\n" << std::flush;
         }
         FLAGS_timeout = 0;  // no timeout for 'tgctl restore xxx'
         FLAGS_quiet = true;
         int rtnv{};
         if (tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::maintenance_server) == tgctl::return_code::ok) {
             if (args.size() < 3) {
-                std::cerr << "need to specify restore subcommand" << std::endl;
+                std::cerr << "need to specify restore subcommand\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             if (args.at(2) == "backup") {
@@ -137,22 +137,22 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
                         rtnv = tateyama::datastore::tgctl_restore_backup(args.at(3));
                     }
                 } else {
-                    std::cerr << "directory is not specficed" << std::endl;
+                    std::cerr << "directory is not specficed\n" << std::flush;
                 }
             } else if (args.at(2) == "tag") {
                 if (args.size() > 3) {
                     rtnv = tateyama::datastore::tgctl_restore_tag(args.at(3));
                 } else {
-                    std::cerr << "tag is not specficed" << std::endl;
+                    std::cerr << "tag is not specficed\n" << std::flush;
                 }
             } else {
-                std::cerr << "unknown backup subcommand '" << args.at(2) << "'" << std::endl;
+                std::cerr << "unknown backup subcommand '" << args.at(2) << '\n' << std::flush;
                 rtnv = -1;
             }
 
             tateyama::process::tgctl_shutdown_kill(false, false);
         } else {
-            std::cerr << "failed to boot tsurugidb in maintenance_server mode" << std::endl;
+            std::cerr << "failed to boot tsurugidb in maintenance_server mode\n" << std::flush;
             rtnv = -1;
         }
         return rtnv;
@@ -165,7 +165,7 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
     }
     if (args.at(1) == "session") {
         if (args.size() < 3) {
-            std::cerr << "need to specify session subcommand" << std::endl;
+            std::cerr << "need to specify session subcommand\n" << std::flush;
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "list") {
@@ -173,21 +173,21 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         }
         if (args.at(2) == "show") {
             if (args.size() < 4) {
-                std::cerr << "need to specify session-ref" << std::endl;
+                std::cerr << "need to specify session-ref\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::session::session_show(args.at(3));
         }
         if (args.at(2) == "shutdown") {
             if (args.size() < 4) {
-                std::cerr << "need to specify session-ref(s)" << std::endl;
+                std::cerr << "need to specify session-ref(s)\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::session::session_shutdown(args.at(3));
         }
         if (args.at(2) == "set") {
             if (args.size() < 5) {
-                std::cerr << "need to specify session-ref and set-key" << std::endl;
+                std::cerr << "need to specify session-ref and set-key\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             if (args.size() < 6) {
@@ -195,12 +195,12 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
             }
             return tateyama::session::session_swtch(args.at(3), args.at(4), args.at(5), true);
         }
-        std::cerr << "unknown session sub command '" << args.at(2) << "'" << std::endl;
+        std::cerr << "unknown session sub command '" << args.at(2) << '\n' << std::flush;
         return tateyama::tgctl::return_code::err;
     }
     if (args.at(1) == "dbstats") {
         if (args.size() < 3) {
-            std::cerr << "need to specify dbstats subcommand" << std::endl;
+            std::cerr << "need to specify dbstats subcommand\n" << std::flush;
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "list") {
@@ -209,51 +209,51 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         if (args.at(2) == "show") {
             return tateyama::metrics::show();
         }
-        std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'" << std::endl;
+        std::cerr << "unknown dbstats-sub command '" << args.at(2) << '\n' << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 #ifdef ENABLE_ALTIMETER
     if (args.at(1) == "altimeter") {
         if (args.size() < 3) {
-            std::cerr << "need to specify altimeter subcommand" << std::endl;
+            std::cerr << "need to specify altimeter subcommand\n" << std::flush;
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "enable") {
             if (args.size() < 4) {
-                std::cerr << "need to specify log type for altimeter enable" << std::endl;
+                std::cerr << "need to specify log type for altimeter enable\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::altimeter::set_enabled(args.at(3), true);
         }
         if (args.at(2) == "disable") {
             if (args.size() < 4) {
-                std::cerr << "need to specify log type for altimeter disable" << std::endl;
+                std::cerr << "need to specify log type for altimeter disable\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::altimeter::set_enabled(args.at(3), false);
         }
         if (args.at(2) == "set") {
             if (args.size() < 4) {
-                std::cerr << "need to specify parameter for altimeter set" << std::endl;
+                std::cerr << "need to specify parameter for altimeter set\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             if (args.at(3) == "event_level") {
                 if (args.size() < 5) {
-                    std::cerr << "need to specify parameter for altimeter set event_level" << std::endl;
+                    std::cerr << "need to specify parameter for altimeter set event_level\n" << std::flush;
                     return tateyama::tgctl::return_code::err;
                 }
                 return tateyama::altimeter::set_log_level("event", args.at(4));
             }
             if (args.at(3) == "audit_level") {
                 if (args.size() < 5) {
-                    std::cerr << "need to specify parameter for altimeter set audit_level" << std::endl;
+                    std::cerr << "need to specify parameter for altimeter set audit_level\n" << std::flush;
                     return tateyama::tgctl::return_code::err;
                 }
                 return tateyama::altimeter::set_log_level("audit", args.at(4));
             }
             if (args.at(3) == "statement_duration") {
                 if (args.size() < 5) {
-                    std::cerr << "need to specify parameter for altimeter set statement_duration" << std::endl;
+                    std::cerr << "need to specify parameter for altimeter set statement_duration\n" << std::flush;
                     return tateyama::tgctl::return_code::err;
                 }
                 return tateyama::altimeter::set_statement_duration(args.at(4));
@@ -261,19 +261,19 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         }
         if (args.at(2) == "rotate") {
             if (args.size() < 4) {
-                std::cerr << "need to specify parameter for altimeter rotate" << std::endl;
+                std::cerr << "need to specify parameter for altimeter rotate\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::altimeter::rotate(args.at(3));
         }
-        std::cerr << "unknown altimeter-sub command '" << args.at(2) << "'" << std::endl;
+        std::cerr << "unknown altimeter-sub command '" << args.at(2) << '\n' << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 #endif
 
     if (args.at(1) == "request") {
         if (args.size() < 3) {
-            std::cerr << "need to specify request subcommand" << std::endl;
+            std::cerr << "need to specify request subcommand\n" << std::flush;
             return tateyama::tgctl::return_code::err;
         }
         if (args.at(2) == "list") {
@@ -281,23 +281,23 @@ int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readability-func
         }
         if (args.at(2) == "payload") {
             if (args.size() < 5) {
-                std::cerr << "need to specify session-id and request-id" << std::endl;
+                std::cerr << "need to specify session-id and request-id\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::request::request_payload(std::stol(args.at(3)), std::stol(args.at(4)));
         }
         if (args.at(2) == "extract-sql") {
             if (args.size() < 5) {
-                std::cerr << "need to specify session-id and payload" << std::endl;
+                std::cerr << "need to specify session-id and payload\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
             return tateyama::request::request_extract_sql(std::stol(args.at(3)), args.at(4));
         }
-        std::cerr << "unknown request-sub command '" << args.at(2) << "'" << std::endl;
+        std::cerr << "unknown request-sub command '" << args.at(2) << '\n' << std::flush;
         return tateyama::tgctl::return_code::err;
     }
 
-    std::cerr << "unknown command '" << args.at(1) << "'" << std::endl;
+    std::cerr << "unknown command '" << args.at(1) << '\n' << std::flush;
     return tateyama::tgctl::return_code::err;
 }
 

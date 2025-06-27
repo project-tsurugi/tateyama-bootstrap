@@ -34,34 +34,34 @@ enum class reason : std::int64_t {
     absent = 0,  // no error
 
     // old type reason
-    connection,
-    not_found,
-    ambiguous,
-    permission,
-    variable_not_defined,
-    variable_invalid_value,
+    connection = 1,
+    not_found = 2,
+    ambiguous = 3,
+    permission = 4,
+    variable_not_defined = 5,
+    variable_invalid_value = 6,
 
     // general
-    authentication_failure,
-    connection_timeout,
-    connection_failure,
-    io,
-    server,
-    interrupted,
-    internal,
+    authentication_failure = 11,
+    connection_timeout = 12,
+    connection_failure = 13,
+    io = 14,
+    server = 15,
+    interrupted = 16,
+    internal = 17,
 
     // request
-    request_missing,
-    payload_broken,
-    sql_missing,
-    sql_unresolved,
+    request_missing = 20,
+    payload_broken = 21,
+    sql_missing = 22,
+    sql_unresolved = 23,
 
     // process control, etc.
-    initialization,
-    another_process,
-    invalid_status,
-    invalid_argument,
-    timeout,
+    initialization = 30,
+    another_process = 31,
+    invalid_status = 32,
+    invalid_argument = 33,
+    timeout = 34,
 
     unknown = -1,
 };
