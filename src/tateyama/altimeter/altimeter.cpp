@@ -43,14 +43,14 @@ static monitor::reason post_processing(std::optional<T>& response_opt, const std
         case T::ResultCase::kSuccess:
             return monitor::reason::absent;
         case T::ResultCase::kError:
-            std::cerr << "altimeter " << sub_command << " error: " << response.error().message() << std::endl;
+            std::cerr << "altimeter " << sub_command << " error: " << response.error().message() << '\n' << std::flush;
             return monitor::reason::server;
         default:
-            std::cerr << "altimeter " << sub_command << " returns illegal response" << std::endl;
+            std::cerr << "altimeter " << sub_command << " returns illegal response\n" << std::flush;
             return monitor::reason::payload_broken;
         }
     }
-    std::cerr << "altimeter " << sub_command << " returns nullopt" << std::endl;
+    std::cerr << "altimeter " << sub_command << " returns nullopt\n" << std::flush;
     return monitor::reason::payload_broken;
 }
 
@@ -80,7 +80,7 @@ tgctl::return_code set_enabled(const std::string& type, bool enabled) {
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_enabled");
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
 
@@ -117,7 +117,7 @@ tgctl::return_code set_log_level(const std::string& type, const std::string& lev
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_log_level");
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
 
@@ -148,7 +148,7 @@ tgctl::return_code set_statement_duration(const std::string& value) {
 
         reason = post_processing<::tateyama::proto::altimeter::response::Configure>(response_opt, "set_statement_duration");
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
 
@@ -186,7 +186,7 @@ tgctl::return_code rotate(const std::string& type) {
 
         reason = post_processing<::tateyama::proto::altimeter::response::LogRotate>(response_opt, "rotete");
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'" << std::endl;
+        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
     }
 

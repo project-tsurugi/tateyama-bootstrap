@@ -100,7 +100,7 @@ private:
         }
         if (auto system_config = configuration_->get_section("system"); system_config) {
             if (auto pid_dir = system_config->get<std::filesystem::path>("pid_directory"); pid_dir) {
-                std::filesystem::path directory = pid_dir.value();
+                const std::filesystem::path& directory = pid_dir.value();
 
                 std::string pid_file_name(PID_FILE_PREFIX);
                 pid_file_name += "-";
