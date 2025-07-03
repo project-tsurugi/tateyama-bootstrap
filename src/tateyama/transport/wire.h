@@ -552,6 +552,14 @@ public:
         simple_wire<response_header>::write(base, from, header, closed_);
     }
     /**
+     * @brief check buffer has space for the response message
+     * @param header the header of the response message
+     * @return true if the buffer has space for the response message
+     */
+    bool is_writable(response_header header) {
+        return room() >= header.get_length();
+    }
+    /**
      * @brief notify client of the client of the shutdown
      */
     void notify_shutdown() {
@@ -559,6 +567,16 @@ public:
         if (wait_for_read_) {
             boost::interprocess::scoped_lock lock(m_mutex_);
             c_empty_.notify_one();
+        }
+    }
+    /**
+     * @brief notify server of the client timeout
+     */
+    void force_close() {
+        closed_.store(true);
+        if (wait_for_write_) {
+            boost::interprocess::scoped_lock lock(m_mutex_);
+            c_full_.notify_one();
         }
     }
 
@@ -772,7 +790,7 @@ public:
                 }
             }
         } catch (std::exception &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what() << '\n' << std::flush;
         }
     }
 
@@ -829,7 +847,7 @@ public:
             timeout = watch_interval * 1000 * 1000;
         }
 
-        do {
+        while (true) {
             for (auto&& wire: unidirectional_simple_wires_) {
                 if(wire.has_record()) {
                     return &wire;
@@ -865,9 +883,10 @@ public:
                     return active_wire;
                 }
             }
-        } while(!is_eor());
-
-        return nullptr;
+            if (is_eor()) {
+                return nullptr;
+            }
+        }
     }
 
     /**
@@ -894,7 +913,7 @@ public:
     void set_eor() {
         eor_ = true;
         std::atomic_thread_fence(std::memory_order_acq_rel);
-        if (wait_for_record_) {
+        {
             boost::interprocess::scoped_lock lock(m_record_);
             c_record_.notify_one();
         }
@@ -935,10 +954,8 @@ private:
      *  used by server
      */
     void notify_record_arrival() {
-        if (wait_for_record_) {
-            boost::interprocess::scoped_lock lock(m_record_);
-            c_record_.notify_one();
-        }
+        boost::interprocess::scoped_lock lock(m_record_);
+        c_record_.notify_one();
     }
 
     static constexpr std::size_t Alignment = 64;
@@ -1187,6 +1204,9 @@ public:
         return sid;
     }
     std::size_t wait(std::size_t sid, std::int64_t timeout = 0) {
+        if (terminate_) {
+            throw tgctl::runtime_error(monitor::reason::server, "server is shutting down now");
+        }
         auto& entry = v_requested_.at(reset_admin(sid));
         try {
             auto rtnv = entry.wait(timeout);

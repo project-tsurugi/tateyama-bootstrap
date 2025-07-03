@@ -42,7 +42,7 @@ namespace tateyama::process {
             path_for_this = boost::filesystem::canonical(a0f);
         }
         if (!boost::filesystem::exists(path_for_this)) {
-            std::cerr << "cannot find " << path_for_this.string() << std::endl;
+            std::cerr << "cannot find " << path_for_this.string() << 'n' << std::flush;
         }
         return boost::filesystem::canonical(path_for_this).parent_path().parent_path();
     }

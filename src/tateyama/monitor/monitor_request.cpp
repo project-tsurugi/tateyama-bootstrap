@@ -32,7 +32,7 @@ void monitor::request_list(std::size_t session_id,
           << SERVICE_ID << service_id << ", "
           << PAYLOAD_SIZE << payload_size << ", "
           << ELAPSED_TIME << elapsed_time
-          << " }" << std::endl;
+          << " }\n";
     strm_.flush();
 }
 
@@ -40,7 +40,7 @@ void monitor::request_payload(std::string_view payload) {
     strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
           << KIND_DATA << ", " << FORMAT_REQUEST_PAYLOAD << ", "
           << PAYLOAD << payload
-          << "\" }" << std::endl;
+          << "\" }\n";
     strm_.flush();
 }
 
@@ -53,7 +53,7 @@ void monitor::request_extract_sql(const std::optional<std::string>& transacion_i
     if (sql) {
         strm_ << ", " << SQL << sql.value() << "\", " << TYPE << to_string_view(identify_sql_type(sql.value())) << "\"";;
     }
-    strm_ << " }" << std::endl;
+    strm_ << " }\n";
     strm_.flush();
 }
 
