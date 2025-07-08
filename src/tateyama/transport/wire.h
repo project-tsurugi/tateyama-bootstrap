@@ -1075,9 +1075,10 @@ public:
         [[nodiscard]] bool wait(std::atomic_bool& terminate) {
             boost::interprocess::scoped_lock lock(mutex_);
             std::atomic_thread_fence(std::memory_order_acq_rel);
-            return condition_.timed_wait(lock,
-                                         boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(watch_interval * 1000 * 1000))),
-                                         [this, &terminate](){ return (pushed_.load() > poped_.load()) || terminate.load(); });
+            condition_.timed_wait(lock,
+                                  boost::get_system_time() + boost::posix_time::microseconds(u_cap(u_round(watch_interval * 1000 * 1000))),
+                                  [this, &terminate](){ return (pushed_.load() > poped_.load()) || terminate.load(); });
+            return pushed_.load() > poped_.load();
         }
         // thread unsafe (assume single listener thread)
         void pop() {
@@ -1204,6 +1205,9 @@ public:
         return sid;
     }
     std::size_t wait(std::size_t sid, std::int64_t timeout = 0) {
+        if (terminate_) {
+            throw tgctl::runtime_error(monitor::reason::connection, "server is shutting down now");
+        }
         auto& entry = v_requested_.at(reset_admin(sid));
         try {
             auto rtnv = entry.wait(timeout);

@@ -172,8 +172,8 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
+        std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
     }
     rtnv = tgctl::return_code::err;
 
@@ -239,8 +239,8 @@ tgctl::return_code session_show(std::string_view session_ref) {
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
+        std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
     }
     rtnv = tgctl::return_code::err;
 
@@ -304,8 +304,8 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
                 reason = monitor::reason::payload_broken;
             }
         } catch (tgctl::runtime_error &ex) {
-            std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
             reason = ex.code();
+            std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
         }
         rtnv = tgctl::return_code::err;
     }
@@ -365,8 +365,8 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
             reason = monitor::reason::payload_broken;
         }
     } catch (tgctl::runtime_error &ex) {
-        std::cerr << "could not connect to database with name '" << tateyama::bootstrap::wire::transport::database_name() << "'\n" << std::flush;
         reason = ex.code();
+        std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
     }
     rtnv = tgctl::return_code::err;
 

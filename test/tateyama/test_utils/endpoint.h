@@ -257,12 +257,12 @@ public:
         }
         while(true) {
             auto session_id = connection_queue.listen();
-            if (session_id == 0) {  // means timeout
+            if (session_id == 0) {  // means timeout or terminated
+                if (connection_queue.is_terminated()) {
+                    connection_queue.confirm_terminated();
+                    break;
+                }
                 continue;
-            }
-            if (connection_queue.is_terminated()) {
-                connection_queue.confirm_terminated();
-                break;
             }
             std::string session_name = name_;
             session_name += "-";
