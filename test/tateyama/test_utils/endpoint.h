@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 Project Tsurugi.
+ * Copyright 2023-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,10 @@
 #include "tateyama/tgctl/runtime_error.h"
 #include "server_wires_mock.h"
 #include "endpoint_proto_utils.h"
+#include "tateyama/authentication/crypto/rsa.h"
+#include "tateyama/authentication/crypto/base64.h"
+#include "tateyama/authentication/crypto/key.h"
+#include "tateyama/authentication/crypto/token.h"
 
 namespace tateyama::test_utils {
 
@@ -67,8 +71,8 @@ class endpoint {
 public:
     class worker {
     public:
-        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, data_for_check& data_for_check)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check) {
+        worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, data_for_check& data_for_check, bool authentication)
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check), authentication_(authentication)  {
         }
         ~worker() {
             if (reply_thread_.joinable()) {
@@ -91,21 +95,75 @@ public:
                 }
                 std::stringstream ss{};
                 if (data_for_check_.component_id_ = req_header.service_id(); data_for_check_.component_id_ == tateyama::framework::service_id_endpoint_broker) {
+                    // obtain request
+                    std::string_view payload{};
+                    if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
+                        throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
+                    }
+                    tateyama::proto::endpoint::request::Request rq{};
+                    if(!rq.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
+                        throw tgctl::runtime_error(monitor::reason::internal, "request parse error");
+                    }
+
+                    // prepare for response (framework header)
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
-                    tateyama::proto::endpoint::response::Handshake rp{};
-                    auto rs = rp.mutable_success();
-                    rs->set_session_id(1);  // session id is dummy, as this is a test
-                    auto body = rp.SerializeAsString();
-                    if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
-                        throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
+
+                    // EncryptionKey request
+                    if (rq.command_case() == tateyama::proto::endpoint::request::Request::kEncryptionKey) {
+                        tateyama::proto::endpoint::response::EncryptionKey rp{};
+                        auto rs = rp.mutable_success();
+                        rs->set_encryption_key(tateyama::authentication::crypto::base64_decode(tateyama::authentication::crypto::public_key));
+                        auto body = rp.SerializeAsString();
+                        if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                            throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
+                        }
+                        rp.clear_success();
+
+                        auto reply_message = ss.str();
+                        wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+                        continue;
                     }
-                    rp.clear_success();
-                    auto reply_message = ss.str();
-                    wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+
+                    // Handshake request
+                    if (authentication_) {
+                        auto& request = rq.handshake();
+                        switch (request.client_information().credential().credential_opt_case()) {
+                        case tateyama::proto::endpoint::request::Credential::CredentialOptCase::kEncryptedCredential:
+                        {
+                            tateyama::authentication::crypto::rsa decrypter{tateyama::authentication::crypto::base64_decode(tateyama::authentication::crypto::private_key)};
+                            std::vector<std::string> user_password;
+                            boost::algorithm::split(user_password, request.client_information().credential().encrypted_credential(), boost::is_any_of("."));
+                            std::string u{};
+                            decrypter.decrypt(tateyama::authentication::crypto::base64_decode(user_password.at(0)),u);
+                            std::string p{};
+                            decrypter.decrypt(tateyama::authentication::crypto::base64_decode(user_password.at(1)),p);
+                            if (u == "tsurugi" && p == "password") { // only user == "tsurugi" and password == "password" is correct in tests
+                                handshake_success(ss, index);
+                                continue;
+                            }
+                            handshake_authentication_fail(ss, index);
+                            continue;
+                        }
+                        case tateyama::proto::endpoint::request::Credential::CredentialOptCase::kRememberMeCredential:
+                        {
+                            if (request.client_information().credential().remember_me_credential() == tateyama::authentication::crypto::token) {
+                                handshake_success(ss, index);
+                                continue;
+                            }
+                            handshake_authentication_fail(ss, index);
+                            continue;
+                        }
+                        default:
+                            handshake_authentication_fail(ss, index);
+                            continue;
+                        }
+                    }
+                    handshake_success(ss, index);
                     continue;
+
                 } else if (req_header.service_id() == tateyama::framework::service_id_routing) {
                     ::tateyama::proto::framework::response::Header header{};
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
@@ -122,6 +180,7 @@ public:
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     continue;
+
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(1234)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
@@ -137,6 +196,7 @@ public:
                     auto reply_message = ss.str();
                     wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     continue;
+
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(2468)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
@@ -157,6 +217,7 @@ public:
                         wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
                     });
                     continue;
+
                 } else if (req_header.service_id() == static_cast<tateyama::framework::component::id_type>(3072)) {
                     std::string_view payload{};
                     if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(in), nullptr, payload); ! res) {
@@ -224,15 +285,42 @@ public:
         data_for_check& data_for_check_;
         std::thread reply_thread_{};
         bool suppress_message_{};
+        bool authentication_{};
         server_wire_container_mock::unq_p_resultset_wires_conteiner resultset_wires_{};
         server_wire_container_mock::unq_p_resultset_wire_conteiner resultset_wire_{};
+
+        void handshake_success(std::stringstream& ss, tateyama::common::wire::response_header::index_type index) {
+            tateyama::proto::endpoint::response::Handshake rp{};
+            auto rs = rp.mutable_success();
+            rs->set_session_id(1);  // session id is dummy, as this is a test
+            auto body = rp.SerializeAsString();
+            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
+            }
+            rp.clear_success();
+            auto reply_message = ss.str();
+            wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+        }
+        void handshake_authentication_fail(std::stringstream& ss, tateyama::common::wire::response_header::index_type index) {
+            tateyama::proto::endpoint::response::Handshake rp{};
+            auto re = rp.mutable_error();
+            re->set_message("authentication for test fail");
+            re->set_code(tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR);
+            auto body = rp.SerializeAsString();
+            if(auto res = tateyama::utils::PutDelimitedBodyToOstream(body, std::addressof(ss)); ! res) {
+                throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
+            }
+            rp.clear_error();
+            auto reply_message = ss.str();
+            wire_->get_response_wire().write(reply_message.data(), tateyama::common::wire::response_header(index, reply_message.length(), RESPONSE_BODY));
+        }
     };
 
     endpoint(const std::string& name, const std::string& digest, boost::barrier& sync)
-        : endpoint(name, digest, sync, "/tmp/") {
+        : endpoint(name, digest, sync, "/tmp/", false) {
     }
-    endpoint(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory)
-        : name_(name), digest_(digest), directory_(directory), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync) {
+    endpoint(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory, bool authentication)
+        : name_(name), digest_(digest), directory_(directory), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync), authentication_(authentication) {
     }
     ~endpoint() {
         if (thread_.joinable()) {
@@ -275,7 +363,8 @@ public:
                 worker_ = std::make_unique<worker>(session_id,
                                                    std::move(wire),
                                                    [&connection_queue, index](){ connection_queue.disconnect(index); },
-                                                   data_for_check_);
+                                                   data_for_check_,
+                                                   authentication_);
                 thread_ = std::thread(std::ref(*worker_));
                 if (suppress_message_) {
                     worker_->suppress_message();
@@ -320,6 +409,7 @@ private:
     bool notified_{false};
     data_for_check data_for_check_{};
     bool suppress_message_{};
+    bool authentication_{};
 };
 
 }  // namespace tateyama::test_utils

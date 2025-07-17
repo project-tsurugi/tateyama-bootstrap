@@ -18,11 +18,12 @@ target_link_libraries(${test_target}
         PRIVATE lib_for_tests-impl
         PRIVATE glog::glog
         PRIVATE gflags::gflags
-        PRIVATE rt
         PRIVATE Boost::thread
         PRIVATE Boost::filesystem
         PRIVATE ${tateyama_engine}
         PRIVATE takatori
+        PRIVATE rt
+        PRIVATE crypto
         )
 
 function (add_test_executable source_file)
@@ -49,6 +50,7 @@ file(GLOB SRCS
         "tateyama/metrics/*_test.cpp"
         "tateyama/request/*_test.cpp"
         "tateyama/transport/*_test.cpp"
+        "tateyama/authentication/*_test.cpp"
 )
 if (ENABLE_ALTIMETER)
     file(GLOB ALTIMETER_SRCS

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,17 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <sys/ioctl.h>
+#include <asm/termbits.h>
 
 #include <gflags/gflags.h>
 
 #include <tateyama/logging.h>
 
+#include <tateyama/proto/endpoint/request.pb.h>
+#include "tateyama/tgctl/runtime_error.h"
+#include "rsa.h"
+#include "base64.h"
 #include "authentication.h"
 
 DEFINE_string(user, "", "user name for authentication");  // NOLINT
@@ -85,4 +91,67 @@ void auth_options() {
     }
 }
 
-}  // tateyama::bootstrap
+static std::string prompt(std::string_view msg)
+{
+    struct termio tty{};
+    struct termio tty_save{};
+
+    ioctl(STDIN_FILENO, TCGETA, &tty);  // NOLINT
+    tty_save = tty;
+
+    tty.c_lflag &= ~ECHO;   // NOLINT
+    tty.c_lflag |= ECHONL;  // NOLINT
+
+    ioctl(STDIN_FILENO, TCSETAF, &tty);  // NOLINT
+
+    std::cout << msg << std::flush;
+    std::string rtnv{};
+    while(true) {
+        int chr = getchar();
+        if (chr == '\n') {
+            break;
+        }
+        rtnv.append(1, static_cast<char>(chr));
+    }
+    ioctl(STDIN_FILENO, TCSETAF, &tty_save);  // NOLINT
+
+    return rtnv;
+}
+
+
+void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& func) {
+    if (!FLAGS_auth) {
+        return;
+    }
+    if (!FLAGS_user.empty()) {
+        auto key_opt = func();
+        if (key_opt) {
+            rsa_encrypter rsa{key_opt.value()};
+
+            std::string u{};
+            rsa.encrypt(FLAGS_user, u);
+
+            std::string p{};
+            rsa.encrypt(prompt("password: "), p);
+
+            (information.mutable_credential())->set_encrypted_credential(base64_encode(u) + "." + base64_encode(p));
+        }
+        return;
+    }
+    if (!FLAGS_auth_token.empty()) {
+        (information.mutable_credential())->set_remember_me_credential(FLAGS_auth_token);
+        return;
+    }
+    if (!FLAGS_credentials.empty()) {
+#ifndef NDEBUG
+        std::cout << "auth credentials: " << FLAGS_credentials << '\n' << std::flush;
+#endif
+        return;
+    }
+    if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
+        (information.mutable_credential())->set_remember_me_credential(token);
+        return;
+    }
+}
+
+}  // tateyama::authentication
