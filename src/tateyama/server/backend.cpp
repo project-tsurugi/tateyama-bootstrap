@@ -266,7 +266,11 @@ static int backend_main(int argc, char **argv) {
 int main(int argc, char **argv) {
     try {
         return tateyama::server::backend_main(argc, argv);
+    } catch (std::runtime_error &err) {
+        LOG(WARNING) << "cannot launch tsurugidb as " << err.what();
+        return 1;
     } catch (std::exception &ex) {
-        LOG(WARNING) << ex.what();
+        LOG(WARNING) << "cannot launch tsurugidb as " << ex.what();
+        return 2;
     }
 }

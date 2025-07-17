@@ -31,10 +31,16 @@ namespace tateyama::test_utils {
 class server_mock {
 public:
     server_mock(const std::string& name, const std::string& digest, boost::barrier& sync) :
-        server_mock(name, digest, sync, "/tmp/") {
+        server_mock(name, digest, sync, "/tmp/", false) {
+    }
+    server_mock(const std::string& name, const std::string& digest, boost::barrier& sync, bool authentication) :
+        server_mock(name, digest, sync, "/tmp/", authentication) {
     }
     server_mock(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory) :
-        name_(name), endpoint_(name_, digest, sync, directory), status_(std::make_unique<status_mock>(name, digest, directory)) {
+        server_mock(name, digest, sync, directory, false) {
+    }
+    server_mock(const std::string& name, const std::string& digest, boost::barrier& sync, const std::string& directory, bool authentication) :
+        name_(name), endpoint_(name_, digest, sync, directory, authentication), status_(std::make_unique<status_mock>(name, digest, directory)) {
         thread_ = std::thread(std::ref(endpoint_));
     }
     ~server_mock() {
@@ -72,6 +78,7 @@ private:
     endpoint endpoint_;
     std::unique_ptr<status_mock> status_;
     std::thread thread_;
+    bool authentication_{};
 
     void remove_shm() {
         std::string cmd = "if [ -f /dev/shm/" + name_ + " ]; then rm -f /dev/shm/" + name_ + "*; fi";

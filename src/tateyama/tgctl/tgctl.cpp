@@ -28,6 +28,7 @@
 #ifdef ENABLE_ALTIMETER
 #include "tateyama/altimeter/altimeter.h"
 #endif
+#include "tateyama/authentication/authentication.h"
 #include "tateyama/request/request.h"
 
 #include "help_text.h"
@@ -55,6 +56,8 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         std::cerr << "no subcommand\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
+
+    // simple subcommnads (start, shutdown, kill, status, diagnostic, pid, quiesce, and version)
     if (args.at(1) == "start") {
         return tateyama::process::tgctl_start(args.at(0), true);
     }
@@ -73,6 +76,15 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
     if (args.at(1) == "pid") {
         return tateyama::process::tgctl_pid();
     }
+    if (args.at(1) == "quiesce") {
+        return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
+    }
+    if (args.at(1) == "version") {
+        return tateyama::version::show_version(args.at(0));
+    }
+
+
+    // backup
     if (args.at(1) == "backup") {
         if (args.size() < 3) {
             std::cerr << "need to specify backup subcommand\n" << std::flush;
@@ -116,6 +128,8 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         std::cerr << "unknown backup subcommand '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
+
+    // restore
     if (args.at(1) == "restore") {
         if (FLAGS_timeout != -1) {
             std::cerr << "timeout option cannot be specified to restore subcommand\n" << std::flush;
@@ -157,12 +171,8 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         }
         return rtnv;
     }
-    if (args.at(1) == "quiesce") {
-        return tateyama::process::tgctl_start(args.at(0), true, tateyama::framework::boot_mode::quiescent_server);
-    }
-    if (args.at(1) == "version") {
-        return tateyama::version::show_version(args.at(0));
-    }
+
+    // session
     if (args.at(1) == "session") {
         if (args.size() < 3) {
             std::cerr << "need to specify session subcommand\n" << std::flush;
@@ -212,7 +222,9 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         std::cerr << "unknown dbstats-sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
+
 #ifdef ENABLE_ALTIMETER
+    // altimeter
     if (args.at(1) == "altimeter") {
         if (args.size() < 3) {
             std::cerr << "need to specify altimeter subcommand\n" << std::flush;
@@ -271,6 +283,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
     }
 #endif
 
+    // request
     if (args.at(1) == "request") {
         if (args.size() < 3) {
             std::cerr << "need to specify request subcommand\n" << std::flush;
@@ -295,6 +308,14 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         }
         std::cerr << "unknown request-sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
+    }
+
+    // credentials
+    if (args.at(1) == "credentials") {
+        if (args.size() < 2) {
+            return tateyama::authentication::credentials();
+        }
+        return tateyama::authentication::credentials(std::filesystem::path(args.at(2)));
     }
 
     std::cerr << "unknown command '" << args.at(1) << "'\n" << std::flush;
