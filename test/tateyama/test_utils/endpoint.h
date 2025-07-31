@@ -134,13 +134,19 @@ public:
                         case tateyama::proto::endpoint::request::Credential::CredentialOptCase::kEncryptedCredential:
                         {
                             tateyama::authentication::crypto::rsa decrypter{tateyama::authentication::crypto::base64_decode(tateyama::authentication::crypto::private_key)};
-                            std::vector<std::string> user_password;
-                            boost::algorithm::split(user_password, request.client_information().credential().encrypted_credential(), boost::is_any_of("."));
-                            std::string u{};
-                            decrypter.decrypt(tateyama::authentication::crypto::base64_decode(user_password.at(0)),u);
-                            std::string p{};
-                            decrypter.decrypt(tateyama::authentication::crypto::base64_decode(user_password.at(1)),p);
-                            if (u == "tsurugi" && p == "password") { // only user == "tsurugi" and password == "password" is correct in tests
+                            std::string c{};
+                            try {
+                                decrypter.decrypt(tateyama::authentication::crypto::base64_decode(request.client_information().credential().encrypted_credential()), c);
+                            } catch (boost::archive::iterators::dataflow_exception &ex) {
+                                std::cerr << ex.what() << std::endl;
+                                handshake_authentication_fail(ss, index);
+                                continue;
+                            }
+                            std::vector<std::string> user_password{};
+                            boost::algorithm::split(user_password, c, boost::is_any_of("\n"));
+
+                            // only user == "tsurugi" and password == "password" is correct in tests
+                            if (user_password.size() > 1 && user_password.at(0) == "tsurugi" && user_password.at(1) == "password") {
                                 handshake_success(ss, index);
                                 continue;
                             }

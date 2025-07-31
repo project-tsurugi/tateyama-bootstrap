@@ -22,7 +22,6 @@
 #include <optional>
 #include <sys/ioctl.h>
 #include <asm/termbits.h>
-#include <nlohmann/json.hpp>
 
 #include <gflags/gflags.h>
 
@@ -35,7 +34,7 @@
 
 DEFINE_string(user, "", "user name for authentication");  // NOLINT
 DEFINE_string(auth_token, "", "authentication token");  // NOLINT
-DEFINE_string(credentials, "", "path to credentials.json");  // NOLINT
+DEFINE_string(credentials, "", "path to credentials");  // NOLINT
 DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
 
 namespace tateyama::authentication {
@@ -105,7 +104,7 @@ std::optional<std::filesystem::path> default_credential_path() {
     if (auto* name = getenv("TSURUGI_HOME"); name != nullptr) {
         std::filesystem::path path{name};
         path /= ".tsurugidb";
-        path /= "credentials.json";
+        path /= "credentials.key";
         return path;
     }
     return std::nullopt;
@@ -117,28 +116,12 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
         return;
     }
 
-    std::stringstream ss{};
-    std::string s{};
-    while (std::getline(file, s)) {
-        ss << s;
-    }
+    std::string encrypted_credential{};
+    std::getline(file, encrypted_credential);  // use first line only
     file.close();
 
-    nlohmann::json j = nlohmann::json::parse(ss.str());
-    std::string us{};
-    std::string ps{};
-    if (auto ci = j.find("credential"); ci != j.end()) {
-        auto cj = ci.value();
-        if (auto ui = cj.find("user"); ui != cj.end()) {
-            us = ui.value().get<std::string>();
-        }
-        if (auto pi = cj.find("password"); pi != cj.end()) {
-            ps = pi.value().get<std::string>();
-        }
-    }
-
-    if (!us.empty() && !ps.empty()) {
-        (information.mutable_credential())->set_encrypted_credential(us + "." + ps);
+    if (!encrypted_credential.empty()) {
+        (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
     }
 }
 
@@ -151,13 +134,10 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
         if (key_opt) {
             rsa_encrypter rsa{key_opt.value()};
 
-            std::string u{};
-            rsa.encrypt(FLAGS_user, u);
-
-            std::string p{};
-            rsa.encrypt(prompt("password: "), p);
-
-            (information.mutable_credential())->set_encrypted_credential(base64_encode(u) + "." + base64_encode(p));
+            std::string c{};
+            std::string p = prompt("password: ");
+            rsa.encrypt(FLAGS_user + "\n" + p, c);
+            (information.mutable_credential())->set_encrypted_credential(base64_encode(c));
         }
         return;
     }

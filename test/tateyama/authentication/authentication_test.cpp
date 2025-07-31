@@ -22,6 +22,7 @@
 #include <sstream>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
@@ -41,6 +42,8 @@ namespace tateyama::authentication {
 class authentication_test : public ::testing::Test {
 public:
     virtual void SetUp() {
+        unsetenv("TSURUGI_HOME");
+
         helper_ = std::make_unique<directory_helper>("authentication_test", 20401);
         helper_->set_up();
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
