@@ -180,4 +180,4 @@ TEST_F(authentication_test, env_token_fail) {
     EXPECT_FALSE(ss.str().find("authentication_test_usig_session_list") != std::string::npos);
 }
 
-}  // namespace tateyama::session
+}  // namespace tateyama::authentication
