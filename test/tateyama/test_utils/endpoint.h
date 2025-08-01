@@ -145,8 +145,8 @@ public:
                             std::vector<std::string> user_password{};
                             boost::algorithm::split(user_password, c, boost::is_any_of("\n"));
 
-                            // only user == "tsurugi" and password == "password" is correct in tests
-                            if (user_password.size() > 1 && user_password.at(0) == "tsurugi" && user_password.at(1) == "password") {
+                            // only user and password from configuration are correct in tests
+                            if (user_password.size() > 1 && user_password.at(0) == TEST_USERNAME && user_password.at(1) == TEST_PASSWORD) {
                                 handshake_success(ss, index);
                                 continue;
                             }
