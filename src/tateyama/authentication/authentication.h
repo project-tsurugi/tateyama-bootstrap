@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include <functional>
+#include <string>
+#include <optional>
+#include <filesystem>
+
+#include "tateyama/tgctl/tgctl.h"
+#include <tateyama/proto/endpoint/request.pb.h>
 
 namespace tateyama::authentication {
 
-void auth_options();
+void auth_options();  // NOLINT(readability-redundant-declaration) only for readability
+void add_credential(tateyama::proto::endpoint::request::ClientInformation&, const std::function<std::optional<std::string>()>&);  // NOLINT(readability-redundant-declaration) only for readability
 
-}  // tateyama::bootstrap
+tgctl::return_code credentials();  // NOLINT(readability-redundant-declaration) only for readability
+tgctl::return_code credentials(const std::filesystem::path&);  // NOLINT(readability-redundant-declaration) only for readability
+
+}  // tateyama::authentication

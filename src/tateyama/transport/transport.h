@@ -39,6 +39,7 @@
 #include <tateyama/proto/session/response.pb.h>
 #include <tateyama/proto/metrics/request.pb.h>
 #include <tateyama/proto/metrics/response.pb.h>
+#include <tateyama/proto/diagnostics.pb.h>
 #ifdef ENABLE_ALTIMETER
 #include <tateyama/proto/altimeter/request.pb.h>
 #include <tateyama/proto/altimeter/response.pb.h>
@@ -49,6 +50,7 @@
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
+#include "tateyama/authentication/authentication.h"
 #include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "client_wire.h"
@@ -97,7 +99,8 @@ public:
         }
         auto& handshake_response = handshake_response_opt.value();
         if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
-            throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
+            auto& message = handshake_response.error().message();
+            throw tgctl::runtime_error(monitor::reason::connection_failure, message.empty() ? "handshake error" : message);
         }
         session_id_ = handshake_response.success().session_id();
         header_.set_session_id(session_id_);
@@ -447,16 +450,29 @@ private:
 
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
         tateyama::proto::endpoint::request::ClientInformation information{};
+        tateyama::authentication::add_credential(information, [this](){
+            auto key_opt = encryption_key();
+            if (key_opt) {
+                const auto& key = key_opt.value();
+                if (key.result_case() == tateyama::proto::endpoint::response::EncryptionKey::ResultCase::kSuccess) {
+                    return std::optional<std::string>{key.success().encryption_key()};
+                }
+                if (key.error().code() == tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION) {
+                    std::cerr << "authentication of tsurugidb is off\n" << std::flush;
+                }
+            }
+            return std::optional<std::string>{std::nullopt};
+        });
         information.set_application_name("tgctl");
 
         tateyama::proto::endpoint::request::WireInformation wire_information{};
         tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
         ipc_information.set_connection_information(std::to_string(getpid()));
         wire_information.set_allocated_ipc_information(&ipc_information);
-
         tateyama::proto::endpoint::request::Handshake handshake{};
         handshake.set_allocated_client_information(&information);
         handshake.set_allocated_wire_information(&wire_information);
+
         tateyama::proto::endpoint::request::Request request{};
         request.set_allocated_handshake(&handshake);
         auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
@@ -469,6 +485,15 @@ private:
         return response;
     }
 
+    // EncryptionKey
+    std::optional<tateyama::proto::endpoint::response::EncryptionKey> encryption_key() {
+        tateyama::proto::endpoint::request::Request request{};
+        (void) request.mutable_encryption_key();
+
+        return send<tateyama::proto::endpoint::response::EncryptionKey>(request);
+    }
+
+    // UpdateExpirationTime
     std::optional<tateyama::proto::core::response::UpdateExpirationTime> update_expiration_time() {
         tateyama::proto::core::request::UpdateExpirationTime uet_request{};
 
@@ -477,6 +502,7 @@ private:
 
         return send<tateyama::proto::core::response::UpdateExpirationTime>(request);
     }
+
 };
 
 } // tateyama::bootstrap::wire
