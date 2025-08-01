@@ -15,6 +15,7 @@
  */
 
 #include <string>
+#include <string_view>
 #include <thread>
 #include <stdexcept>
 #include <functional>
@@ -41,6 +42,10 @@
 #include "tateyama/authentication/crypto/token.h"
 
 namespace tateyama::test_utils {
+
+using namespace std::string_view_literals;
+constexpr static std::string_view TEST_USERNAME = "tsurugi"sv;
+constexpr static std::string_view TEST_PASSWORD = "password"sv;
 
 class endpoint_response {
 public:
@@ -294,7 +299,7 @@ public:
         bool authentication_{};
         server_wire_container_mock::unq_p_resultset_wires_conteiner resultset_wires_{};
         server_wire_container_mock::unq_p_resultset_wire_conteiner resultset_wire_{};
-
+                                 
         void handshake_success(std::stringstream& ss, tateyama::common::wire::response_header::index_type index) {
             tateyama::proto::endpoint::response::Handshake rp{};
             auto rs = rp.mutable_success();
