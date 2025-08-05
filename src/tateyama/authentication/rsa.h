@@ -3,6 +3,7 @@
 #include <string_view>
 #include <sstream>
 #include <stdexcept>
+#include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -72,9 +73,17 @@ private:
     }
 
     void set_optional_params(OSSL_PARAM *p) {
+        // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
+        std::size_t param_pad_mode_len = strlen(OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
+        std::size_t pad_mode_pkcsv15_len = strlen(OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
+        // +1 for '\0'
+        char param_pad_mode[param_pad_mode_len + 1];
+        char pad_mode_pkcsv15[pad_mode_pkcsv15_len + 1];
+        strcpy(param_pad_mode, OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
+        strcpy(pad_mode_pkcsv15, OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
+
         /* "pkcs1" is used by default if the padding mode is not set */
-        *p++ = OSSL_PARAM_construct_utf8_string(OSSL_ASYM_CIPHER_PARAM_PAD_MODE,     // NOLINT
-                                                OSSL_PKEY_RSA_PAD_MODE_PKCSV15, 0);  // NOLINT
+        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode, pad_mode_pkcsv15, 0);
         *p = OSSL_PARAM_construct_end();
     }
 };
