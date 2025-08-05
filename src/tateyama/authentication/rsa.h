@@ -3,7 +3,8 @@
 #include <string_view>
 #include <sstream>
 #include <stdexcept>
-#include <string.h>
+#include <vector>
+#include <cstring>
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -77,13 +78,16 @@ private:
         std::size_t param_pad_mode_len = strlen(OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
         std::size_t pad_mode_pkcsv15_len = strlen(OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
         // +1 for '\0'
-        char param_pad_mode[param_pad_mode_len + 1];
-        char pad_mode_pkcsv15[pad_mode_pkcsv15_len + 1];
-        strcpy(param_pad_mode, OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
-        strcpy(pad_mode_pkcsv15, OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
+        std::vector<char> param_pad_mode{};
+        param_pad_mode.resize(param_pad_mode_len + 1);
+        std::vector<char> pad_mode_pkcsv15{};
+        pad_mode_pkcsv15.resize(pad_mode_pkcsv15_len + 1);
+        // copy string literal to char *
+        strcpy(param_pad_mode.data(), OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
+        strcpy(pad_mode_pkcsv15.data(), OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
 
         /* "pkcs1" is used by default if the padding mode is not set */
-        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode, pad_mode_pkcsv15, 0);
+        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode.data(), pad_mode_pkcsv15.data(), 0);  // NOLINT (same as library usage example)
         *p = OSSL_PARAM_construct_end();
     }
 };
