@@ -29,6 +29,15 @@ public:
         if (!evp_public_key_) {
             throw std::runtime_error("Get public key failed.");
         }
+        // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
+        std::size_t param_pad_mode_len = strlen(OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
+        std::size_t pad_mode_pkcsv15_len = strlen(OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
+        // +1 for '\0'
+        param_pad_mode_.resize(param_pad_mode_len + 1);
+        pad_mode_pkcsv15_.resize(pad_mode_pkcsv15_len + 1);
+        // copy string literal to char *
+        strcpy(param_pad_mode_.data(), OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
+        strcpy(pad_mode_pkcsv15_.data(), OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
     }
 
     void encrypt(std::string_view in, std::string &out) {
@@ -57,6 +66,10 @@ private:
 
     std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY*)> evp_public_key_{nullptr, nullptr};
 
+    // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
+    std::vector<char> param_pad_mode_{};
+    std::vector<char> pad_mode_pkcsv15_{};
+
     EVP_PKEY *get_public_key() {
         EVP_PKEY *pkey = nullptr;
         int selection{EVP_PKEY_PUBLIC_KEY};
@@ -74,20 +87,8 @@ private:
     }
 
     void set_optional_params(OSSL_PARAM *p) {
-        // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
-        std::size_t param_pad_mode_len = strlen(OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
-        std::size_t pad_mode_pkcsv15_len = strlen(OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
-        // +1 for '\0'
-        std::vector<char> param_pad_mode{};
-        param_pad_mode.resize(param_pad_mode_len + 1);
-        std::vector<char> pad_mode_pkcsv15{};
-        pad_mode_pkcsv15.resize(pad_mode_pkcsv15_len + 1);
-        // copy string literal to char *
-        strcpy(param_pad_mode.data(), OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
-        strcpy(pad_mode_pkcsv15.data(), OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
-
         /* "pkcs1" is used by default if the padding mode is not set */
-        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode.data(), pad_mode_pkcsv15.data(), 0);  // NOLINT (same as library usage example)
+        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode_.data(), pad_mode_pkcsv15_.data(), 0);  // NOLINT (same as library usage example)
         *p = OSSL_PARAM_construct_end();
     }
 };
