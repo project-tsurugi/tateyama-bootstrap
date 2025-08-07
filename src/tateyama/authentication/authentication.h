@@ -27,6 +27,6 @@ void auth_options();  // NOLINT(readability-redundant-declaration) only for read
 void add_credential(tateyama::proto::endpoint::request::ClientInformation&, const std::function<std::optional<std::string>()>&);  // NOLINT(readability-redundant-declaration) only for readability
 
 tgctl::return_code credentials();  // NOLINT(readability-redundant-declaration) only for readability
-tgctl::return_code credentials(const std::filesystem::path&);  // NOLINT(readability-redundant-declaration) only for readability
+tgctl::return_code credentials(const std::string&);  // NOLINT(readability-redundant-declaration) only for readability
 
 }  // tateyama::authentication
