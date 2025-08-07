@@ -32,7 +32,6 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 * [tateyama](https://github.com/project-tsurugi/tateyama)
 * [jogasaki](https://github.com/project-tsurugi/jogasaki)
-* [ogawayama](https://github.com/project-tsurugi/ogawayama)  (when -DOGAWAYAMA=ON is specified in cmake)
 * [shirakami](https://github.com/project-tsurugi/shirakami)
 * [limestone](https://github.com/project-tsurugi/limestone)
 * [takatori](https://github.com/project-tsurugi/takatori)
@@ -53,7 +52,6 @@ available options:
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequisite installation directory
 * `-DCMAKE_IGNORE_PATH="/usr/local/include;/usr/local/lib/"` - specify the libraries search paths to ignore. This is convenient if the environment has conflicting version installed on system default search paths. (e.g. gflags in /usr/local)
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
-* `-DOGAWAYAMA=ON` - enable ogawayama bridge
 * `-DENABLE_JEMALLOC` - use jemalloc instead of default `malloc`
 * `-DBUILD_STRICT=OFF` - don't treat compile warnings as build errors
 * for debugging only
