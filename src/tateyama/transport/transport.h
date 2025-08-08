@@ -413,6 +413,9 @@ public:
     [[nodiscard]] std::size_t session_id() const noexcept {
         return session_id_;
     }
+    [[nodiscard]] const std::string& encrypted_credential() const noexcept {
+        return encrypted_credential_;
+    }
 
     static std::string database_name(bool output_error = false) {
         if (auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf); bst_conf.valid()) {
@@ -439,6 +442,7 @@ private:
     std::size_t session_id_{};
     bool closed_{};
     std::unique_ptr<tateyama::common::wire::timer> timer_{};
+    std::string encrypted_credential_{};
 
     std::string digest() {
         auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
@@ -450,6 +454,7 @@ private:
 
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
         tateyama::proto::endpoint::request::ClientInformation information{};
+
         tateyama::authentication::add_credential(information, [this](){
             auto key_opt = encryption_key();
             if (key_opt) {
@@ -463,6 +468,9 @@ private:
             }
             return std::optional<std::string>{std::nullopt};
         });
+        if (information.credential().credential_opt_case() == tateyama::proto::endpoint::request::Credential::kEncryptedCredential) {
+            encrypted_credential_ = information.credential().encrypted_credential();
+        }
         information.set_application_name("tgctl");
 
         tateyama::proto::endpoint::request::WireInformation wire_information{};

@@ -77,7 +77,7 @@ public:
     class worker {
     public:
         worker(std::size_t session_id, std::unique_ptr<tateyama::test_utils::server_wire_container_mock> wire, std::function<void(void)> clean_up, data_for_check& data_for_check, bool authentication)
-            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check), authentication_(authentication)  {
+            : session_id_(session_id), wire_(std::move(wire)), clean_up_(std::move(clean_up)), data_for_check_(data_for_check), authentication_(authentication) {
         }
         ~worker() {
             if (reply_thread_.joinable()) {
@@ -334,18 +334,20 @@ public:
         : name_(name), digest_(digest), directory_(directory), container_(std::make_unique<tateyama::test_utils::connection_container>(name_, 1)), sync_(sync), authentication_(authentication) {
     }
     ~endpoint() {
-        if (thread_.joinable()) {
-            thread_.join();
+        for (auto&& t: threads_) {
+            if (t.joinable()) {
+                t.join();
+            }
         }
     }
     worker* get_worker() {
-        if (!worker_) {
+        if (!workers_.at(0)) {
             std::unique_lock<std::mutex> lk(mutex_);
             condition_.wait(lk, [&]{
-                return worker_.get() != nullptr;
+                return workers_.at(0).get() != nullptr;
             });
         }
-        return worker_.get();
+        return workers_.at(0).get();
     }
     void operator()() {
         auto& connection_queue = container_->get_connection_queue();
@@ -371,15 +373,16 @@ public:
             connection_queue.accept(index, session_id);
             try {
                 std::unique_lock<std::mutex> lk(mutex_);
-                worker_ = std::make_unique<worker>(session_id,
-                                                   std::move(wire),
-                                                   [&connection_queue, index](){ connection_queue.disconnect(index); },
-                                                   data_for_check_,
-                                                   authentication_);
-                thread_ = std::thread(std::ref(*worker_));
+                auto w = std::make_unique<worker>(session_id,
+                                                  std::move(wire),
+                                                  [&connection_queue, index](){ connection_queue.disconnect(index); },
+                                                  data_for_check_,
+                                                  authentication_);
+                threads_.emplace_back(std::thread(std::ref(*w)));
                 if (suppress_message_) {
-                    worker_->suppress_message();
+                    w->suppress_message();
                 }
+                workers_.emplace_back(std::move(w));
                 condition_.notify_all();
             } catch (std::exception& ex) {
                 LOG(ERROR) << ex.what();
@@ -400,7 +403,9 @@ public:
         return data_for_check_.uet_count_;
     }
     void terminate() {
-        worker_->finish();
+        for(auto&& w: workers_) {
+            w->finish();
+        }
         container_->get_connection_queue().request_terminate();
     }
     void suppress_message() {
@@ -412,9 +417,9 @@ private:
     std::string digest_;
     std::string directory_;
     std::unique_ptr<tateyama::test_utils::connection_container> container_;
-    std::thread thread_;
+    std::vector<std::thread> threads_;
     boost::barrier& sync_;
-    std::unique_ptr<worker> worker_{};
+    std::vector<std::unique_ptr<worker>> workers_{};
     std::mutex mutex_{};
     std::condition_variable condition_{};
     bool notified_{false};

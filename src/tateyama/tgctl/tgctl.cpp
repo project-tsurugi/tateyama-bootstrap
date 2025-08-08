@@ -312,10 +312,10 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
 
     // credentials
     if (args.at(1) == "credentials") {
-        if (args.size() < 2) {
+        if (args.size() < 3) {
             return tateyama::authentication::credentials();
         }
-        return tateyama::authentication::credentials(std::filesystem::path(args.at(2)));
+        return tateyama::authentication::credentials(args.at(2));
     }
 
     std::cerr << "unknown command '" << args.at(1) << "'\n" << std::flush;

@@ -28,6 +28,7 @@
 #include <tateyama/logging.h>
 
 #include <tateyama/proto/endpoint/request.pb.h>
+#include "tateyama/transport/transport.h"
 #include "tateyama/tgctl/runtime_error.h"
 #include "rsa.h"
 #include "authentication.h"
@@ -36,6 +37,7 @@ DEFINE_string(user, "", "user name for authentication");  // NOLINT
 DEFINE_string(auth_token, "", "authentication token");  // NOLINT
 DEFINE_string(credentials, "", "path to credentials");  // NOLINT
 DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
+DEFINE_bool(overwrite, true, "overwrite the credential file");  // NOLINT
 
 namespace tateyama::authentication {
 
@@ -73,18 +75,20 @@ void auth_options() {
     }
 }
 
-static std::string prompt(std::string_view msg)
+static std::string prompt(std::string_view msg, bool display = false)
 {
     struct termio tty{};
     struct termio tty_save{};
 
-    ioctl(STDIN_FILENO, TCGETA, &tty);  // NOLINT
-    tty_save = tty;
+    if (!display) {
+        ioctl(STDIN_FILENO, TCGETA, &tty);  // NOLINT
+        tty_save = tty;
 
-    tty.c_lflag &= ~ECHO;   // NOLINT
-    tty.c_lflag |= ECHONL;  // NOLINT
+        tty.c_lflag &= ~ECHO;   // NOLINT
+        tty.c_lflag |= ECHONL;  // NOLINT
 
-    ioctl(STDIN_FILENO, TCSETAF, &tty);  // NOLINT
+        ioctl(STDIN_FILENO, TCSETAF, &tty);  // NOLINT
+    }
 
     std::cout << msg << std::flush;
     std::string rtnv{};
@@ -95,7 +99,10 @@ static std::string prompt(std::string_view msg)
         }
         rtnv.append(1, static_cast<char>(chr));
     }
-    ioctl(STDIN_FILENO, TCSETAF, &tty_save);  // NOLINT
+
+    if (!display) {
+        ioctl(STDIN_FILENO, TCSETAF, &tty_save);  // NOLINT
+    }
 
     return rtnv;
 }
@@ -137,7 +144,8 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
             std::string c{};
             std::string p = prompt("password: ");
             rsa.encrypt(FLAGS_user + "\n" + p, c);
-            (information.mutable_credential())->set_encrypted_credential(base64_encode(c));
+            std::string encrypted_credential = base64_encode(c);
+            (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
         }
         return;
     }
@@ -159,20 +167,64 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
     }
 }
 
+static tgctl::return_code credentials(const std::filesystem::path& path) {
+    if (!FLAGS_credentials.empty()) {
+        std::cerr << "--credentials option is invalid for credentials subcommand\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+    if (!FLAGS_auth_token.empty()) {
+        std::cerr << "--auth_token option is invalid for credentials subcommand\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+
+    if (!FLAGS_overwrite && std::filesystem::exists(path)) {
+        std::cerr << "file '" << path.string() << "' already exists\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+    if (FLAGS_user.empty()) {
+        FLAGS_user = prompt("user: ", true);
+    }
+
+    try {
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_routing);  // service_id is meaningless here
+
+        const std::string& encrypted_credential = transport->encrypted_credential(); // Valid while the transport is alive
+        if (encrypted_credential.empty()) {
+            std::cerr << "cannot obtain encrypted credential\n" << std::flush;
+            return tateyama::tgctl::return_code::err;
+        }
+        std::ofstream ofs(path.string());
+        if (!ofs) {
+            std::cerr << "cannot open '" << path.string() << "'\n" << std::flush;
+            return tateyama::tgctl::return_code::err;
+        }
+
+        ofs << encrypted_credential;
+        ofs.close();    
+        return tateyama::tgctl::return_code::ok;
+    } catch (std::runtime_error &ex) {
+        std::cerr << "cannot establish session with the user and the password: " << ex.what() << "\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+}
+
 tgctl::return_code credentials() {
-    if (auto* name = getenv("TSURUGI_HOME"); name != nullptr) {
-        std::filesystem::path path{name};
-        path /= ".tsurugidb";
-        path /= "credentials.json";
-        return credentials(path);
+    if (auto cp_opt = default_credential_path(); cp_opt) {
+        return credentials(cp_opt.value());
     }
     std::cerr << "the environment variable TSURUGI_HOME is not defined\n" << std::flush;
     return tateyama::tgctl::return_code::err;
 }
 
-tgctl::return_code credentials([[maybe_unused]] const std::filesystem::path& path) {
-    std::cerr << "not implemented yet\n" << std::flush;
-    return tateyama::tgctl::return_code::err;
+tgctl::return_code credentials(const std::string& file_name) {
+    std::filesystem::path path{file_name};
+
+    if (std::filesystem::exists(path) && !std::filesystem::is_regular_file(path)) {
+        std::cerr << "'" << file_name << "' is not a regular file\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+
+    return tateyama::authentication::credentials(path);
 }
 
 }  // tateyama::authentication
