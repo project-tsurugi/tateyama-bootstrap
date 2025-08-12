@@ -35,7 +35,6 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "worker_try_count=1000\n"
         "worker_suspend_timeout=1000000\n"
         "commit_response=STORED\n"
-        "dev_update_skips_deletion=true\n"
         "dev_profile_commits=false\n"
         "dev_return_os_pages=false\n"
         "dev_omit_task_when_idle=true\n"
