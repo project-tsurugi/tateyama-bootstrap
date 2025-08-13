@@ -25,6 +25,7 @@
 
 #include <boost/thread/barrier.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include <nlohmann/json.hpp>
 
 #include <glog/logging.h>
 #include <tateyama/logging.h>
@@ -147,11 +148,20 @@ public:
                                 handshake_authentication_fail(ss, index);
                                 continue;
                             }
-                            std::vector<std::string> user_password{};
-                            boost::algorithm::split(user_password, c, boost::is_any_of("\n"));
+
+                            nlohmann::json j = nlohmann::json::parse(c);
+                            std::string user{};
+                            std::string password{};
+                            for (nlohmann::json::iterator it = j.begin(); it != j.end(); ++it) {
+                                if (it.key() == "user") {
+                                    user = it.value();
+                                } else if (it.key() == "password") {
+                                    password = it.value();
+                                }
+                            }
 
                             // only user and password from configuration are correct in tests
-                            if (user_password.size() > 1 && user_password.at(0) == TEST_USERNAME && user_password.at(1) == TEST_PASSWORD) {
+                            if (user == TEST_USERNAME && password == TEST_PASSWORD) {
                                 handshake_success(ss, index);
                                 continue;
                             }
