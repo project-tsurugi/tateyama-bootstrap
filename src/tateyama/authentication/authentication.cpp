@@ -24,6 +24,7 @@
 #include <asm/termbits.h>
 
 #include <gflags/gflags.h>
+#include <nlohmann/json.hpp>
 
 #include <tateyama/logging.h>
 
@@ -40,6 +41,8 @@ DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
 DEFINE_bool(overwrite, true, "overwrite the credential file");  // NOLINT
 
 namespace tateyama::authentication {
+
+constexpr static int FORMAT_VERSION = 1;
 
 void auth_options() {
     if (!FLAGS_auth) {
@@ -132,6 +135,18 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
     }
 }
 
+static std::string get_json_text(const std::string& user, const std::string& password) {
+    nlohmann::json j;
+    std::stringstream ss;
+
+    j["format_version"] = FORMAT_VERSION;
+    j["user"] = user;
+    j["password"] = password;
+
+    ss << j;
+    return ss.str();
+}
+
 void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
     if (!FLAGS_auth) {
         return;
@@ -142,8 +157,7 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
             rsa_encrypter rsa{key_opt.value()};
 
             std::string c{};
-            std::string p = prompt("password: ");
-            rsa.encrypt(FLAGS_user + "\n" + p, c);
+            rsa.encrypt(get_json_text(FLAGS_user, prompt("password: ")), c);
             std::string encrypted_credential = base64_encode(c);
             (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
         }
