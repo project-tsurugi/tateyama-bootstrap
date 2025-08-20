@@ -39,6 +39,7 @@ DEFINE_string(auth_token, "", "authentication token");  // NOLINT
 DEFINE_string(credentials, "", "path to credentials");  // NOLINT
 DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
 DEFINE_bool(overwrite, true, "overwrite the credential file");  // NOLINT
+DEFINE_int32(expiration, 90, "number of days until credentials expire");  // NOLINT
 
 namespace tateyama::authentication {
 
@@ -93,7 +94,9 @@ static std::string prompt(std::string_view msg, bool display = false)
         ioctl(STDIN_FILENO, TCSETAF, &tty);  // NOLINT
     }
 
-    std::cout << msg << std::flush;
+    if (isatty(STDIN_FILENO) == 1) {
+        std::cout << msg << std::flush;
+    }
     std::string rtnv{};
     while(true) {
         int chr = getchar();
@@ -135,17 +138,56 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
     }
 }
 
-static std::string get_json_text(const std::string& user, const std::string& password) {
-    nlohmann::json j;
-    std::stringstream ss;
+class credential_helper_class {
+public:
+    std::string get_json_text(const std::string& user, const std::string& password) {
+        nlohmann::json j;
+        std::stringstream ss;
 
-    j["format_version"] = FORMAT_VERSION;
-    j["user"] = user;
-    j["password"] = password;
+        j["format_version"] = FORMAT_VERSION;
+        j["user"] = user;
+        j["password"] = password;
+        if (expiration_.count() > 0) {
+            j["expiration_date"] = expiration();
+        }
+        j["password"] = password;
 
-    ss << j;
-    return ss.str();
-}
+        ss << j;
+        return ss.str();
+    }
+
+    [[nodiscard]] std::string expiration_date() const noexcept {
+        return expiration_date_string_;
+    }
+
+    // for tgctl credentials
+    void set_expiration(std::int32_t expiration) noexcept {
+        expiration_ = std::chrono::hours(expiration * 24);
+    }
+
+private:
+    std::chrono::minutes expiration_{300}; // 5 minutes for connecting a normal session.
+    std::string expiration_date_string_{};
+
+    std::string& expiration() {
+        std::stringstream r;
+
+        const auto t = std::chrono::system_clock::now() + expiration_;
+        const auto& ct = std::chrono::system_clock::to_time_t(t);
+        const auto gt = std::gmtime(&ct);
+        r << std::put_time(gt, "%Y-%m-%dT%H:%M:%S");
+
+        const auto full = std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch());
+        const auto sec  = std::chrono::duration_cast<std::chrono::seconds>(t.time_since_epoch());
+        r << "." << std::fixed << std::setprecision(3) << (full.count() - (sec.count() * 1000))
+          << "Z";
+
+        expiration_date_string_ = r.str();
+        return expiration_date_string_;
+    }
+};
+
+static credential_helper_class credential_helper{};  // NOLINT
 
 void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
     if (!FLAGS_auth) {
@@ -157,7 +199,7 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
             rsa_encrypter rsa{key_opt.value()};
 
             std::string c{};
-            rsa.encrypt(get_json_text(FLAGS_user, prompt("password: ")), c);
+            rsa.encrypt(credential_helper.get_json_text(FLAGS_user, prompt("password: ")), c);
             std::string encrypted_credential = base64_encode(c);
             (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
         }
@@ -200,6 +242,7 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
     }
 
     try {
+        credential_helper.set_expiration(FLAGS_expiration);
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_routing);  // service_id is meaningless here
 
         const std::string& encrypted_credential = transport->encrypted_credential(); // Valid while the transport is alive
@@ -213,7 +256,10 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
             return tateyama::tgctl::return_code::err;
         }
 
-        ofs << encrypted_credential;
+        ofs << encrypted_credential << '\n';
+        if (auto d = credential_helper.expiration_date(); !d.empty()) {
+            ofs << d << '\n';
+        }
         ofs.close();    
         return tateyama::tgctl::return_code::ok;
     } catch (std::runtime_error &ex) {

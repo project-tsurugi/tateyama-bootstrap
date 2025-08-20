@@ -155,6 +155,18 @@ static constexpr std::string_view help_text {  // NOLINT
 "    <args>\n"
 "        session-id : id of the session to which the request belongs\n"
 "        payload : the request message in base64 encoding\n"
+"\n"
+"  credentials : make a credential file\n"
+"    <args>\n"
+"        none\n"
+"    <options>\n"
+"        </path/to/credentials.key> : Output destination authentication information file path.\n"
+"                                     If not specified, the default authentication information file path will be used.\n"
+"        --user <username> : user name. If not specified, a username prompt will be displayed after execution.\n"
+"        --nooverwrite : If a file exists in the output destination, the program will terminate with an error.\n"
+"        --expiration <days> : Number of days until authentication information becomes invalid.\n"
+"                              If not specified, it will be 90 days.\n"
+"                              If the number of days is 0, the authentication information will not become invalid.\n"
 };
 
 } // tateyama::tgctl
