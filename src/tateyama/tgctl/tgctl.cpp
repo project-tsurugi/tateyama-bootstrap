@@ -208,6 +208,8 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         std::cerr << "unknown session sub command '" << args.at(2) << "'\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
+
+    // dbstats
     if (args.at(1) == "dbstats") {
         if (args.size() < 3) {
             std::cerr << "need to specify dbstats subcommand\n" << std::flush;
