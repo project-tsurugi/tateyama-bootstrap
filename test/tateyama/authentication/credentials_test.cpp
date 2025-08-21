@@ -42,8 +42,6 @@ namespace tateyama::authentication {
 class credentials_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        unsetenv("TSURUGI_HOME");
-
         helper_ = std::make_unique<directory_helper>("credentials_test", 20402);
         helper_->set_up();
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());

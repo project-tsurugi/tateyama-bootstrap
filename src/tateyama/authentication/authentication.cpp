@@ -114,7 +114,7 @@ static std::string prompt(std::string_view msg, bool display = false)
 }
 
 std::optional<std::filesystem::path> default_credential_path() {
-    if (auto* name = getenv("TSURUGI_HOME"); name != nullptr) {
+    if (auto* name = getenv("HOME"); name != nullptr) {
         std::filesystem::path path{name};
         path /= ".tsurugidb";
         path /= "credentials.key";
@@ -272,7 +272,7 @@ tgctl::return_code credentials() {
     if (auto cp_opt = default_credential_path(); cp_opt) {
         return credentials(cp_opt.value());
     }
-    std::cerr << "the environment variable TSURUGI_HOME is not defined\n" << std::flush;
+    std::cerr << "the environment variable HOME is not defined\n" << std::flush;
     return tateyama::tgctl::return_code::err;
 }
 
