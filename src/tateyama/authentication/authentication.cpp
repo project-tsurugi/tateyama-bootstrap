@@ -44,6 +44,7 @@ DEFINE_int32(expiration, 90, "number of days until credentials expire");  // NOL
 namespace tateyama::authentication {
 
 constexpr static int FORMAT_VERSION = 1;
+constexpr static int MAX_EXPIRATION = 365;  // Maximum expiration date that can be specified with tgctl credentials
 
 void auth_options() {
     if (!FLAGS_auth) {
@@ -224,6 +225,10 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation& infor
 }
 
 static tgctl::return_code credentials(const std::filesystem::path& path) {
+    if (FLAGS_expiration < 0 || FLAGS_expiration > MAX_EXPIRATION) {
+        std::cerr << "--expiration should be greater then or equal to 0 and less than or equal to " << MAX_EXPIRATION << '\n' << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
     if (!FLAGS_credentials.empty()) {
         std::cerr << "--credentials option is invalid for credentials subcommand\n" << std::flush;
         return tateyama::tgctl::return_code::err;
