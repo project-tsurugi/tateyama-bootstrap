@@ -275,6 +275,15 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
 
 tgctl::return_code credentials() {
     if (auto cp_opt = default_credential_path(); cp_opt) {
+        auto& cp = cp_opt.value();
+        auto parent = cp.parent_path();
+        if (!std::filesystem::exists(parent)) {
+            std::filesystem::create_directory(parent);
+        }
+        if (!std::filesystem::is_directory(parent)) {
+            std::cerr << "'" << parent.string() << "' is not a directory\n" << std::flush;
+            return tateyama::tgctl::return_code::err;
+        }
         return credentials(cp_opt.value());
     }
     std::cerr << "the environment variable HOME is not defined\n" << std::flush;
