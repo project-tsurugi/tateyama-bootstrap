@@ -265,8 +265,15 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
         if (auto d = credential_helper.expiration_date(); !d.empty()) {
             ofs << d << '\n';
         }
-        ofs.close();    
-        return tateyama::tgctl::return_code::ok;
+        ofs.close();
+        std::error_code ec{};
+        std::filesystem::permissions(path, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+        if (!ec) {
+            return tateyama::tgctl::return_code::ok;
+        }
+        std::cerr << "cannot set permission to '" << path.string() << "'\n" << std::flush;
+        std::filesystem::remove(path);
+        return tateyama::tgctl::return_code::err;
     } catch (std::runtime_error &ex) {
         std::cerr << "cannot establish session with the user and the password: " << ex.what() << "\n" << std::flush;
         return tateyama::tgctl::return_code::err;
