@@ -58,6 +58,8 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_core_affinity=false\n"
         "dev_assign_numa_nodes_uniformly=false\n"
         "dev_force_numa_node=\n"
+        "loader_path=/home/tsurugidb/plugins\n"
+        "grpc_url=localhost:50051\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
