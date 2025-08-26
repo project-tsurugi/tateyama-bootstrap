@@ -156,7 +156,7 @@ public:
             return std::nullopt;
         }
         T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
         return response;
@@ -188,11 +188,19 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
     // implement handshake
@@ -217,20 +225,28 @@ public:
 
         std::string res_message{};
         wire_.receive(res_message, slot_index);
-        tateyama::proto::framework::response::Header fwrs_header{};
+        tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(fwrs_header), std::addressof(ins), nullptr); ! res) {
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
             return std::nullopt;
         }
         std::string_view payload{};
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
     // expiration
@@ -255,20 +271,28 @@ public:
 
         std::string res_message{};
         wire_.receive(res_message, slot_index);
-        tateyama::proto::framework::response::Header fwrs_header{};
+        tateyama::proto::framework::response::Header header{};
         google::protobuf::io::ArrayInputStream ins{res_message.data(), static_cast<int>(res_message.length())};
-        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(fwrs_header), std::addressof(ins), nullptr); ! res) {
+        if(auto res = tateyama::utils::ParseDelimitedFromZeroCopyStream(std::addressof(header), std::addressof(ins), nullptr); ! res) {
             return std::nullopt;
         }
         std::string_view payload{};
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
     // metrics
@@ -297,11 +321,19 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
 #ifdef ENABLE_ALTIMETER
@@ -331,11 +363,19 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 #endif
 
@@ -365,11 +405,19 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
     // sql(ExtractStatementInfo)
@@ -398,11 +446,19 @@ public:
         if (auto res = tateyama::utils::GetDelimitedBodyFromZeroCopyStream(std::addressof(ins), nullptr, payload); ! res) {
             return std::nullopt;
         }
-        T response{};
-        if(auto res = response.ParseFromArray(payload.data(), payload.length()); ! res) {
+        if (header.payload_type() == tateyama::proto::framework::response::Header::SERVICE_RESULT) {
+            T response{};
+            if(auto res = response.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
+                return std::nullopt;
+            }
+            return response;
+        }
+        tateyama::proto::diagnostics::Record record{};
+        if(auto res = record.ParseFromArray(payload.data(), static_cast<int>(payload.length())); ! res) {
             return std::nullopt;
         }
-        return response;
+        throw_tgctl_runtime_error(record);
+        return std::nullopt;  // dummy to suppress compile error
     }
 
     void close() {
@@ -453,9 +509,13 @@ private:
     }
 
     std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
-        tateyama::proto::endpoint::request::ClientInformation information{};
+        tateyama::proto::endpoint::request::Request request{};
+        auto* handshake = request.mutable_handshake();
+        auto* client_information = handshake->mutable_client_information();
+        auto* wire_information = handshake->mutable_wire_information();
+        auto* ipc_information = wire_information->mutable_ipc_information();
 
-        tateyama::authentication::add_credential(information, [this](){
+        tateyama::authentication::add_credential(*client_information, [this](){
             auto key_opt = encryption_key();
             if (key_opt) {
                 const auto& key = key_opt.value();
@@ -468,29 +528,14 @@ private:
             }
             return std::optional<std::string>{std::nullopt};
         });
-        if (information.credential().credential_opt_case() == tateyama::proto::endpoint::request::Credential::kEncryptedCredential) {
-            encrypted_credential_ = information.credential().encrypted_credential();
+
+        if (client_information->credential().credential_opt_case() == tateyama::proto::endpoint::request::Credential::kEncryptedCredential) {
+            encrypted_credential_ = client_information->credential().encrypted_credential();
         }
-        information.set_application_name("tgctl");
+        client_information->set_application_name("tgctl");
+        ipc_information->set_connection_information(std::to_string(getpid()));
 
-        tateyama::proto::endpoint::request::WireInformation wire_information{};
-        tateyama::proto::endpoint::request::WireInformation::IpcInformation ipc_information{};
-        ipc_information.set_connection_information(std::to_string(getpid()));
-        wire_information.set_allocated_ipc_information(&ipc_information);
-        tateyama::proto::endpoint::request::Handshake handshake{};
-        handshake.set_allocated_client_information(&information);
-        handshake.set_allocated_wire_information(&wire_information);
-
-        tateyama::proto::endpoint::request::Request request{};
-        request.set_allocated_handshake(&handshake);
-        auto response = send<tateyama::proto::endpoint::response::Handshake>(request);
-        (void)request.release_handshake();
-
-        (void)wire_information.release_ipc_information();
-        (void)handshake.release_wire_information();
-
-        (void)handshake.release_client_information();
-        return response;
+        return send<tateyama::proto::endpoint::response::Handshake>(request);
     }
 
     // EncryptionKey
@@ -511,6 +556,13 @@ private:
         return send<tateyama::proto::core::response::UpdateExpirationTime>(request);
     }
 
+    // throw tgctl::runtime_error
+    void throw_tgctl_runtime_error(const tateyama::proto::diagnostics::Record& record) const {
+        if (record.code() == tateyama::proto::diagnostics::Code::PERMISSION_ERROR) {
+            throw tgctl::runtime_error(tateyama::monitor::reason::permission, record.message());
+        }
+        throw tgctl::runtime_error(tateyama::monitor::reason::unknown, record.message());
+    }
 };
 
 } // tateyama::bootstrap::wire
