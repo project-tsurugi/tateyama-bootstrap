@@ -142,6 +142,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "max_file_size=1073741824\n"
 #endif
 
+    "[udf]\n"
+        "plugin_directory=var/plugins/\n"
+        "endpoint=localhost:50051\n"
+        "secure=false\n"
 };
 
 } // namespace details
