@@ -113,6 +113,7 @@ public:
 
                     // prepare for response (framework header)
                     ::tateyama::proto::framework::response::Header header{};
+		    header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
@@ -187,6 +188,7 @@ public:
 
                 } else if (req_header.service_id() == tateyama::framework::service_id_routing) {
                     ::tateyama::proto::framework::response::Header header{};
+		    header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
@@ -208,6 +210,7 @@ public:
                         throw tgctl::runtime_error(monitor::reason::internal, "error reading payload");
                     }
                     ::tateyama::proto::framework::response::Header header{};
+		    header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
@@ -228,6 +231,7 @@ public:
                         std::this_thread::sleep_for(std::chrono::seconds(t));
                         std::stringstream ss{};
                         ::tateyama::proto::framework::response::Header header{};
+			header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                         if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                             throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                         }
@@ -250,6 +254,7 @@ public:
                     resultset_wire_ = resultset_wires_->acquire();
                     std::stringstream ss{};
                     ::tateyama::proto::framework::response::Header header{};
+		    header.set_payload_type(tateyama::proto::framework::response::Header::SERVICE_RESULT);
                     if(auto res = tateyama::utils::SerializeDelimitedToOstream(header, std::addressof(ss)); ! res) {
                         throw tgctl::runtime_error(monitor::reason::internal, "error formatting response message");
                     }
