@@ -29,29 +29,32 @@ public:
         if (!evp_public_key_) {
             throw std::runtime_error("Get public key failed.");
         }
-        // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
-        std::size_t param_pad_mode_len = strlen(OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
-        std::size_t pad_mode_pkcsv15_len = strlen(OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
-        // +1 for '\0'
-        param_pad_mode_.resize(param_pad_mode_len + 1);
-        pad_mode_pkcsv15_.resize(pad_mode_pkcsv15_len + 1);
-        // copy string literal to char *
-        strcpy(param_pad_mode_.data(), OSSL_ASYM_CIPHER_PARAM_PAD_MODE);
-        strcpy(pad_mode_pkcsv15_.data(), OSSL_PKEY_RSA_PAD_MODE_PKCSV15);
     }
 
     void encrypt(std::string_view in, std::string &out) {
         size_t buf_len = 0;
-        OSSL_PARAM params[5];  // NOLINT
 
         auto ctx = make_handle(EVP_PKEY_CTX_new_from_pkey(nullptr, evp_public_key_.get(), nullptr), EVP_PKEY_CTX_free);
         if (!ctx) {
             throw std::runtime_error("fail to EVP_PKEY_CTX_new_from_pkey");
         }
-        set_optional_params(params);  // NOLINT
-        if (EVP_PKEY_encrypt_init_ex(ctx.get(), params) <= 0) {  // NOLINT
-            throw std::runtime_error("fail to EVP_PKEY_encrypt_init_ex");
+
+        if (EVP_PKEY_encrypt_init(ctx.get()) <= 0) {
+            throw std::runtime_error("EVP_PKEY_encrypt_init() failed.");
         }
+
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) <= 0) {
+            throw std::runtime_error("EVP_PKEY_CTX_set_rsa_padding() failed.");
+        }
+
+        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), EVP_sha1()) <= 0) {
+            throw std::runtime_error("EVP_PKEY_CTX_set_rsa_oaep_md() failed.");
+        }
+
+        if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), EVP_sha1()) <= 0) {
+            throw std::runtime_error("EVP_PKEY_CTX_set_rsa_mgf1_md() failed.");
+        }
+
         if (EVP_PKEY_encrypt(ctx.get(), nullptr, &buf_len, reinterpret_cast<const unsigned char*>(in.data()), in.length()) <= 0) {  // NOLINT
             throw std::runtime_error("fail to EVP_PKEY_encrypt first");
         }
@@ -63,12 +66,7 @@ public:
 
 private:
     std::string public_key_{};
-
     std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY*)> evp_public_key_{nullptr, nullptr};
-
-    // to avoid "error: ISO C++11 does not allow conversion from string literal to 'char *'"
-    std::vector<char> param_pad_mode_{};
-    std::vector<char> pad_mode_pkcsv15_{};
 
     EVP_PKEY *get_public_key() {
         EVP_PKEY *pkey = nullptr;
@@ -84,12 +82,6 @@ private:
             throw std::runtime_error("fail to handle public key");
         }
         return pkey;
-    }
-
-    void set_optional_params(OSSL_PARAM *p) {
-        /* "pkcs1" is used by default if the padding mode is not set */
-        *p++ = OSSL_PARAM_construct_utf8_string(param_pad_mode_.data(), pad_mode_pkcsv15_.data(), 0);  // NOLINT (same as library usage example)
-        *p = OSSL_PARAM_construct_end();
     }
 };
 
