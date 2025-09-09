@@ -62,7 +62,6 @@ public:
             entry->set_connection_info(std::to_string(getpid()));
             server_mock_->push_response(session_list.SerializeAsString());
         }
-
     }
 
     virtual void TearDown() {
@@ -97,7 +96,7 @@ protected:
 
 TEST_F(authentication_test, no_auth) {
     std::string command;
-    command = "tgctl session list --verbose --conf ";
+    command = "tgctl session list --verbose --noauth --conf ";
     command += helper_->conf_file_path();
 
     std::stringstream ss;
