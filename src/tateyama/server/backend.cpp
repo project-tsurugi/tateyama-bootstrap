@@ -63,7 +63,8 @@ DEFINE_bool(quiesce, false, "invoke in quiesce mode");  // NOLINT
 DEFINE_string(label, "", "message used in quiesce mode");  // NOLINT  dummy
 DEFINE_string(monitor, "", "the file name to which monitoring info. is to be output");  // NOLINT  dummy
 DEFINE_bool(force, false, "an option for tgctl, do not use here");  // NOLINT  dummy
-DEFINE_bool(keep_backup, false, "an option for tgctl, do not use here");  // NOLINT  dummy
+DEFINE_bool(no_keep_backup, false, "an option for tgctl, do not use here");  // NOLINT  dummy
+DEFINE_bool(keep_backup, true, "an option for tgctl, do not use here");  // NOLINT  dummy obsolete
 DEFINE_string(start_mode, "", "start mode, only force is valid");  // NOLINT  dummy
 
 namespace tateyama::server {

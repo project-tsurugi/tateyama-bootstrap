@@ -41,7 +41,8 @@ DECLARE_string(monitor);  // NOLINT
 
 // backup
 DEFINE_bool(force, false, "no confirmation step");  // NOLINT
-DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT
+DEFINE_bool(_keep_backup, true, "backup files will be kept");  // NOLINT
+DEFINE_bool(keep_backup, true, "backup files will be kept");  // NOLINT obsolete
 DEFINE_string(use_file_list, "", "json file describing the individual files to be specified for restore");  // NOLINT
 
 namespace tateyama::datastore {
@@ -297,7 +298,11 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_begin = request.mutable_restore_begin();
         restore_begin->set_backup_directory(path_to_backup);
-        restore_begin->set_keep_backup(FLAGS_keep_backup);
+        if (!FLAGS_keep_backup) {  // --nokeep-backup case (obsolete)
+            restore_begin->set_keep_backup(FLAGS_keep_backup);
+        } else {  // --no-keep-backup case (current)
+            restore_begin->set_keep_backup(FLAGS__keep_backup);
+        }
         if (!FLAGS_label.empty()) {
             restore_begin->set_label(FLAGS_label);
         }
@@ -371,8 +376,8 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
             }
             return tgctl::return_code::err;
         }
-        if (!FLAGS_keep_backup) {
-            std::cerr << "option --nokeep_backup is ignored when --use-file-list is specified\n" << std::flush;
+        if (!FLAGS__keep_backup) {
+            std::cerr << "option --no-keep-backup is ignored when --use-file-list is specified\n" << std::flush;
         }
 
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
