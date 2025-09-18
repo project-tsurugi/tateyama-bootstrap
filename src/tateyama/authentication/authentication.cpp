@@ -38,8 +38,9 @@
 DEFINE_string(user, "", "user name for authentication");  // NOLINT
 DEFINE_string(auth_token, "", "authentication token");  // NOLINT
 DEFINE_string(credentials, "", "path to credentials");  // NOLINT
-DEFINE_bool(_auth, true, "--no-auth when authentication is not used");  // NOLINT
-DEFINE_bool(_overwrite, true, "overwrite the credential file");  // NOLINT
+DEFINE_bool(_auth, true, "--no-auth when authentication is not used");  // NOLINT  false when --no-auth is specified
+DEFINE_bool(overwrite, false, "overwrite the credential file");  // NOLINT  for --overwrite
+DEFINE_bool(_overwrite, true, "overwrite the credential file");  // NOLINT  for --no-overwrite
 DEFINE_int32(expiration, 90, "number of days until credentials expire");  // NOLINT
 
 namespace tateyama::authentication {
@@ -140,7 +141,7 @@ std::optional<std::filesystem::path> default_credential_path() {
     return std::nullopt;
 }
 
-void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::filesystem::path& path) {
+static void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::filesystem::path& path) {
     std::ifstream file(path.string().c_str());
     if (!file.is_open()) {
         return;
@@ -182,6 +183,23 @@ public:
         expiration_ = std::chrono::hours(expiration * 24);
     }
 
+    bool check_not_more_than_one() {
+        if (!FLAGS_user.empty()) {
+            if (!FLAGS_auth_token.empty() || !FLAGS_credentials.empty() || !FLAGS__auth) {
+                return false;
+            }
+        }
+        if (!FLAGS_auth_token.empty()) {
+            if (!FLAGS_credentials.empty() || !FLAGS__auth) {
+                return false;
+            }
+        }
+        if (!FLAGS_credentials.empty() && !FLAGS__auth) {
+            return false;
+        }
+        return true;
+    }
+
 private:
     std::chrono::minutes expiration_{300}; // 5 minutes for connecting a normal session.
     std::string expiration_date_string_{};
@@ -207,6 +225,9 @@ private:
 static credential_helper_class credential_helper{};  // NOLINT
 
 void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
+    if (!credential_helper.check_not_more_than_one()) {
+        throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, "more than one credential options are specified");
+    }
     if (!FLAGS__auth) {
         return;
     }
@@ -254,7 +275,19 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
         return tateyama::tgctl::return_code::err;
     }
 
-    if (!FLAGS__overwrite && std::filesystem::exists(path)) {
+    // --overwrite      x  x  o  o
+    // FLAGS_overwrite  f  f  t  t
+    // --no-overwrite   x  o  x  o
+    // FLAGS__overwrite t  f  t  f
+    // overwrite?       x  x  o  -
+    //
+    if (!FLAGS__overwrite && FLAGS_overwrite) {
+        std::cerr << "both --overwrite and --no-overwrite are specified\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+
+    bool overwrite = FLAGS_overwrite && FLAGS__overwrite;
+    if (!overwrite && std::filesystem::exists(path)) {
         std::cerr << "file '" << path.string() << "' already exists\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }

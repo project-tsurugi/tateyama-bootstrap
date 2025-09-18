@@ -105,18 +105,18 @@ public:
             }
             session_id_ = handshake_response.success().session_id();
             header_.set_session_id(session_id_);
-        } catch (std::runtime_error &ex) {
-            close();
-            throw tgctl::runtime_error(monitor::reason::connection_failure, ex.what());
-        }
 
-        timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
-            auto ret = update_expiration_time();
-            if (ret.has_value()) {
-                return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
-            }
-            return false;
-        });
+            timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
+                auto ret = update_expiration_time();
+                if (ret.has_value()) {
+                    return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+                }
+                return false;
+            });
+        } catch (tgctl::runtime_error &ex) {
+            close();
+            throw ex;
+        }
     }
 
     ~transport() {
