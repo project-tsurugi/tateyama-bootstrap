@@ -22,6 +22,7 @@
 #include <optional>
 #include <sys/ioctl.h>
 #include <asm/termbits.h>
+#include <csignal>
 
 #include <gflags/gflags.h>
 #include <nlohmann/json.hpp>
@@ -81,14 +82,26 @@ void auth_options() {
     }
 }
 
+struct termio* saved{nullptr};  // NOLINT
+static void sigint_handler([[maybe_unused]] int sig) {
+    if (saved) {
+        ioctl(STDIN_FILENO, TCSETAF, saved);  // NOLINT
+    }
+    throw std::runtime_error("interrupted");
+}
+
 static std::string prompt(std::string_view msg, bool display = false)
 {
     struct termio tty{};
     struct termio tty_save{};
 
     if (!display) {
+        if (signal(SIGINT, sigint_handler) == SIG_ERR) {  // NOLINT
+            LOG(ERROR) << "cannot register signal handler";
+        }
         ioctl(STDIN_FILENO, TCGETA, &tty);  // NOLINT
         tty_save = tty;
+        saved = &tty_save;
 
         tty.c_lflag &= ~ECHO;   // NOLINT
         tty.c_lflag |= ECHONL;  // NOLINT
@@ -110,6 +123,9 @@ static std::string prompt(std::string_view msg, bool display = false)
 
     if (!display) {
         ioctl(STDIN_FILENO, TCSETAF, &tty_save);  // NOLINT
+        if (signal(SIGINT, SIG_DFL) == SIG_ERR) {  // NOLINT
+            LOG(ERROR) << "cannot register signal handler";
+        }
     }
 
     return rtnv;

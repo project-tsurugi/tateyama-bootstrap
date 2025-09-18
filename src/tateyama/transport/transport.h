@@ -95,7 +95,6 @@ public:
 
         try {
             auto handshake_response_opt = handshake();
-
             if (!handshake_response_opt) {
                 throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
             }

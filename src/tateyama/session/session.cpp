@@ -119,7 +119,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 user_max += 2;
                 start_max += 2;
                 type_max += 2;
-                remote_max += 2;
+                // Do not touch the remote_max, which is placed on the far right.
 
                 if (FLAGS_verbose) {
                     std::cout << std::left;
@@ -129,8 +129,8 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                     std::cout << std::setw(static_cast<int>(user_max)) << "user";
                     std::cout << std::setw(static_cast<int>(start_max)) << "start";
                     std::cout << std::setw(static_cast<int>(type_max)) << "type";
-                    std::cout << std::setw(static_cast<int>(remote_max)) << "remote\n";
-                    std::cout << std::flush;
+                    std::cout << std::setw(static_cast<int>(remote_max)) << "remote";
+                    std::cout << '\n' << std::flush;
                 }
                 std::map<std::size_t, std::string> output{};
                 for(auto& e : session_list) {
