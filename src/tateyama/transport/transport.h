@@ -93,25 +93,31 @@ public:
         header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
         header_.set_service_id(type);
 
-        auto handshake_response_opt = handshake();
-        if (!handshake_response_opt) {
-            throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
-        }
-        auto& handshake_response = handshake_response_opt.value();
-        if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
-            auto& message = handshake_response.error().message();
-            throw tgctl::runtime_error(monitor::reason::connection_failure, message.empty() ? "handshake error" : message);
-        }
-        session_id_ = handshake_response.success().session_id();
-        header_.set_session_id(session_id_);
+        try {
+            auto handshake_response_opt = handshake();
 
-        timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
-            auto ret = update_expiration_time();
-            if (ret.has_value()) {
-                return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+            if (!handshake_response_opt) {
+                throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
             }
-            return false;
-        });
+            auto& handshake_response = handshake_response_opt.value();
+            if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
+                auto& message = handshake_response.error().message();
+                throw tgctl::runtime_error(monitor::reason::connection_failure, message.empty() ? "handshake error" : message);
+            }
+            session_id_ = handshake_response.success().session_id();
+            header_.set_session_id(session_id_);
+
+            timer_ = std::make_unique<tateyama::common::wire::timer>(EXPIRATION_SECONDS, [this](){
+                auto ret = update_expiration_time();
+                if (ret.has_value()) {
+                    return ret.value().result_case() == tateyama::proto::core::response::UpdateExpirationTime::ResultCase::kSuccess;
+                }
+                return false;
+            });
+        } catch (tgctl::runtime_error &ex) {
+            close();
+            throw ex;
+        }
     }
 
     ~transport() {
