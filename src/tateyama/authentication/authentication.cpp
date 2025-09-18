@@ -81,7 +81,7 @@ void auth_options() {
     }
 }
 
-struct termio* saved{nullptr};
+struct termio* saved{nullptr};  // NOLINT
 static void sigint_handler([[maybe_unused]] int sig) {
     if (saved) {
         ioctl(STDIN_FILENO, TCSETAF, saved);  // NOLINT
