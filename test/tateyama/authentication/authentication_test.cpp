@@ -96,7 +96,7 @@ protected:
 
 TEST_F(authentication_test, no_auth) {
     std::string command;
-    command = "tgctl session list --verbose --noauth --conf ";
+    command = "tgctl session list --verbose --no-auth --conf ";
     command += helper_->conf_file_path();
 
     std::stringstream ss;

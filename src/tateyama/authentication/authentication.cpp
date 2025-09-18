@@ -37,8 +37,8 @@
 DEFINE_string(user, "", "user name for authentication");  // NOLINT
 DEFINE_string(auth_token, "", "authentication token");  // NOLINT
 DEFINE_string(credentials, "", "path to credentials");  // NOLINT
-DEFINE_bool(auth, true, "--no-auth when authentication is not used");  // NOLINT
-DEFINE_bool(overwrite, true, "overwrite the credential file");  // NOLINT
+DEFINE_bool(_auth, true, "--no-auth when authentication is not used");  // NOLINT
+DEFINE_bool(_overwrite, true, "overwrite the credential file");  // NOLINT
 DEFINE_int32(expiration, 90, "number of days until credentials expire");  // NOLINT
 
 namespace tateyama::authentication {
@@ -47,7 +47,7 @@ constexpr static int FORMAT_VERSION = 1;
 constexpr static int MAX_EXPIRATION = 365;  // Maximum expiration date that can be specified with tgctl credentials
 
 void auth_options() {
-    if (!FLAGS_auth) {
+    if (!FLAGS__auth) {
 #ifndef NDEBUG
         std::cout << "no-auth\n" << std::flush;
 #endif
@@ -191,7 +191,7 @@ private:
 static credential_helper_class credential_helper{};  // NOLINT
 
 void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
-    if (!FLAGS_auth) {
+    if (!FLAGS__auth) {
         return;
     }
     if (!FLAGS_user.empty()) {
@@ -238,7 +238,7 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
         return tateyama::tgctl::return_code::err;
     }
 
-    if (!FLAGS_overwrite && std::filesystem::exists(path)) {
+    if (!FLAGS__overwrite && std::filesystem::exists(path)) {
         std::cerr << "file '" << path.string() << "' already exists\n" << std::flush;
         return tateyama::tgctl::return_code::err;
     }
