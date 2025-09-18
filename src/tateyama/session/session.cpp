@@ -119,7 +119,7 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
                 user_max += 2;
                 start_max += 2;
                 type_max += 2;
-                remote_max += 2;
+                // Do not touch the remote_max, which is placed on the far right.
 
                 if (FLAGS_verbose) {
                     std::cout << std::left;
