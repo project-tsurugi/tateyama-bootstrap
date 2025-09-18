@@ -87,7 +87,7 @@ static void sigint_handler([[maybe_unused]] int sig) {
     if (saved) {
         ioctl(STDIN_FILENO, TCSETAF, saved);  // NOLINT
     }
-    throw std::runtime_error("interrupted");
+    throw tgctl::runtime_error(tateyama::monitor::reason::interrupted, "key input has been interrupted by the user");
 }
 
 static std::string prompt(std::string_view msg, bool display = false)
