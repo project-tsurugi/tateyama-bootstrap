@@ -62,6 +62,9 @@ class directory_helper {
     }
 
     void set_up() {
+        set_up("");
+    }
+    void set_up(const std::string& additional) {
         std::string command;
 
         command = "rm -rf ";
@@ -100,6 +103,9 @@ class directory_helper {
         strm_ << "[ipc_endpoint]\ndatabase_name=" << prefix_ << "\n\n";
         strm_ << "[stream_endpoint]\nport=" << port_ << "\n\n";
         strm_ << "[datastore]\nlog_location=" << abs_path("log")  << "\n";
+        if (!additional.empty()) {
+            strm_ << additional << "\n";
+        }
         strm_.close();
     }
 

@@ -43,7 +43,7 @@ class authentication_test : public ::testing::Test {
 public:
     virtual void SetUp() {
         helper_ = std::make_unique<directory_helper>("authentication_test", 20401);
-        helper_->set_up();
+        helper_->set_up("[authentication]\n    enabled=true");
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
         server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("authentication_test", bst_conf.digest(), sync_, true);
         sync_.wait();
@@ -113,6 +113,7 @@ TEST_F(authentication_test, user_password_success) {
     std::stringstream ss;
     do_test(command, "password\n", ss);
 
+    std::cout << ss.str() << std::endl;
     EXPECT_TRUE(ss.str().find("authentication_test_usig_session_list") != std::string::npos);
 }
 
