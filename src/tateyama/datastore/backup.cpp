@@ -108,8 +108,8 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request requestBegin{};
         auto backup_begin = requestBegin.mutable_backup_begin();
@@ -223,9 +223,9 @@ tgctl::return_code tgctl_backup_estimate() {
 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
 
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         request.mutable_backup_estimate();
@@ -291,9 +291,9 @@ tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup) {
 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
 
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
         ::tateyama::proto::datastore::request::Request request{};
         auto restore_begin = request.mutable_restore_begin();
@@ -366,8 +366,8 @@ tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to
 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto parser = std::make_unique<file_list>();
         if (!parser->read_json(FLAGS_use_file_list)) {
             std::cerr << "error occurred in using the file_list (" << FLAGS_use_file_list << ")\n" << std::flush;
@@ -445,8 +445,8 @@ tgctl::return_code tgctl_restore_tag(const std::string& tag_name) {
 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_datastore);
 
         ::tateyama::proto::datastore::request::Request request{};

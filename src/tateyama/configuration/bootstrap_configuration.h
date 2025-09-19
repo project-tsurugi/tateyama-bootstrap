@@ -32,7 +32,7 @@ static const std::string_view PID_FILE_PREFIX = "tsurugi";
 static const char *ENV_CONF = "TSURUGI_CONF";  // NOLINT
 static const char *ENV_HOME = "TSURUGI_HOME";  // NOLINT
 static const std::filesystem::path HOME_CONF_FILE = std::filesystem::path("var/etc/tsurugi.ini");  // NOLINT
-std::string_view default_property_for_bootstrap();
+std::string_view default_configuration();
 
 class bootstrap_configuration {
 public:
@@ -93,7 +93,7 @@ private:
         if (std::filesystem::is_directory(conf_file_)) {
             throw tgctl::runtime_error(monitor::reason::internal, conf_file_.string() + " is a directory");
         }
-        configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_property_for_bootstrap());
+        configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_configuration());
 
         if (env_home != nullptr) {
             configuration_->base_path(std::filesystem::path(env_home));

@@ -32,6 +32,8 @@
 #include <tateyama/proto/endpoint/request.pb.h>
 #include "tateyama/transport/transport.h"
 #include "tateyama/tgctl/runtime_error.h"
+#include "tateyama/configuration/bootstrap_configuration.h"
+
 #include "rsa.h"
 #include "authentication.h"
 
@@ -42,47 +44,15 @@ DEFINE_bool(_auth, true, "--no-auth when authentication is not used");  // NOLIN
 DEFINE_bool(overwrite, false, "overwrite the credential file");  // NOLINT  for --overwrite
 DEFINE_bool(_overwrite, true, "overwrite the credential file");  // NOLINT  for --no-overwrite
 DEFINE_int32(expiration, 90, "number of days until credentials expire");  // NOLINT
+DECLARE_string(conf);  // NOLINT
 
 namespace tateyama::authentication {
 
 constexpr static int FORMAT_VERSION = 1;
 constexpr static int MAX_EXPIRATION = 365;  // Maximum expiration date that can be specified with tgctl credentials
 
-void auth_options() {
-    if (!FLAGS__auth) {
-#ifndef NDEBUG
-        std::cout << "no-auth\n" << std::flush;
-#endif
-        return;
-    }
-    if (!FLAGS_user.empty()) {
-#ifndef NDEBUG
-        std::cout << "auth user:= " << FLAGS_user << '\n' << std::flush;
-#endif
-        return;
-    }
-    if (!FLAGS_auth_token.empty()) {
-#ifndef NDEBUG
-        std::cout << "auth token: " << FLAGS_auth_token << '\n' << std::flush;
-#endif
-        return;
-    }
-    if (!FLAGS_credentials.empty()) {
-#ifndef NDEBUG
-        std::cout << "auth credentials: " << FLAGS_credentials << '\n' << std::flush;
-#endif
-        return;
-    }
-
-    if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
-#ifndef NDEBUG
-        std::cout << "auth token fron TSURUGI_AUTH_TOKEN: " << token << '\n' << std::flush;
-#endif
-        return;
-    }
-}
-
 struct termio* saved{nullptr};  // NOLINT
+
 static void sigint_handler([[maybe_unused]] int sig) {
     if (saved) {
         ioctl(STDIN_FILENO, TCSETAF, saved);  // NOLINT
@@ -90,8 +60,7 @@ static void sigint_handler([[maybe_unused]] int sig) {
     throw tgctl::runtime_error(tateyama::monitor::reason::interrupted, "key input has been interrupted by the user");
 }
 
-static std::string prompt(std::string_view msg, bool display = false)
-{
+static std::string prompt(std::string_view msg, bool display = false) {
     struct termio tty{};
     struct termio tty_save{};
 
@@ -131,47 +100,45 @@ static std::string prompt(std::string_view msg, bool display = false)
     return rtnv;
 }
 
-std::optional<std::filesystem::path> default_credential_path() {
-    if (auto* name = getenv("HOME"); name != nullptr) {
-        std::filesystem::path path{name};
-        path /= ".tsurugidb";
-        path /= "credentials.key";
-        return path;
-    }
-    return std::nullopt;
-}
-
-static void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::filesystem::path& path) {
-    std::ifstream file(path.string().c_str());
-    if (!file.is_open()) {
-        return;
-    }
-
-    std::string encrypted_credential{};
-    std::getline(file, encrypted_credential);  // use first line only
-    file.close();
-
-    if (!encrypted_credential.empty()) {
-        (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
-    }
-}
+enum class credential_type {
+    not_defined = 0,
+    no_auth,
+    user_password,
+    auth_token,
+    file,
+    disabled
+};
 
 class credential_helper_class {
 public:
-    std::string get_json_text(const std::string& user, const std::string& password) {
-        nlohmann::json j;
-        std::stringstream ss;
-
-        j["format_version"] = FORMAT_VERSION;
-        j["user"] = user;
-        j["password"] = password;
-        if (expiration_.count() > 0) {
-            j["expiration_date"] = expiration();
+    void set_disabled() {
+        type_ = credential_type::disabled;
+    }    
+    void set_no_auth() {
+        type_ = credential_type::no_auth;
+    }
+    void set_user_password(const std::string& user, const std::string& password) {
+        type_ = credential_type::user_password;
+        json_text_ = get_json_text(user, password);
+    }
+    void set_auth_token(const std::string& auth_token) {
+        type_ = credential_type::auth_token;
+        auth_token_ = auth_token;
+    }
+    void set_file_credential(const std::filesystem::path& path) {
+        type_ = credential_type::file;        
+        std::ifstream file(path.string().c_str());
+        if (!file.is_open()) {
+            return;
         }
-        j["password"] = password;
 
-        ss << j;
-        return ss.str();
+        std::string encrypted_credential{};
+        std::getline(file, encrypted_credential);  // use first line only
+        file.close();
+
+        if (!encrypted_credential.empty()) {
+            set_encrypted_credential(encrypted_credential);
+        }
     }
 
     [[nodiscard]] std::string expiration_date() const noexcept {
@@ -200,9 +167,75 @@ public:
         return true;
     }
 
+    std::optional<std::filesystem::path> default_credential_path() {
+        if (auto* name = getenv("HOME"); name != nullptr) {
+            std::filesystem::path path{name};
+            path /= ".tsurugidb";
+            path /= "credentials.key";
+            return path;
+        }
+        return std::nullopt;
+    }
+
+    void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
+        switch (type_) {
+        case credential_type::disabled:
+            break;
+        case credential_type::no_auth:
+            break;
+        case credential_type::user_password:
+        {
+            auto key_opt = key_func();
+            if (key_opt) {
+                rsa_encrypter rsa{key_opt.value()};
+                std::string c{};
+                rsa.encrypt(json_text_, c);
+                std::string encrypted_credential = base64_encode(c);
+                (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
+                break;
+            }
+            throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, "error in get encryption key");
+        }
+        case credential_type::auth_token:
+        {
+            (information.mutable_credential())->set_remember_me_credential(auth_token_);
+            break;
+        }
+        case credential_type::file:
+        {
+            (information.mutable_credential())->set_encrypted_credential(encrypted_credential_);
+            break;
+        }
+        default:
+            throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, "no credential specified");
+        }
+    }
+
 private:
+    credential_type type_{};
+    std::string json_text_{};
+    std::string auth_token_{};
+    std::string encrypted_credential_{};
+
     std::chrono::minutes expiration_{300}; // 5 minutes for connecting a normal session.
     std::string expiration_date_string_{};
+
+
+    std::string get_json_text(const std::string& user, const std::string& password) {
+        nlohmann::json j;
+        std::stringstream ss;
+
+        j["format_version"] = FORMAT_VERSION;
+        j["user"] = user;
+        j["password"] = password;
+        if (expiration_.count() > 0) {
+            j["expiration_date"] = expiration();
+        }
+        j["password"] = password;
+
+        ss << j;
+        return ss.str();
+    }
 
     std::string& expiration() {
         std::stringstream r;
@@ -220,47 +253,66 @@ private:
         expiration_date_string_ = r.str();
         return expiration_date_string_;
     }
+
+    void set_encrypted_credential(const std::string& encrypted_credential) {
+        type_ = credential_type::file;
+        encrypted_credential_ = encrypted_credential;
+    }
 };
 
 static credential_helper_class credential_helper{};  // NOLINT
 
-void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
+
+//
+// implement tgctl credentials
+//
+void auth_options() {
+    auto whole = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf).get_configuration();
+    auto authentication_section = whole->get_section("authentication");
+    auto enabled_opt = authentication_section->get<bool>("enabled");
+    if (!enabled_opt || !enabled_opt.value()) {
+        credential_helper.set_disabled();
+        return;
+    }
+
     if (!credential_helper.check_not_more_than_one()) {
         throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, "more than one credential options are specified");
     }
+
     if (!FLAGS__auth) {
+        credential_helper.set_no_auth();
         return;
     }
     if (!FLAGS_user.empty()) {
-        auto key_opt = key_func();
-        if (key_opt) {
-            rsa_encrypter rsa{key_opt.value()};
-
-            std::string c{};
-            rsa.encrypt(credential_helper.get_json_text(FLAGS_user, prompt("password: ")), c);
-            std::string encrypted_credential = base64_encode(c);
-            (information.mutable_credential())->set_encrypted_credential(encrypted_credential);
-        }
+        credential_helper.set_user_password(FLAGS_user, prompt("password: "));
         return;
     }
     if (!FLAGS_auth_token.empty()) {
-        (information.mutable_credential())->set_remember_me_credential(FLAGS_auth_token);
+        credential_helper.set_auth_token(FLAGS_auth_token);
         return;
     }
     if (!FLAGS_credentials.empty()) {
-        add_credential(information, std::filesystem::path(FLAGS_credentials));
+        credential_helper.set_file_credential(std::filesystem::path(FLAGS_credentials));
         return;
     }
 
     if (auto* token = getenv("TSURUGI_AUTH_TOKEN"); token != nullptr) {
-        (information.mutable_credential())->set_remember_me_credential(token);
+        credential_helper.set_auth_token(token);
         return;
     }
-    if (auto cred_opt = default_credential_path(); cred_opt) {
-        add_credential(information, cred_opt.value());
+    if (auto cred_opt = credential_helper.default_credential_path(); cred_opt) {
+        credential_helper.set_file_credential(cred_opt.value());
     }
 }
 
+void add_credential(tateyama::proto::endpoint::request::ClientInformation& information, const std::function<std::optional<std::string>()>& key_func) {
+    credential_helper.add_credential(information, key_func);
+}
+
+
+//
+// implement tgctl credentials
+//
 static tgctl::return_code credentials(const std::filesystem::path& path) {
     if (FLAGS_expiration < 0 || FLAGS_expiration > MAX_EXPIRATION) {
         std::cerr << "--expiration should be greater then or equal to 0 and less than or equal to " << MAX_EXPIRATION << '\n' << std::flush;
@@ -296,6 +348,8 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
     }
 
     try {
+        auth_options();
+
         credential_helper.set_expiration(FLAGS_expiration);
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_routing);  // service_id is meaningless here
 
@@ -330,7 +384,7 @@ static tgctl::return_code credentials(const std::filesystem::path& path) {
 }
 
 tgctl::return_code credentials() {
-    if (auto cp_opt = default_credential_path(); cp_opt) {
+    if (auto cp_opt = credential_helper.default_credential_path(); cp_opt) {
         auto& cp = cp_opt.value();
         auto parent = cp.parent_path();
         if (!std::filesystem::exists(parent)) {

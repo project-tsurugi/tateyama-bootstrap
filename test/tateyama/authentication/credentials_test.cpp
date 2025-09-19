@@ -43,7 +43,7 @@ class credentials_test : public ::testing::Test {
 public:
     virtual void SetUp() {
         helper_ = std::make_unique<directory_helper>("credentials_test", 20402);
-        helper_->set_up();
+        helper_->set_up("[authentication]\n    enabled=true");
         auto bst_conf = tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path());
         server_mock_ = std::make_unique<tateyama::test_utils::server_mock>("credentials_test", bst_conf.digest(), sync_, true);
         sync_.wait();

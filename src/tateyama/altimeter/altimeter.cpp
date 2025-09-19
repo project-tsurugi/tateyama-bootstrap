@@ -63,8 +63,8 @@ tgctl::return_code set_enabled(const std::string& type, bool enabled) {
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
         ::tateyama::proto::altimeter::request::Request request{};
         auto* mutable_configure = request.mutable_configure();
@@ -99,8 +99,8 @@ tgctl::return_code set_log_level(const std::string& type, const std::string& lev
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
         ::tateyama::proto::altimeter::request::Request request{};
         auto* mutable_configure = request.mutable_configure();
@@ -136,8 +136,8 @@ tgctl::return_code set_statement_duration(const std::string& value) {
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
         ::tateyama::proto::altimeter::request::Request request{};
         auto* mutable_configure = request.mutable_configure();
@@ -167,8 +167,8 @@ tgctl::return_code rotate(const std::string& type) {
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_altimeter);
         ::tateyama::proto::altimeter::request::Request request{};
         auto* mutable_log_rotate = request.mutable_log_rotate();
