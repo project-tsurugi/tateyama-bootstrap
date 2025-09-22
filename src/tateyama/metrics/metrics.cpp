@@ -48,8 +48,8 @@ tgctl::return_code list() {
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
         ::tateyama::proto::metrics::request::Request request{};
         request.mutable_list();
@@ -133,8 +133,8 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
     }
 
     auto reason = monitor::reason::absent;
-    authentication::auth_options();
     try {
+        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
         ::tateyama::proto::metrics::request::Request request{};
         request.mutable_show();

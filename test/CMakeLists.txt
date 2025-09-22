@@ -10,7 +10,7 @@ target_compile_options(${test_target}
 
 target_include_directories(${test_target}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+        PRIVATE ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(${test_target}
@@ -51,6 +51,7 @@ file(GLOB SRCS
         "tateyama/request/*_test.cpp"
         "tateyama/transport/*_test.cpp"
         "tateyama/authentication/*_test.cpp"
+        ${CMAKE_SOURCE_DIR}/src/tateyama/configuration/*.cpp
 )
 if (ENABLE_ALTIMETER)
     file(GLOB ALTIMETER_SRCS

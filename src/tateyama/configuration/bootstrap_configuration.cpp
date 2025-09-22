@@ -134,7 +134,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 } // namespace details
 
 
-std::string_view default_property_for_bootstrap() {
+std::string_view default_configuration() {
     return details::default_configuration;
 }
 
