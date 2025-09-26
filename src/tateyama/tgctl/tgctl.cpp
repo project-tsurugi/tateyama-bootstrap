@@ -95,6 +95,10 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                 std::cerr << "need to specify path/to/backup\n" << std::flush;
                 return tateyama::tgctl::return_code::err;
             }
+            if (tateyama::datastore::tgctl_backup_directory_check(args.at(3)) != tgctl::return_code::ok) {
+                return tateyama::tgctl::return_code::err;
+            }
+
             bool is_running = tateyama::process::is_running();
             if (!is_running) {
                 auto FLAGS_quiet_previous = FLAGS_quiet;
