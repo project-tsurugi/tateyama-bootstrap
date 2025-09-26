@@ -20,6 +20,7 @@
 #include <termios.h>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 
 #include <gflags/gflags.h>
 
@@ -209,6 +210,38 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
 
     if (monitor_output) {
         monitor_output->finish(reason);
+    }
+    return rtnv;
+}
+
+tgctl::return_code tgctl_backup_directory_check(const std::string& path_to_backup) {
+    auto rtnv = tgctl::return_code::ok;
+    std::stringstream ss{};
+
+    auto location = std::filesystem::path(path_to_backup);
+    std::filesystem::file_status status = std::filesystem::status(location);
+    if (!std::filesystem::exists(location)) {
+        rtnv = tgctl::return_code::err;
+        ss << "backup create error: " << path_to_backup << " does not exists";
+    } else if (!std::filesystem::is_directory(location)) {
+        rtnv = tgctl::return_code::err;
+        ss << "backup create error: " << path_to_backup << " is not a directory";
+    } else if (!std::filesystem::is_directory(location)) {
+        rtnv = tgctl::return_code::err;
+        ss << "backup create error: " << path_to_backup << " is not a directory";
+    } else if (!((status.permissions() & std::filesystem::perms::owner_write) == std::filesystem::perms::owner_write)) {
+        rtnv = tgctl::return_code::err;
+        ss << "backup create error: " << path_to_backup << " is not writable";
+    }
+
+    if (rtnv != tgctl::return_code::ok) {
+        std::cout << ss.str() << '\n' << std::flush;
+        if (!FLAGS_monitor.empty()) {
+            std::unique_ptr<monitor::monitor> monitor_output{};
+            monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
+            monitor_output->start();
+            monitor_output->finish(tateyama::monitor::reason::io);
+        }
     }
     return rtnv;
 }
