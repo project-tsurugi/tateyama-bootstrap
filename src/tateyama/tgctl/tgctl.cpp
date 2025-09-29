@@ -115,13 +115,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                 FLAGS_quiet = FLAGS_quiet_previous;
                 FLAGS_monitor = FLAGS_monitor_previous;
             }
-            tateyama::tgctl::return_code rv = tateyama::tgctl::return_code::ok;
-            try {
-                rv = tateyama::datastore::tgctl_backup_create(args.at(3));
-            } catch (std::exception &ex) {
-                std::cerr << ex.what() << '\n' << std::flush;
-                rv = tateyama::tgctl::return_code::err;
-            }
+            auto rv = tateyama::datastore::tgctl_backup_create(args.at(3));
             if (!is_running) {
                 FLAGS_quiet = true;
                 FLAGS_monitor = "";

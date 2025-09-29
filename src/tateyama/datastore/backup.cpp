@@ -206,6 +206,10 @@ tgctl::return_code tgctl_backup_create(const std::string& path_to_backup) {
         std::cerr << ex.what() << '\n' << std::flush;
         rtnv = tgctl::return_code::err;
         reason = ex.code();
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << '\n' << std::flush;
+        rtnv = tgctl::return_code::err;
+        reason = monitor::reason::io;
     }
 
     if (monitor_output) {
