@@ -34,9 +34,6 @@
 #include <jogasaki/api/service/bridge.h>
 #include <jogasaki/api/resource/bridge.h>
 
-#ifdef OGAWAYAMA
-#include <ogawayama/bridge/service.h>
-#endif
 #include <jogasaki/api/kvsservice/service.h>
 #include <jogasaki/api/kvsservice/resource.h>
 #include <jogasaki/api.h>
@@ -159,12 +156,6 @@ static int backend_main(int argc, char **argv) {
     tgsv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
     tgsv.add_service(sqlsvc);
-
-#ifdef OGAWAYAMA
-    // ogawayama bridge
-    tgsv.add_service(std::make_shared<ogawayama::bridge::service>());
-    LOG(INFO) << "ogawayama bridge created";
-#endif
 
     tgsv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
     tgsv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
