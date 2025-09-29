@@ -92,15 +92,6 @@ runs:
         path: ${{ inputs.path }}/jogasaki
         ref: master
 
-    - name: Checkout_Ogawayama
-      uses: actions/checkout@v4
-      if: ${{ inputs.checkout == 'true' }}
-      with:
-        repository: project-tsurugi/ogawayama
-        path: ${{ inputs.path }}/ogawayama
-        ref: master
-        submodules: true
-
     - name: Install_Takatori
       run: |
         cd ${{ inputs.path }}/takatori
@@ -212,15 +203,5 @@ runs:
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin_implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
-        cmake --build . --target install --clean-first
-      shell: bash
-
-    - name: Install_Ogawayama
-      run: |
-        cd ${{ inputs.path }}/ogawayama
-        rm -fr build
-        mkdir build
-        cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin_implementation }} -DBUILD_BRIDGE_ONLY=ON -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
         cmake --build . --target install --clean-first
       shell: bash
