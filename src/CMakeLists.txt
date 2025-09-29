@@ -44,13 +44,6 @@ target_link_libraries(server
         PRIVATE crypto
         )
 
-if (OGAWAYAMA)
-    target_link_libraries(server
-            PRIVATE ${ogawayama_bridge}
-    )
-    target_compile_definitions(server PUBLIC OGAWAYAMA)
-endif()
-
 if (ENABLE_JEMALLOC)
     target_link_libraries(server
             PRIVATE jemalloc::jemalloc)
