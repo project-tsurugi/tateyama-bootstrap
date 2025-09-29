@@ -20,6 +20,7 @@
 namespace tateyama::datastore {
 
     tgctl::return_code tgctl_backup_create(const std::string& path_to_backup);
+    tgctl::return_code tgctl_backup_directory_check(const std::string& path_to_backup);
     tgctl::return_code tgctl_backup_estimate();
     tgctl::return_code tgctl_restore_backup(const std::string& path_to_backup);
     tgctl::return_code tgctl_restore_backup_use_file_list(const std::string& path_to_backup);
