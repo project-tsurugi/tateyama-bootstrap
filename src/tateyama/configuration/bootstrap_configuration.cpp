@@ -58,6 +58,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_core_affinity=false\n"
         "dev_assign_numa_nodes_uniformly=false\n"
         "dev_force_numa_node=\n"
+        "dev_log_msg_user_data=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
