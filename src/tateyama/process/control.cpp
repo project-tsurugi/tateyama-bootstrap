@@ -538,7 +538,7 @@ static tgctl::return_code tgctl_shutdown(proc_mutex* file_mutex, server::status_
         std::cout << '\n' << std::flush;
     }
     if (!FLAGS_quiet) {
-        std::cout << "could not shutdown " << server_name_string << " within " << (sleep_time_unit_shutdown * check_count_shutdown) / 1000 << " seconds, as shutdown is still in progress.\n" << std::flush;
+        std::cout << "could not shutdown " << server_name_string << " within " << (sleep_time_unit_shutdown * check_count) / 1000 << " seconds, as shutdown is still in progress.\n" << std::flush;
     }
     return tgctl::return_code::err;
 }
