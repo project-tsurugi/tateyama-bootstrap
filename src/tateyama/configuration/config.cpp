@@ -32,6 +32,7 @@
 
 #include <tateyama/logging.h>
 
+#include "tateyama/authentication/authentication.h"
 #include "bootstrap_configuration.h"
 
 DECLARE_string(conf);
@@ -40,11 +41,15 @@ DEFINE_bool(show_dev, false, "include settings for developers");  // NOLINT
 namespace tateyama::configuration {
 
 tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexity)
+    auto bootstrap_configuration = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (tateyama::authentication::authenticate(bootstrap_configuration.get_configuration()->get_section("authentication")) != tateyama::tgctl::return_code::ok) {
+        return tateyama::tgctl::return_code::err;
+    }
+
     boost::property_tree::ptree config_tree;
     boost::property_tree::ptree default_tree;
     std::map<std::string, std::set<std::string>> attributes{};
 
-    auto bootstrap_configuration = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     std::string default_configuration_string{default_configuration()};
     std::istringstream default_iss(default_configuration_string);
     boost::property_tree::read_ini(default_iss, default_tree);

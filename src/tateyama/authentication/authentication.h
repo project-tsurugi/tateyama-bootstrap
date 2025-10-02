@@ -18,6 +18,8 @@
 #include <optional>
 #include <filesystem>
 
+#include <tateyama/api/configuration.h>
+
 #include "tateyama/tgctl/tgctl.h"
 #include <tateyama/proto/endpoint/request.pb.h>
 
@@ -29,5 +31,6 @@ void add_credential(tateyama::proto::endpoint::request::ClientInformation&, cons
 
 tgctl::return_code credentials();  // NOLINT(readability-redundant-declaration) only for readability
 tgctl::return_code credentials(const std::string&);  // NOLINT(readability-redundant-declaration) only for readability
+tgctl::return_code authenticate(tateyama::api::configuration::section*);  // NOLINT(readability-redundant-declaration) only for readability
 
 }  // tateyama::authentication
