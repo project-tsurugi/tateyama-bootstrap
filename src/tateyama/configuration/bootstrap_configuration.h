@@ -24,6 +24,7 @@
 
 #include <tateyama/api/configuration.h>
 
+#include "tateyama/tgctl/tgctl.h"
 #include "tateyama/tgctl/runtime_error.h"
 
 namespace tateyama::configuration {
@@ -121,5 +122,7 @@ private:
         return sstream.str();
     }
 };
+
+tgctl::return_code config();
 
 } // namespace tateyama::configuration

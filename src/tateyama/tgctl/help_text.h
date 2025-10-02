@@ -167,6 +167,12 @@ static constexpr std::string_view help_text {  // NOLINT
 "        --expiration <days> : Number of days until authentication information becomes invalid.\n"
 "                              If not specified, it will be 90 days.\n"
 "                              If the number of days is 0, the authentication information will not become invalid.\n"
+"\n"
+"  config : Display a list of Tsurugi database configuration settings\n"
+"    <args>\n"
+"        none\n"
+"    <options>\n"
+"        --show-dev : Include configuration settings for developers into the display.\n"
 };
 
 } // tateyama::tgctl

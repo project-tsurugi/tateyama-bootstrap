@@ -26,6 +26,7 @@
 
 #include <gflags/gflags.h>
 #include <nlohmann/json.hpp>
+#include <boost/regex.hpp>
 
 #include <tateyama/logging.h>
 
@@ -35,6 +36,8 @@
 #include "tateyama/configuration/bootstrap_configuration.h"
 
 #include "rsa.h"
+#include "client.h"
+#include "token_handler.h"
 #include "authentication.h"
 
 DEFINE_string(user, "", "user name for authentication");  // NOLINT
@@ -211,6 +214,27 @@ public:
         }
     }
 
+    static std::optional<std::string> check_username(const std::optional<std::string>& name_opt) {
+        if (!name_opt) {
+            return std::nullopt;
+        }
+        const std::string& name = name_opt.value();
+
+        if(regex_match(name, boost::regex(R"(\s.*)"))) {
+            throw authentication_exception("invalid user name (begin with whitespace)", tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR);
+        }
+        if(regex_match(name, boost::regex(R"(.*\s)"))) {
+            throw authentication_exception("invalid user name (end with whitespace)", tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR);
+        }
+        if (name.length() > MAXIMUM_USERNAME_LENGTH) {
+            throw authentication_exception("invalid user name (too long)", tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR);
+        }
+        if(regex_match(name, boost::regex(R"([\x20-\x7E\x80-\xFF]*)"))) {
+            return name_opt;
+        }
+        throw authentication_exception("invalid user name (includes invalid charactor)", tateyama::proto::diagnostics::Code::AUTHENTICATION_ERROR);
+    }
+
 private:
     credential_type type_{};
     std::string json_text_{};
@@ -220,6 +244,10 @@ private:
     std::chrono::minutes expiration_{300}; // 5 minutes for connecting a normal session.
     std::string expiration_date_string_{};
 
+    /**
+     * @brief maximum length for valid username
+     */
+    constexpr static std::size_t MAXIMUM_USERNAME_LENGTH = 1024;
 
     std::string get_json_text(const std::string& user, const std::string& password) {
         nlohmann::json j;
@@ -409,6 +437,126 @@ tgctl::return_code credentials(const std::string& file_name) {
     }
 
     return tateyama::authentication::credentials(path);
+}
+
+
+// for authenticate()
+
+class url_parser {
+public:
+    explicit url_parser(const std::string& url) {
+        boost::regex ex("(http|https)://([^/ :]+):?([^/ ]*)(/?[^ #?]*)\\x3f?([^ #]*)#?([^ ]*)");
+        boost::cmatch what;
+
+        if(regex_match(url.c_str(), what, ex)) {
+            protocol = std::string(what[1].first, what[1].second);
+            domain   = std::string(what[2].first, what[2].second);
+            port     = std::string(what[3].first, what[3].second);
+            path     = std::string(what[4].first, what[4].second);
+            query    = std::string(what[5].first, what[5].second);
+        }
+    }
+
+    std::string& get_domain() { return domain; };
+    std::string& get_port() { return port; };
+    std::string& get_path() { return path; };
+
+private:
+    std::string protocol{};
+    std::string domain{};
+    std::string port{};
+    std::string path{};
+    std::string query{};
+};
+
+tgctl::return_code authenticate(tateyama::api::configuration::section* section) {
+    if (auto enabled_opt = section->get<bool>("enabled"); enabled_opt) {
+        if (!enabled_opt.value()) {
+            return tateyama::tgctl::return_code::ok;
+        }
+    }
+
+    auto request_timeout_opt = section->get<int>("request_timeout");
+    auto url_opt = section->get<std::string>("url");
+
+    if (!request_timeout_opt || !url_opt) {
+        return tateyama::tgctl::return_code::err;
+    }
+
+    url_parser url(url_opt.value());
+
+    std::string& port = url.get_port();
+    auto auth_client = std::make_unique<client>(url.get_domain(),
+                                                port.empty() ? 80 : stoi(port), url.get_path(),
+                                                static_cast<std::chrono::milliseconds>(lround(request_timeout_opt.value() * 1000)));
+    try {
+        authentication::auth_options();
+        tateyama::proto::endpoint::request::ClientInformation information{};
+
+        std::string encryption_key{};
+        if (auto encryption_key_opt = auth_client->get_encryption_key(); encryption_key_opt) {
+            auto& key_pair = encryption_key_opt.value();
+            if (key_pair.first == "RSA") {
+                encryption_key = key_pair.second;
+            }
+        }
+
+        credential_helper.add_credential(information, [&encryption_key](){
+            if (!encryption_key.empty()) {
+                return std::optional<std::string>{encryption_key};
+            }
+            return std::optional<std::string>{std::nullopt};
+        });
+
+        const tateyama::proto::endpoint::request::Credential& credential = information.credential();
+        switch (credential.credential_opt_case()) {
+        case tateyama::proto::endpoint::request::Credential::CredentialOptCase::kEncryptedCredential:
+            if (auto token_opt = auth_client->verify_encrypted(credential.encrypted_credential()); token_opt) {
+                if (!encryption_key.empty()) {
+                    auto handler = std::make_unique<token_handler>(token_opt.value(), encryption_key);
+                    if (credential_helper_class::check_username(handler->tsurugi_auth_name())) {
+                        return tateyama::tgctl::return_code::ok;
+                    }
+                    if (auto name_opt = handler->tsurugi_auth_name(); name_opt) {
+                        std::cerr << "illegal user name: " << name_opt.value() << '\n' << std::flush;
+                    } else {
+                        std::cerr << "illegal user name\n" << std::flush;
+                    }
+                }
+            }
+            break;
+        case tateyama::proto::endpoint::request::Credential::CredentialOptCase::kRememberMeCredential:
+        {
+            const auto& token = credential.remember_me_credential();
+            if (auto token_opt = auth_client->verify_token(token); token_opt) {
+                if (!encryption_key.empty()) {
+                    auto handler = std::make_unique<token_handler>(token, encryption_key);
+                    auto ns = std::chrono::system_clock::now().time_since_epoch();
+                    if (std::chrono::duration_cast<std::chrono::seconds>(ns).count() < handler->expiration_time()) {
+                        if (credential_helper_class::check_username(handler->tsurugi_auth_name())) {
+                            return tateyama::tgctl::return_code::ok;
+                        }
+                        if (auto name_opt = handler->tsurugi_auth_name(); name_opt) {
+                            std::cerr << "illegal user name: " << name_opt.value() << '\n' << std::flush;
+                        } else {
+                            std::cerr << "illegal user name\n" << std::flush;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        std::cerr << "authentication failed\n" << std::flush;
+        return tateyama::tgctl::return_code::err;
+
+    } catch (std::exception &ex) {
+        std::cerr << ex.what() << '\n' << std::flush;
+        return tateyama::tgctl::return_code::err;
+    }
+    return tateyama::tgctl::return_code::ok;
 }
 
 }  // tateyama::authentication

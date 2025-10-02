@@ -324,6 +324,11 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
         return tateyama::authentication::credentials(args.at(2));
     }
 
+    // config
+    if (args.at(1) == "config") {
+        return tateyama::configuration::config();
+    }
+
     std::cerr << "unknown command '" << args.at(1) << "'\n" << std::flush;
     return tateyama::tgctl::return_code::err;
 }

@@ -51,7 +51,7 @@ file(GLOB SRCS
         "tateyama/request/*_test.cpp"
         "tateyama/transport/*_test.cpp"
         "tateyama/authentication/*_test.cpp"
-        ${CMAKE_SOURCE_DIR}/src/tateyama/configuration/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/tateyama/configuration/bootstrap_configuration.cpp
 )
 if (ENABLE_ALTIMETER)
     file(GLOB ALTIMETER_SRCS

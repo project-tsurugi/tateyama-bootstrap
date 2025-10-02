@@ -7,7 +7,7 @@ endif()
 
 file(GLOB SERVER_SOURCES
         "tateyama/server/*.cpp"
-        "tateyama/configuration/*.cpp"
+        "tateyama/configuration/bootstrap_configuration.cpp"
         )
 if (ENABLE_ALTIMETER)
     list(APPEND SERVER_SOURCES "tateyama/altimeter/altimeter_helper.cpp")
@@ -111,7 +111,7 @@ set(GENERATED_PROTO_SRCS ${GENERATED_PROTO_SRCS} PARENT_SCOPE)
 
 file(GLOB TGCTL_SOURCES
         "tateyama/tgctl/*.cpp"
-        "tateyama/authentication/authentication.cpp"
+        "tateyama/authentication/*.cpp"
         "tateyama/monitor/*.cpp"
         "tateyama/datastore/*.cpp"
         "tateyama/process/*.cpp"
@@ -148,6 +148,7 @@ set_target_properties(tgctl
 
 target_include_directories(tgctl
         PRIVATE ${CMAKE_BINARY_DIR}/src
+        PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib
         PRIVATE .
         )
 
@@ -158,9 +159,11 @@ target_link_libraries(tgctl
         PRIVATE gflags::gflags
         PRIVATE pthread
         PRIVATE Boost::filesystem
+        PRIVATE Boost::regex
         PRIVATE protobuf::libprotobuf
         PRIVATE crypto
         PRIVATE rt
+        PRIVATE jwt
         )
 
 set_compile_options(tgctl)
