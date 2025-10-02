@@ -27,7 +27,7 @@
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
 #include <boost/process/pipe.hpp>
-# include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/copy.hpp>
 #include <boost/thread/barrier.hpp>
 
 #include <tateyama/proto/session/response.pb.h>
