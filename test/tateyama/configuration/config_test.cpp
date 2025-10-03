@@ -63,7 +63,33 @@ TEST_F(config_test, normal) {
     std::stringstream ss;
     do_test(command, ss);
 
-    EXPECT_TRUE(ss.str().find("    pid_directory=/pid_directory-for-test") != std::string::npos);
+    EXPECT_TRUE(ss.str().find("pid_directory=/pid_directory-for-test") != std::string::npos);
+}
+
+TEST_F(config_test, monitor) {
+    std::string command;
+    command = "tgctl config --conf ";
+    command += helper_->conf_file_path();
+    command += " --quiet --monitor ";
+    command += helper_->abs_path("test/config.log");
+
+    std::stringstream ss;
+    do_test(command, ss);
+
+    EXPECT_TRUE(validate_json(helper_->abs_path("test/confit.log")));
+
+    FILE *fp;
+    command = "grep pid_directory-for-test ";
+    command += helper_->abs_path("test/config.log");
+    command += " | wc -l";
+    std::cout << command << std::endl;
+    if((fp = popen(command.c_str(), "r")) == nullptr){
+        std::cerr << "cannot wc" << std::endl;
+    }
+    int l{};
+    int rv = fscanf(fp, "%d", &l);
+    EXPECT_EQ(l, 1);
+    EXPECT_EQ(rv, 1);
 }
 
 }  // namespace tateyama::configuration

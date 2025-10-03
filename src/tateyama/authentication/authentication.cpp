@@ -469,10 +469,10 @@ private:
     std::string query{};
 };
 
-tgctl::return_code authenticate(tateyama::api::configuration::section* section) {
+void authenticate(tateyama::api::configuration::section* section) {
     if (auto enabled_opt = section->get<bool>("enabled"); enabled_opt) {
         if (!enabled_opt.value()) {
-            return tateyama::tgctl::return_code::ok;
+            return; // OK
         }
     }
 
@@ -480,7 +480,7 @@ tgctl::return_code authenticate(tateyama::api::configuration::section* section) 
     auto url_opt = section->get<std::string>("url");
 
     if (!request_timeout_opt || !url_opt) {
-        return tateyama::tgctl::return_code::err;
+        throw tgctl::runtime_error(tateyama::monitor::reason::server, "error in config file");
     }
 
     url_parser url(url_opt.value());
@@ -515,7 +515,7 @@ tgctl::return_code authenticate(tateyama::api::configuration::section* section) 
                 if (!encryption_key.empty()) {
                     auto handler = std::make_unique<token_handler>(token_opt.value(), encryption_key);
                     if (credential_helper_class::check_username(handler->tsurugi_auth_name())) {
-                        return tateyama::tgctl::return_code::ok;
+                        return; // OK
                     }
                     if (auto name_opt = handler->tsurugi_auth_name(); name_opt) {
                         std::cerr << "illegal user name: " << name_opt.value() << '\n' << std::flush;
@@ -534,7 +534,7 @@ tgctl::return_code authenticate(tateyama::api::configuration::section* section) 
                     auto ns = std::chrono::system_clock::now().time_since_epoch();
                     if (std::chrono::duration_cast<std::chrono::seconds>(ns).count() < handler->expiration_time()) {
                         if (credential_helper_class::check_username(handler->tsurugi_auth_name())) {
-                            return tateyama::tgctl::return_code::ok;
+                            return; // OK
                         }
                         if (auto name_opt = handler->tsurugi_auth_name(); name_opt) {
                             std::cerr << "illegal user name: " << name_opt.value() << '\n' << std::flush;
@@ -549,14 +549,10 @@ tgctl::return_code authenticate(tateyama::api::configuration::section* section) 
         default:
             break;
         }
-        std::cerr << "authentication failed\n" << std::flush;
-        return tateyama::tgctl::return_code::err;
-
+        throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, "authentication failed");
     } catch (std::exception &ex) {
-        std::cerr << ex.what() << '\n' << std::flush;
-        return tateyama::tgctl::return_code::err;
+        throw tgctl::runtime_error(tateyama::monitor::reason::authentication_failure, ex.what());
     }
-    return tateyama::tgctl::return_code::ok;
 }
 
 }  // tateyama::authentication

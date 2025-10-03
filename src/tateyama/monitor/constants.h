@@ -151,5 +151,10 @@ constexpr static std::string_view CONNECTION_INFO = R"("connection_info": ")";
 constexpr static std::string_view FORMAT_DBSTATS_DESCRIPTION = R"("format": "dbstats_description")";
 constexpr static std::string_view FORMAT_DBSTATS = R"("format": "dbstats")";
 constexpr static std::string_view METRICS = R"("metrics": ")";
+// config
+constexpr static std::string_view FORMAT_CONFIG = R"("format": "config")";
+constexpr static std::string_view SECTION = R"("section": ")";
+constexpr static std::string_view KEY = R"("key": ")";
+constexpr static std::string_view VALUE = R"("value": ")";
 
 }  // tateyama::monitor
