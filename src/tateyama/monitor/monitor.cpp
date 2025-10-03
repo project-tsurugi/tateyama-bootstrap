@@ -95,4 +95,15 @@ void monitor::dbstats(std::string_view data) {
     strm_.flush();
 }
 
+void monitor::config_item(std::string_view section,
+                          std::string_view key,
+                          std::string_view value) {
+    strm_ << "{ " << TIME_STAMP << time(nullptr) << ", "
+          << KIND_DATA << ", " << FORMAT_CONFIG << ", "
+          << SECTION << section << "\", "
+          << KEY << key << "\", "
+          << VALUE << value << "\" }\n";
+    strm_.flush();
+}
+
 }  // tateyama::monitor

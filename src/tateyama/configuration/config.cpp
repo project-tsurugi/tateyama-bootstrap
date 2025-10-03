@@ -33,16 +33,33 @@
 #include <tateyama/logging.h>
 
 #include "tateyama/authentication/authentication.h"
+#include "tateyama/monitor/monitor.h"
 #include "bootstrap_configuration.h"
 
 DECLARE_string(conf);
+DECLARE_bool(quiet);
+DECLARE_string(monitor);
 DEFINE_bool(show_dev, false, "include settings for developers");  // NOLINT
 
 namespace tateyama::configuration {
 
 tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexity)
+    std::unique_ptr<monitor::monitor> monitor_output{};
+
+    if (!FLAGS_monitor.empty()) {
+        monitor_output = std::make_unique<monitor::monitor>(FLAGS_monitor);
+        monitor_output->start();
+    }
+
     auto bootstrap_configuration = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
-    if (tateyama::authentication::authenticate(bootstrap_configuration.get_configuration()->get_section("authentication")) != tateyama::tgctl::return_code::ok) {
+    try {
+        tateyama::authentication::authenticate(bootstrap_configuration.get_configuration()->get_section("authentication"));
+    } catch (tgctl::runtime_error &ex) {
+        auto reason = ex.code();
+        std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
+        if (monitor_output) {
+            monitor_output->finish(reason);
+        }
         return tateyama::tgctl::return_code::err;
     }
 
@@ -81,14 +98,24 @@ tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexi
     auto conf = bootstrap_configuration.get_configuration();
     for (auto& em: attributes) {
         auto section = conf->get_section(em.first);
-        std::cout << "[" << em.first << "]\n";
+        if (!FLAGS_quiet) {
+            std::cout << "[" << em.first << "]\n";
+        }
         for (auto& es : em.second) {
             if (auto opt = section->get<std::string>(es); opt) {
-                std::cout << "    " << es << "=" << opt.value() << "\n";
+                if (!FLAGS_quiet) {
+                    std::cout << "    " << es << "=" << opt.value() << "\n";
+                }
+                if (monitor_output) {
+                    monitor_output->config_item(em.first, es, opt.value());
+                }
             }
         }
     }
 
+    if (monitor_output) {
+        monitor_output->finish(tateyama::monitor::reason::absent);
+    }
     return tgctl::return_code::ok;
 };
 
