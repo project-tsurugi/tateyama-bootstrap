@@ -60,6 +60,11 @@ public:
     void request_payload(std::string_view payload);
     void request_extract_sql(const std::optional<std::string>& transacion_id, const std::optional<std::string>& sql);
     
+    // config
+    void config_item(std::string_view section,
+                     std::string_view key,
+                     std::string_view value);
+
 private:
     std::ostream& strm_;
     bool is_filestream_;
