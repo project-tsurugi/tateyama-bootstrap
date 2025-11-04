@@ -80,7 +80,7 @@ enum status_check_result {
     not_locked,                  // mutex file: o, mutex file lock: x
     initial,                     // mutex file: o, mutex file lock: o, status info: initial
     ready,                       // mutex file: o, mutex file lock: o, status info: ready
-    activated,                   // mutex file: o, mutex file lock: o, status info: activated (no longer used)
+    activated,                   // mutex file: o, mutex file lock: o, status info: activated
     deactivating,                // mutex file: o, mutex file lock: o, status info: deactivating
     deactivated,                 // mutex file: o, mutex file lock: o, status info: deactivated
     boot_error,                  // mutex file: o, mutex file lock: o, status info: boot_error
@@ -113,7 +113,7 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
                 case tateyama::status_info::state::initial:
                     return status_check_result::initial;
                 case tateyama::status_info::state::ready:
-                    return status_check_result::ready;
+                    break;
                 case tateyama::status_info::state::activated:
                     return status_check_result::activated;
                 case tateyama::status_info::state::deactivating:
@@ -313,6 +313,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         }
                         usleep(sleep_time_unit_regular * 1000);
                     }
+                    bool confirmed = false;
                     if (status_info_ready) {
                         // wait until pid is stored in the status_info
                         for (size_t i = chkn; i < check_count; i++) {
@@ -358,6 +359,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     }
                                     rtnv = tgctl::return_code::err;
                                     reason = monitor::reason::another_process;
+                                    confirmed = true;
                                     break;
 
                                 case status_check_result::status_check_count_over:
@@ -374,6 +376,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                     }
                                     rtnv = tgctl::return_code::err;
                                     reason = monitor::reason::timeout;
+                                    confirmed = true;
                                     break;
                                 }
                             } else {
@@ -384,6 +387,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                                 }
                                 rtnv = tgctl::return_code::err;
                                 reason = monitor::reason::ambiguous;
+                                confirmed = true;
                             }
                             break;
                         }
@@ -394,16 +398,18 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         rtnv = tgctl::return_code::err;
                         reason = monitor::reason::timeout;
                     } else {
-                        if (!FLAGS_quiet) {
-                            if (file_mutex->check() == proc_mutex::lock_state::locked) {
-                                std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, because "
-                                          << "the launch is still in progres.\n" << std::flush;
-                            } else {    // if the lock is not held by the tsurugidb process,  this means that the tsurugidb boot has failed.
-                                std::cout << "could not launch " << server_name_string << ", as " << server_name_string << " exited due to some error.\n" << std::flush;
+                        if (!confirmed) {
+                            if (!FLAGS_quiet) {
+                                if (file_mutex->check() == proc_mutex::lock_state::locked) {
+                                    std::cout << "failed to confirm " << server_name_string << " launch within " << (sleep_time_unit_regular * check_count) / 1000 << " seconds, because "
+                                              << "the launch is still in progres.\n" << std::flush;
+                                } else {    // if the lock is not held by the tsurugidb process,  this means that the tsurugidb boot has failed.
+                                    std::cout << "could not launch " << server_name_string << ", as " << server_name_string << " exited due to some error.\n" << std::flush;
+                                }
                             }
+                            rtnv = tgctl::return_code::err;
+                            reason = monitor::reason::timeout;
                         }
-                        rtnv = tgctl::return_code::err;
-                        reason = monitor::reason::timeout;
                     }
                 } else if (check_result == another) {
                     if (!FLAGS_quiet) {
