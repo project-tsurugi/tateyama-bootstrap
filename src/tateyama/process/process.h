@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 Project Tsurugi.
+ * Copyright 2022-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,16 @@
 #pragma once
 
 #include <boost/filesystem/path.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION < 108600
 #include <boost/process.hpp>
+#else
+#define BOOST_PROCESS_VERSION 1
+// workaround: boost-process 1.88 is missing process/v1.hpp
+#include <boost/process/v1/args.hpp>
+#include <boost/process/v1/child.hpp>
+#include <boost/process/v1/search_path.hpp>
+#endif
 
 #include <tateyama/framework/boot_mode.h>
 
