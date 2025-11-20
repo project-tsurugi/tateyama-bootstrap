@@ -113,7 +113,7 @@ static status_check_result status_check_internal(tateyama::configuration::bootst
                 case tateyama::status_info::state::initial:
                     return status_check_result::initial;
                 case tateyama::status_info::state::ready:
-                    break;
+                    return status_check_result::ready;
                 case tateyama::status_info::state::activated:
                     return status_check_result::activated;
                 case tateyama::status_info::state::deactivating:
