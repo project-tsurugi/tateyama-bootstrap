@@ -325,7 +325,6 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             // observed that pid has been stored in the status_info
                             if (child_pid == pid_in_status_info) {  // case in which 'tsurugi db is booting up
                                 switch (status_check_internal(bst_conf)) {
-                                case status_check_result::ready:
                                 case status_check_result::activated:
                                     if (monitor_output) {
                                         monitor_output->finish(monitor::reason::absent);
@@ -348,6 +347,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
 
                                 case status_check_result::no_file:
                                 case status_check_result::initial:
+                                case status_check_result::ready:
                                     usleep(sleep_time_unit_regular * 1000);
                                     continue;
 
