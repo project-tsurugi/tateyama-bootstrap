@@ -106,6 +106,10 @@ class directory_helper {
         if (!additional.empty()) {
             strm_ << additional << "\n";
         }
+
+        // make blob_relay disable in tateyama-bootstrap test
+        strm_ << "[blob_relay]\n" << "enabled=false\n";
+
         strm_.close();
     }
 
