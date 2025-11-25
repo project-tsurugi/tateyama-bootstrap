@@ -107,7 +107,8 @@ class directory_helper {
             strm_ << additional << "\n";
         }
 
-        // make blob_relay disable in tateyama-bootstrap test
+        // make grpc and blob_relay disable in tateyama-bootstrap test
+        strm_ << "[grpc]\n" << "enabled=false\n";
         strm_ << "[blob_relay]\n" << "enabled=false\n";
 
         strm_.close();
