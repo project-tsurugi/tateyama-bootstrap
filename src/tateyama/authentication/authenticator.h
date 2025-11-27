@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
+
 #include <functional>
 #include <string>
 #include <optional>
@@ -22,15 +24,32 @@
 
 #include "tateyama/tgctl/tgctl.h"
 #include <tateyama/proto/endpoint/request.pb.h>
+#include "credential_handler.h"
 
 namespace tateyama::authentication {
 
-void auth_options();  // NOLINT(readability-redundant-declaration) only for readability
+std::string prompt(std::string_view msg, bool display);
 
-void add_credential(tateyama::proto::endpoint::request::ClientInformation&, const std::function<std::optional<std::string>()>&);  // NOLINT(readability-redundant-declaration) only for readability
+class authenticator {
+public:
+    authenticator();
 
-tgctl::return_code credentials();  // NOLINT(readability-redundant-declaration) only for readability
-tgctl::return_code credentials(const std::string&);  // NOLINT(readability-redundant-declaration) only for readability
-void authenticate(tateyama::api::configuration::section*);  // NOLINT(readability-redundant-declaration) only for readability
+    void authenticate(tateyama::api::configuration::section*);  // NOLINT(readability-redundant-declaration) only for readability
+
+    tgctl::return_code credentials();  // NOLINT(readability-redundant-declaration) only for readability
+    tgctl::return_code credentials(const std::string&);  // NOLINT(readability-redundant-declaration) only for readability
+
+private:
+    /**
+     * @brief maximum length for valid username
+     */
+    constexpr static std::size_t MAXIMUM_USERNAME_LENGTH = 1024;
+
+    credential_handler credential_handler_{};    
+
+    tgctl::return_code credentials(const std::filesystem::path& path);
+
+    static std::optional<std::string> check_username(const std::optional<std::string>& name_opt);
+};
 
 }  // tateyama::authentication

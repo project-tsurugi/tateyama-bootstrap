@@ -22,7 +22,7 @@
 
 #include <gflags/gflags.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/authenticator.h"
 #include <tateyama/proto/request/request.pb.h>
 #include <tateyama/proto/request/response.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
@@ -53,7 +53,6 @@ tgctl::return_code request_list() { // NOLINT(readability-function-cognitive-com
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_request);
         ::tateyama::proto::request::request::Request request{};
         (void) request.mutable_list_request();
@@ -131,7 +130,6 @@ tgctl::return_code request_payload(std::size_t session_id, std::size_t request_i
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_request);
         ::tateyama::proto::request::request::Request request{};
         auto* get_payload = request.mutable_get_payload();
@@ -197,7 +195,6 @@ tgctl::return_code request_extract_sql(std::size_t session_id, std::string_view 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         std::stringstream ssi;
         std::stringstream sso;
         ssi << payload;

@@ -50,7 +50,7 @@
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/credential_handler.h"
 #include "tateyama/tgctl/runtime_error.h"
 #include "tateyama/configuration/bootstrap_configuration.h"
 #include "client_wire.h"
@@ -499,6 +499,7 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container wire_;
+    tateyama::authentication::credential_handler credential_handler_{};
     tateyama::proto::framework::request::Header header_{};
     std::size_t session_id_{};
     bool closed_{};
@@ -520,7 +521,8 @@ private:
         auto* wire_information = handshake->mutable_wire_information();
         auto* ipc_information = wire_information->mutable_ipc_information();
 
-        tateyama::authentication::add_credential(*client_information, [this](){
+        credential_handler_.auth_options();
+        credential_handler_.add_credential(*client_information, [this](){
             auto key_opt = encryption_key();
             if (key_opt) {
                 const auto& key = key_opt.value();
