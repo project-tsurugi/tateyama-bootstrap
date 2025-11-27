@@ -25,7 +25,7 @@
 #include <tateyama/proto/session/response.pb.h>
 #include <tateyama/proto/session/diagnostic.pb.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/authenticator.h"
 #include "tateyama/transport/transport.h"
 #include "tateyama/monitor/monitor.h"
 #include "tateyama/tgctl/runtime_error.h"
@@ -65,7 +65,6 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
         ::tateyama::proto::session::request::Request request{};
         (void) request.mutable_session_list();
@@ -194,7 +193,6 @@ tgctl::return_code session_show(std::string_view session_ref) {
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
         ::tateyama::proto::session::request::Request request{};
         auto* command = request.mutable_session_get();
@@ -265,7 +263,6 @@ tgctl::return_code session_shutdown(std::string_view session_ref) {
         rtnv = tgctl::return_code::err;
     } else {
         try {
-            authentication::auth_options();
             auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
             ::tateyama::proto::session::request::Request request{};
             auto* command = request.mutable_session_shutdown();
@@ -327,7 +324,6 @@ tgctl::return_code session_swtch(std::string_view session_ref, std::string_view 
     auto rtnv = tgctl::return_code::ok;
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_session);
         ::tateyama::proto::session::request::Request request{};
         auto* command = request.mutable_session_set_variable();

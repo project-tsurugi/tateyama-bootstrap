@@ -32,7 +32,7 @@
 
 #include <tateyama/logging.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/authenticator.h"
 #include "tateyama/monitor/monitor.h"
 #include "bootstrap_configuration.h"
 
@@ -52,8 +52,9 @@ tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexi
     }
 
     auto bootstrap_configuration = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    tateyama::authentication::authenticator authenticator{};
     try {
-        tateyama::authentication::authenticate(bootstrap_configuration.get_configuration()->get_section("authentication"));
+        authenticator.authenticate(bootstrap_configuration.get_configuration()->get_section("authentication"));
     } catch (tgctl::runtime_error &ex) {
         auto reason = ex.code();
         std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;

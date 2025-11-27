@@ -28,7 +28,7 @@
 #ifdef ENABLE_ALTIMETER
 #include "tateyama/altimeter/altimeter.h"
 #endif
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/authenticator.h"
 #include "tateyama/request/request.h"
 
 #include "help_text.h"
@@ -318,10 +318,11 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
 
     // credentials
     if (args.at(1) == "credentials") {
+        tateyama::authentication::authenticator authenticator{};
         if (args.size() < 3) {
-            return tateyama::authentication::credentials();
+            return authenticator.credentials();
         }
-        return tateyama::authentication::credentials(args.at(2));
+        return authenticator.credentials(args.at(2));
     }
 
     // config

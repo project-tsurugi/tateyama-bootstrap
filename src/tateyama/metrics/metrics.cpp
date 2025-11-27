@@ -27,7 +27,7 @@
 #include <tateyama/proto/metrics/request.pb.h>
 #include <tateyama/proto/metrics/response.pb.h>
 
-#include "tateyama/authentication/authentication.h"
+#include "tateyama/authentication/authenticator.h"
 #include "tateyama/transport/transport.h"
 #include "tateyama/monitor/monitor.h"
 #include "tateyama/tgctl/runtime_error.h"
@@ -49,7 +49,6 @@ tgctl::return_code list() {
 
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
         ::tateyama::proto::metrics::request::Request request{};
         request.mutable_list();
@@ -134,7 +133,6 @@ tgctl::return_code show() {  // NOLINT(readability-function-cognitive-complexity
 
     auto reason = monitor::reason::absent;
     try {
-        authentication::auth_options();
         auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_metrics);
         ::tateyama::proto::metrics::request::Request request{};
         request.mutable_show();
