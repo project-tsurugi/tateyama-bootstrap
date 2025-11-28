@@ -144,7 +144,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[udf]\n"
         "plugin_directory=var/plugins/\n"
-        "endpoint=localhost:50051\n"
+        "endpoint=dns:///localhost:50051\n"
         "secure=false\n"
 };
 
