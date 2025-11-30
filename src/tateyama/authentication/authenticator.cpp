@@ -53,31 +53,31 @@ namespace tateyama::authentication {
 constexpr static int MAX_EXPIRATION = 365;  // Maximum expiration date that can be specified with tgctl credentials
 
 // for prompt
-struct termio* saved{nullptr};  // NOLINT
+struct termios* saved{nullptr};  // NOLINT
 
 static void sigint_handler([[maybe_unused]] int sig) {
     if (saved) {
-        ioctl(STDIN_FILENO, TCSETAF, saved);  // NOLINT
+        ioctl(STDIN_FILENO, TCSETSF, saved);  // NOLINT
     }
     throw tgctl::runtime_error(tateyama::monitor::reason::interrupted, "key input has been interrupted by the user");
 }
 
 std::string prompt(std::string_view msg, bool display) {
-    struct termio tty{};
-    struct termio tty_save{};
+    struct termios tty{};
+    struct termios tty_save{};
 
     if (!display) {
         if (signal(SIGINT, sigint_handler) == SIG_ERR) {  // NOLINT
             LOG(ERROR) << "cannot register signal handler";
         }
-        ioctl(STDIN_FILENO, TCGETA, &tty);  // NOLINT
+        ioctl(STDIN_FILENO, TCGETS, &tty);  // NOLINT
         tty_save = tty;
         saved = &tty_save;
 
         tty.c_lflag &= ~ECHO;   // NOLINT
         tty.c_lflag |= ECHONL;  // NOLINT
 
-        ioctl(STDIN_FILENO, TCSETAF, &tty);  // NOLINT
+        ioctl(STDIN_FILENO, TCSETSF, &tty);  // NOLINT
     }
 
     if (isatty(STDIN_FILENO) == 1) {
@@ -93,7 +93,7 @@ std::string prompt(std::string_view msg, bool display) {
     }
 
     if (!display) {
-        ioctl(STDIN_FILENO, TCSETAF, &tty_save);  // NOLINT
+        ioctl(STDIN_FILENO, TCSETSF, &tty_save);  // NOLINT
         if (signal(SIGINT, SIG_DFL) == SIG_ERR) {  // NOLINT
             LOG(ERROR) << "cannot register signal handler";
         }
