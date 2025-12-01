@@ -74,28 +74,14 @@ class directory_helper {
             FAIL();
         }
 
-        command = "mkdir -p ";
-        command += abs_path("test");
-        if (system(command.c_str()) != 0) {
-            std::cerr << "cannot make directory" << std::endl;
-            FAIL();
-        }
-        command = "mkdir -p ";
-        command += abs_path("log");
-        if (system(command.c_str()) != 0) {
-            std::cerr << "cannot make directory" << std::endl;
-            FAIL();
-        }
-        command = "mkdir -p ";
-        command += abs_path("backup");
-        if (system(command.c_str()) != 0) {
-            std::cerr << "cannot make directory" << std::endl;
-            FAIL();
-        }
-        command = "mkdir -p ";
-        command += abs_path("conf");
-        if (system(command.c_str()) != 0) {
-            std::cerr << "cannot make directory" << std::endl;
+        try {
+            std::filesystem::create_directories(abs_path("test"));
+            std::filesystem::create_directories(abs_path("log"));
+            std::filesystem::create_directories(abs_path("backup"));
+            std::filesystem::create_directories(abs_path("conf"));
+            std::filesystem::create_directories(abs_path("plugins"));
+        } catch (std::exception &ex) {
+            std::cerr << "cannot make directory: " << name_ << std::endl;
             FAIL();
         }
 
@@ -110,6 +96,10 @@ class directory_helper {
         // make grpc and blob_relay disable in tateyama-bootstrap test
         strm_ << "[grpc]\n" << "enabled=false\n";
         strm_ << "[blob_relay]\n" << "enabled=false\n";
+
+        // make grpc and blob_relay disable in tateyama-bootstrap test
+        strm_ << "[udf]\n" << "plugin_directory=";
+        strm_ << abs_path("plugins")  << "\n";
 
         strm_.close();
     }
