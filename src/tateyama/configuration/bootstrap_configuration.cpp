@@ -102,9 +102,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "request_timeout=0\n"
         "administrators=*\n"
 
-    "[grpc]\n"
+    "[grpc_server]\n"
         "enabled=true\n"
-        "endpoint=localhost:50051\n"
+        "endpoint=dns:///localhost:52345\n"
+        "secure=false\n"
 
     "[blob_relay]\n"
         "enabled=true\n"
