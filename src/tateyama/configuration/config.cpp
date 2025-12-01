@@ -52,6 +52,14 @@ tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexi
     }
 
     auto bootstrap_configuration = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
+    if (!bootstrap_configuration.valid()) {
+        auto reason = tateyama::monitor::reason::not_found;
+        std::cerr << "error: reason = " << to_string_view(reason) << ", detail = 'cannot find the configuration file'\n" << std::flush;
+        if (monitor_output) {
+            monitor_output->finish(reason);
+        }
+        return tateyama::tgctl::return_code::err;
+    }
     tateyama::authentication::authenticator authenticator{};
     try {
         authenticator.authenticate(bootstrap_configuration.get_configuration()->get_section("authentication"));
