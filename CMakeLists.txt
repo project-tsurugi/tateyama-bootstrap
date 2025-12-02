@@ -1,4 +1,4 @@
-# Copyright 2018-2024 Project Tsurugi.
+# Copyright 2018-2025 Project Tsurugi.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ set(jogasaki_engine "${jogasaki_package}-engine")
 
 find_package(${tateyama_package} REQUIRED)
 find_package(${jogasaki_package} REQUIRED)
-find_package(shirakami REQUIRED)
 find_package(limestone REQUIRED)
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)

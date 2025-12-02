@@ -32,7 +32,6 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 * [tateyama](https://github.com/project-tsurugi/tateyama)
 * [jogasaki](https://github.com/project-tsurugi/jogasaki)
-* [shirakami](https://github.com/project-tsurugi/shirakami)
 * [limestone](https://github.com/project-tsurugi/limestone)
 * [takatori](https://github.com/project-tsurugi/takatori)
 * [yugawara](https://github.com/project-tsurugi/yugawara)
