@@ -116,7 +116,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "stream_chunk_size=1048576\n"
 
     "[glog]\n"
-        "dummy=\n"  // just for retain glog section in default configuration
+        "dev_dummy=\n"  // just for retain glog section in default configuration
 
 #ifdef ENABLE_ALTIMETER
     "[event_log]\n"
