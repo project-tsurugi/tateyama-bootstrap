@@ -104,6 +104,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[grpc_server]\n"
         "enabled=true\n"
+        "listen_address=0.0.0.0:52345\n"
         "endpoint=dns:///localhost:52345\n"
         "secure=false\n"
 
@@ -114,6 +115,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "local_enabled=true\n"
         "local_upload_copy_file=false\n"
         "stream_chunk_size=1048576\n"
+        "dev_accept_mock_tag=true\n"
 
     "[glog]\n"
         "dev_dummy=\n"  // just for retain glog section in default configuration
