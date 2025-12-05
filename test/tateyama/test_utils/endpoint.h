@@ -144,6 +144,7 @@ public:
                             std::string c{};
                             try {
                                 decrypter.decrypt(tateyama::authentication::crypto::base64_decode(request.client_information().credential().encrypted_credential()), c);
+                                OPENSSL_thread_stop();
                             } catch (boost::archive::iterators::dataflow_exception &ex) {
                                 std::cerr << ex.what() << std::endl;
                                 handshake_authentication_fail(ss, index);
