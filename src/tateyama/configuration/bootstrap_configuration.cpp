@@ -116,7 +116,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "local_enabled=true\n"
         "local_upload_copy_file=false\n"
         "stream_chunk_size=1048576\n"
-        "dev_accept_mock_tag=true\n"
+        "dev_accept_mock_tag=false\n"
 
     "[glog]\n"
         "dev_dummy=\n"  // just for retain glog section in default configuration
