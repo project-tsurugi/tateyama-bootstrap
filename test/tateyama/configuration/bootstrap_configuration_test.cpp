@@ -23,7 +23,7 @@ namespace tateyama::testing {
 class bootstrap_configuration_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("bootstrap_configuration_test/var/etc", 20200, true);
+        helper_ = std::make_unique<directory_helper>("bootstrap_configuration_test/var/etc", 20500, true);
         helper_->set_up();
         std::cout << helper_->conf_file_path() << std::endl;
     }

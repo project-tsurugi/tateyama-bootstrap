@@ -90,12 +90,18 @@ static int backend_main(int argc, char **argv) {
         LOG(ERROR) << "error in create_bootstrap_configuration";
         exit(1);
     }
-    auto conf = bst_conf.get_configuration();
-    if (conf == nullptr) {
-        LOG(ERROR) << "error in create_configuration";
+    std::shared_ptr<tateyama::api::configuration::whole> conf{};
+    try {
+        conf = bst_conf.get_configuration();
+        if (conf == nullptr) {
+            LOG(ERROR) << "error in create_configuration";
+            exit(1);
+        }
+        setup_glog(conf.get());
+    } catch (std::runtime_error& e) {
+        LOG(ERROR) << e.what();
         exit(1);
     }
-    setup_glog(conf.get());
 #ifdef ENABLE_ALTIMETER
     auto altimeter_object = std::make_unique<tateyama::altimeter::altimeter_helper>(conf.get());
     bool altimeter_wellness = true;
