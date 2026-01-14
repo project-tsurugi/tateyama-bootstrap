@@ -33,7 +33,7 @@ namespace tateyama::configuration {
 class config_test : public ::testing::Test {
 public:
     virtual void SetUp() {
-        helper_ = std::make_unique<directory_helper>("config_test", 20201);
+        helper_ = std::make_unique<directory_helper>("config_test", 20501);
         helper_->set_up("[system]\n    pid_directory=/pid_directory-for-test\n");
     }
     virtual void TearDown() {

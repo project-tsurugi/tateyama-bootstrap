@@ -26,6 +26,7 @@
 
 #include "tateyama/tgctl/tgctl.h"
 #include "tateyama/tgctl/runtime_error.h"
+#include "instance_id_helper.h"
 
 namespace tateyama::configuration {
 
@@ -45,6 +46,7 @@ public:
         }
     }
     std::shared_ptr<tateyama::api::configuration::whole> get_configuration() {
+        instance_id_handler::setup(configuration_.get());
         return configuration_;
     }
     [[nodiscard]] std::filesystem::path lock_file() const {

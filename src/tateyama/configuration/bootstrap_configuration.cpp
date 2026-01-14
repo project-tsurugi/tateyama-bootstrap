@@ -96,6 +96,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
     "[system]\n"
         "pid_directory=/var/lock\n"
+        "instance_id=\n"  // update to default value later
 
     "[authentication]\n"
         "enabled=false\n"
