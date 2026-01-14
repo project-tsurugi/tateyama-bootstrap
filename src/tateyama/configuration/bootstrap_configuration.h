@@ -46,7 +46,7 @@ public:
         }
     }
     std::shared_ptr<tateyama::api::configuration::whole> get_configuration() {
-        inctance_id_handler::setup(configuration_.get());
+        instance_id_handler::setup(configuration_.get());
         return configuration_;
     }
     [[nodiscard]] std::filesystem::path lock_file() const {

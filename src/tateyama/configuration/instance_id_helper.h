@@ -24,7 +24,7 @@
 
 #include <tateyama/api/configuration.h>
 
-class inctance_id_handler {
+class instance_id_handler {
     static constexpr std::size_t MAX_INSTANCE_ID_LENGTH = 63;
 
 public:
@@ -92,7 +92,7 @@ private:
                 hyphen = true;
                 continue;
             }
-            throw std::runtime_error("instance_id has illegal charactor");
+            throw std::runtime_error("instance_id has illegal character");
         }
     }
 };

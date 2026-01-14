@@ -76,18 +76,18 @@ TEST_F(instance_id_test, empty) {
     }
 }
 
-TEST_F(instance_id_test, begins_with_hyphon) {
+TEST_F(instance_id_test, begins_with_hyphen) {
     helper_->set_up("[system]\n    instance_id=-instance-id-for-test\n");
     EXPECT_THROW(tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path()).get_configuration(), std::runtime_error);
 }
 
-TEST_F(instance_id_test, ends_with_hyphon) {
+TEST_F(instance_id_test, ends_with_hyphen) {
     helper_->set_up("[system]\n    instance_id=instance-id-for-test-\n");
     EXPECT_THROW(tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path()).get_configuration(), std::runtime_error);
 }
 
-TEST_F(instance_id_test, double_hyphon) {
-    helper_->set_up("[system]\n    instance_id=instance-id--for-test-\n");
+TEST_F(instance_id_test, double_hyphen) {
+    helper_->set_up("[system]\n    instance_id=instance-id--for-test\n");
     EXPECT_THROW(tateyama::configuration::bootstrap_configuration::create_bootstrap_configuration(helper_->conf_file_path()).get_configuration(), std::runtime_error);
 }
 
