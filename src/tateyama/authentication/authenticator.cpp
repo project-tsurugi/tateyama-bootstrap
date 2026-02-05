@@ -138,7 +138,7 @@ void authenticator::authenticate(tateyama::api::configuration::section* section)
         }
     }
 
-    auto request_timeout_opt = section->get<int>("request_timeout");
+    auto request_timeout_opt = section->get<double>("request_timeout");
     auto url_opt = section->get<std::string>("url");
 
     if (!request_timeout_opt || !url_opt) {
@@ -162,6 +162,7 @@ void authenticator::authenticate(tateyama::api::configuration::section* section)
             }
         }
 
+        credential_handler_.auth_options();
         credential_handler_.add_credential(information, [&encryption_key](){
             if (!encryption_key.empty()) {
                 return std::optional<std::string>{encryption_key};
