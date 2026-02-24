@@ -56,7 +56,6 @@ set(jogasaki_engine "${jogasaki_package}-engine")
 
 find_package(${tateyama_package} REQUIRED)
 find_package(${jogasaki_package} REQUIRED)
-find_package(limestone REQUIRED)
 find_package(takatori REQUIRED)
 find_package(yugawara REQUIRED)
 find_package(sharksfin REQUIRED)

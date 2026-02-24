@@ -32,7 +32,6 @@ target_link_libraries(server
         PRIVATE api
         PRIVATE ${jogasaki_engine}
         PRIVATE ${tateyama_engine}
-        PRIVATE limestone
         PRIVATE takatori
         PRIVATE yugawara
         PRIVATE glog::glog
