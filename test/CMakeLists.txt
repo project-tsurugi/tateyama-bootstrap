@@ -19,6 +19,7 @@ target_link_libraries(${test_target}
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Boost::thread
+        PRIVATE Boost::filesystem
         PRIVATE ${tateyama_engine}
         PRIVATE takatori
         PRIVATE rt
