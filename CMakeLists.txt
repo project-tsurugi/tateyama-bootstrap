@@ -64,7 +64,7 @@ find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS filesystem thread system container regex
+        COMPONENTS filesystem thread regex
         REQUIRED
         )
 find_package(Protobuf REQUIRED)
@@ -81,7 +81,6 @@ if (ENABLE_ALTIMETER)
         REQUIRED
     )
     find_package(fmt REQUIRED)
-    find_package(Threads REQUIRED)
 endif()
 
 if (BUILD_TESTS)

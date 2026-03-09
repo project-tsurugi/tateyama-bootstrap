@@ -37,7 +37,6 @@ target_link_libraries(server
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE pthread
-        PRIVATE Boost::filesystem
         PRIVATE rt
         PRIVATE crypto
         )
