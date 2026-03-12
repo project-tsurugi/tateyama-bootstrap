@@ -109,6 +109,8 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "listen_address=0.0.0.0:52345\n"
         "endpoint=dns:///localhost:52345\n"
         "secure=false\n"
+        "fullchain_crt=\n"
+        "server_key=\n"
 
     "[blob_relay]\n"
         "enabled=true\n"
