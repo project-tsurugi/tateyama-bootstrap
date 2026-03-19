@@ -70,6 +70,9 @@ public:
     [[nodiscard]] bool request_shutdown(tateyama::status_info::shutdown_type type) {
         return resource_status_memory_->request_shutdown(type);
     }
+    void notify_session_list() {
+        return resource_status_memory_->notify_session_list();
+    }
     [[nodiscard]] bool alive() {
         return resource_status_memory_->alive();
     }

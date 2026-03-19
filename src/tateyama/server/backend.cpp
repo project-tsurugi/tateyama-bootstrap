@@ -29,6 +29,7 @@
 
 #include <tateyama/framework/server.h>
 #include <tateyama/status/resource/bridge.h>
+#include <tateyama/session/resource.h>
 #include <tateyama/diagnostic/resource/diagnostic_resource.h>
 
 #include <jogasaki/api/service/bridge.h>
@@ -247,6 +248,12 @@ static int backend_main(int argc, char **argv) {
 
     // wait for a shutdown request
     status_info->wait_for_shutdown();
+
+    // start session list thread
+    if (auto session_resource = tgsv.find_resource<tateyama::session::session_resource>(); session_resource) {
+        session_resource->start_print_thread();
+    }
+
     // termination process
     LOG(INFO) << "exiting";
     status_info->whole(tateyama::status_info::state::deactivating);

@@ -29,6 +29,7 @@
 #include "tateyama/transport/transport.h"
 #include "tateyama/monitor/monitor.h"
 #include "tateyama/tgctl/runtime_error.h"
+#include "tateyama/server/status_info.h"
 
 #include "session.h"
 
@@ -37,6 +38,7 @@ DEFINE_bool(id, false, "show session list using session id");  // NOLINT
 DECLARE_string(monitor);
 DECLARE_bool(graceful);
 DECLARE_bool(forceful);
+DECLARE_string(conf);
 
 namespace tateyama::session {
 
@@ -173,6 +175,14 @@ tgctl::return_code session_list() { //NOLINT(readability-function-cognitive-comp
     } catch (tgctl::runtime_error &ex) {
         reason = ex.code();
         std::cerr << "error: reason = " << to_string_view(reason) << ", detail = '" << ex.what() << "'\n" << std::flush;
+
+        if (reason == monitor::reason::connection) {
+            if (auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf); bst_conf.valid()) {
+                std::cout << "session list is now output to the server log, check it out\n" << std::flush;
+                auto status_info = std::make_unique<server::status_info_bridge>(bst_conf.digest());
+                status_info->notify_session_list();
+            }
+        }
     }
     rtnv = tgctl::return_code::err;
 
