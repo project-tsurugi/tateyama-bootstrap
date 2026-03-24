@@ -60,6 +60,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_force_numa_node=\n"
         "dev_log_msg_user_data=false\n"
         "dev_enable_disjunction_range_hinting=true\n"
+        "dev_apply_max_polls=0\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
