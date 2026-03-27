@@ -36,6 +36,8 @@
 
 #include <jogasaki/api/kvsservice/service.h>
 #include <jogasaki/api/kvsservice/resource.h>
+#include <tateyama/framework/graph/service.h>
+#include <tateyama/framework/graph/resource.h>
 #include <jogasaki/api.h>
 
 #include "tateyama/process/proc_mutex.h"
@@ -165,6 +167,9 @@ static int backend_main(int argc, char **argv) {
 
     tgsv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
     tgsv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
+
+    tgsv.add_resource(std::make_shared<tateyama::framework::graph::resource>());
+    tgsv.add_service(std::make_shared<tateyama::framework::graph::service>());
 
     // status_info
     auto status_info = tgsv.find_resource<tateyama::status_info::resource::bridge>();
