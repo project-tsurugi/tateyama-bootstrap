@@ -108,7 +108,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "administrators=*\n"
 
     "[grpc_server]\n"
-        "enabled=true\n"
+        "enabled=false\n"
         "listen_address=0.0.0.0:52345\n"
         "endpoint=dns:///localhost:52345\n"
         "secure=false\n"
