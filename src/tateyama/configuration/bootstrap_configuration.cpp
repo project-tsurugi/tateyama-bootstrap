@@ -63,6 +63,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_apply_max_polls=0\n"
         "dev_enable_maintenance_thread=true\n"
         "dev_maintenance_interval_ms=0\n"
+        "dev_enable_truncate=false\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
