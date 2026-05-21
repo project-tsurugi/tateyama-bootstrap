@@ -519,6 +519,7 @@ private:
         auto* handshake = request.mutable_handshake();
         auto* client_information = handshake->mutable_client_information();
         auto* wire_information = handshake->mutable_wire_information();
+        auto* blob_transfer_media = handshake->add_blob_transfer_media();
         auto* ipc_information = wire_information->mutable_ipc_information();
 
         credential_handler_.auth_options();
@@ -541,6 +542,8 @@ private:
         }
         client_information->set_application_name("tgctl");
         ipc_information->set_connection_information(std::to_string(getpid()));
+
+        blob_transfer_media->set_blob_transfer_type(tateyama::proto::endpoint::request::BlobTransferType::DOES_NOT_USE);
 
         return send<tateyama::proto::endpoint::response::Handshake>(request);
     }
