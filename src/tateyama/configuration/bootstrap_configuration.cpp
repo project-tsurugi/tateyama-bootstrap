@@ -157,6 +157,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "plugin_directory=var/plugins/\n"
         "endpoint=dns:///localhost:50051\n"
         "secure=false\n"
+        "timeout=0\n"
 };
 
 } // namespace details
