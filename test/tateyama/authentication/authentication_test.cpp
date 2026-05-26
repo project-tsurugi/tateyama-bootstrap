@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2025 Project Tsurugi.
+ * Copyright 2022-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,18 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <boost/version.hpp>
+#if BOOST_VERSION < 108600
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
 #include <boost/process/pipe.hpp>
+#else
+#define BOOST_PROCESS_VERSION 1
+#include <boost/process/v1/io.hpp>
+#include <boost/process/v1/pipe.hpp>
+#include <boost/process/v1/system.hpp>
+#endif
+
 #include <boost/iostreams/copy.hpp>
 #include <boost/thread/barrier.hpp>
 
