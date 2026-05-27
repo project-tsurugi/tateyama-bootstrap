@@ -97,6 +97,10 @@ private:
             throw tgctl::runtime_error(monitor::reason::internal, conf_file_.string() + " is a directory");
         }
         configuration_ = tateyama::api::configuration::create_configuration(conf_file_.string(), default_configuration());
+        if (!configuration_) {
+            valid_ = false;
+            throw tgctl::runtime_error(monitor::reason::internal, conf_file_.string() + " contents are inappropriate");
+        }
 
         if (env_home != nullptr) {
             configuration_->base_path(std::filesystem::path(env_home));

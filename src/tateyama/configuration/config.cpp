@@ -93,8 +93,12 @@ tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexi
     auto configuration_file = bootstrap_configuration.conf_file();
     std::ifstream stream{};
     if (std::filesystem::exists(configuration_file)) {
-        auto content = std::ifstream{configuration_file.c_str()};
-        boost::property_tree::read_ini(content, config_tree);
+        try {
+            boost::property_tree::read_ini(configuration_file.c_str(), config_tree);
+        } catch (boost::property_tree::ptree_error &ex) {
+            std::cerr << ex.what() << std::endl;
+            return tgctl::return_code::err;
+        }
 
         BOOST_FOREACH(const boost::property_tree::ptree::value_type &v1, config_tree) {
             auto& set = attributes[v1.first];
