@@ -96,7 +96,7 @@ tgctl::return_code config() {  // NOLINT(readability-function-cognitive-complexi
         try {
             boost::property_tree::read_ini(configuration_file.c_str(), config_tree);
         } catch (boost::property_tree::ptree_error &ex) {
-            std::cerr << ex.what() << std::endl;
+            std::cerr << ex.what() << '\n' << std::flush;
             return tgctl::return_code::err;
         }
 
