@@ -183,7 +183,9 @@ static void build_args(std::vector<std::string>& args, tateyama::framework::boot
 }
 
 static void wait_for_signal(int){
-    while( 0 >= waitpid(-1, nullptr, WNOHANG) );
+    if (waitpid(-1, nullptr, WNOHANG) == -1) {
+        std::cerr << "catch SIGCHLD but no state changes in child processes" << '\n' << std::flush;
+    }
 }
 
 tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateyama::framework::boot_mode mode) { //NOLINT(readability-function-cognitive-complexity)
