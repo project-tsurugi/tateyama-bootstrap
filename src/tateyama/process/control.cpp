@@ -183,8 +183,9 @@ static void build_args(std::vector<std::string>& args, tateyama::framework::boot
 }
 
 static void wait_for_signal(int){
-    if (waitpid(-1, nullptr, WNOHANG) == -1) {
-        std::cerr << "catch SIGCHLD but no state changes in child processes" << '\n' << std::flush;
+    int status{};
+    if (waitpid(-1, &status, WNOHANG) == -1) {
+        std::cerr << "catch SIGCHLD but no state changes in child processes, statys = " << status << '\n' << std::flush;
     }
 }
 
