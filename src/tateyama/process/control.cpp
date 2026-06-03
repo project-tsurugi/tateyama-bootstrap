@@ -21,6 +21,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #include <gflags/gflags.h>
 
@@ -185,7 +186,7 @@ static void build_args(std::vector<std::string>& args, tateyama::framework::boot
 static void wait_for_signal(int){
     int status{};
     if (waitpid(-1, &status, WNOHANG) == -1) {
-        std::cerr << "catch SIGCHLD but no state changes in child processes, statys = " << status << '\n' << std::flush;
+        std::cerr << "catch SIGCHLD but no state changes in child processes, status = " << status << ", errno = " << errno << '\n' << std::flush;
     }
 }
 
