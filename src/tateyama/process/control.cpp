@@ -21,7 +21,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <cerrno>
 
 #include <gflags/gflags.h>
 
