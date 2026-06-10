@@ -26,6 +26,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <jemalloc/jemalloc.h>
 
 #include <tateyama/framework/server.h>
 #include <tateyama/status/resource/bridge.h>
@@ -79,6 +80,10 @@ static void sighup_handler([[maybe_unused]] int sig) {
     }
 }
 
+static void sigusr1_handler([[maybe_unused]] int sig) {
+    mallctl("prof.dump", nullptr, nullptr, nullptr, 0);
+}
+
 static int backend_main(int argc, char **argv) {
     // command arguments
     gflags::SetUsageMessage("tateyama database server");
@@ -121,6 +126,10 @@ static int backend_main(int argc, char **argv) {
     } catch (boost::property_tree::json_parser_error& e) {
         LOG(ERROR) << e.what();
         exit(1);
+    }
+
+    if (signal(SIGUSR1, sigusr1_handler) == SIG_ERR) {  // NOLINT  #define SIG_ERR  ((__sighandler_t) -1) in a system header file
+        LOG(ERROR) << "cannot register signal handler";
     }
 
     // process mutex

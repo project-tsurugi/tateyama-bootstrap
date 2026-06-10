@@ -36,7 +36,7 @@ option(BUILD_TESTS "Build test programs" ON)
 option(BUILD_DOCUMENTS "build documents" ON)
 option(BUILD_STRICT "build with option strictly determine of success" ON)
 option(OGAWAYAMA "activate ogawayama brigde" OFF)
-option(ENABLE_JEMALLOC "use jemalloc instead of default malloc" OFF)
+option(ENABLE_JEMALLOC "use jemalloc instead of default malloc" ON)
 option(ENABLE_ALTIMETER "enable altimeter logging" OFF)
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
