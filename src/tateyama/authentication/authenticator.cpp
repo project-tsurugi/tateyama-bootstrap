@@ -256,7 +256,7 @@ tgctl::return_code authenticator::credentials(const std::filesystem::path& path)
 
     try {
         credential_handler_.set_expiration(FLAGS_expiration);
-        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(tateyama::framework::service_id_routing);  // service_id is meaningless here
+        auto transport = std::make_unique<tateyama::bootstrap::wire::transport>(credential_handler_);
 
         const std::string& encrypted_credential = transport->encrypted_credential(); // Valid while the transport is alive
         if (encrypted_credential.empty()) {

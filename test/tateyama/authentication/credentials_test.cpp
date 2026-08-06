@@ -122,6 +122,20 @@ TEST_F(credentials_test, user_password_success) {
     do_test(command, ss);
 
     EXPECT_TRUE(ss.str().find("credentials_test_usig_session_list") != std::string::npos);
+
+    // wc credentials.key
+    command = "wc -l ";
+    command += helper_->abs_path("credentials.key");
+
+    std::stringstream sr;
+    boost::process::opstream enc;
+    boost::process::ipstream dec;
+    boost::process::child c(command, boost::process::std_in < enc, boost::process::std_out > dec);
+
+    boost::iostreams::copy(dec, sr);
+    c.wait();
+
+    EXPECT_TRUE(sr.str().find("2 ") != std::string::npos);
 }
 
 }  // namespace tateyama::authentication

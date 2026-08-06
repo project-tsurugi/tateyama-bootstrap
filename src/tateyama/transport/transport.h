@@ -94,7 +94,9 @@ public:
         header_.set_service_id(type);
 
         try {
-            auto handshake_response_opt = handshake();
+            tateyama::authentication::credential_handler credential_handler{};
+
+            auto handshake_response_opt = handshake(credential_handler);
             if (!handshake_response_opt) {
                 throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
             }
@@ -113,6 +115,29 @@ public:
                 }
                 return false;
             });
+        } catch (tgctl::runtime_error &ex) {
+            close();
+            throw ex;
+        }
+    }
+
+    // for tgctl credentials
+    explicit transport(tateyama::authentication::credential_handler& credential_handler) :
+        wire_(tateyama::common::wire::session_wire_container(tateyama::common::wire::connection_container(database_name(true)).connect())) {
+
+        header_.set_service_message_version_major(HEADER_MESSAGE_VERSION_MAJOR);
+        header_.set_service_message_version_minor(HEADER_MESSAGE_VERSION_MINOR);
+
+        try {
+            auto handshake_response_opt = handshake(credential_handler);
+            if (!handshake_response_opt) {
+                throw tgctl::runtime_error(monitor::reason::connection_failure, "handshake error");
+            }
+            auto& handshake_response = handshake_response_opt.value();
+            if (handshake_response.result_case() != tateyama::proto::endpoint::response::Handshake::ResultCase::kSuccess) {
+                auto& message = handshake_response.error().message();
+                throw tgctl::runtime_error(monitor::reason::connection_failure, message.empty() ? "handshake error" : message);
+            }
         } catch (tgctl::runtime_error &ex) {
             close();
             throw ex;
@@ -499,7 +524,6 @@ public:
 
 private:
     tateyama::common::wire::session_wire_container wire_;
-    tateyama::authentication::credential_handler credential_handler_{};
     tateyama::proto::framework::request::Header header_{};
     std::size_t session_id_{};
     bool closed_{};
@@ -514,7 +538,7 @@ private:
         return {};
     }
 
-    std::optional<tateyama::proto::endpoint::response::Handshake> handshake() {
+    std::optional<tateyama::proto::endpoint::response::Handshake> handshake(tateyama::authentication::credential_handler& credential_handler) {
         tateyama::proto::endpoint::request::Request request{};
         auto* handshake = request.mutable_handshake();
         auto* client_information = handshake->mutable_client_information();
@@ -522,8 +546,8 @@ private:
         auto* blob_transfer_media = handshake->add_blob_transfer_media();
         auto* ipc_information = wire_information->mutable_ipc_information();
 
-        credential_handler_.auth_options();
-        credential_handler_.add_credential(*client_information, [this](){
+        credential_handler.auth_options();
+        credential_handler.add_credential(*client_information, [this](){
             auto key_opt = encryption_key();
             if (key_opt) {
                 const auto& key = key_opt.value();
