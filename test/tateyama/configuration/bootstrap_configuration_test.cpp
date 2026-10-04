@@ -36,6 +36,32 @@ protected:
     std::unique_ptr<directory_helper> helper_{};
 };
 
+TEST_F(bootstrap_configuration_test, distributed_query_defaults_and_overrides) {
+    std::stringstream empty{};
+    tateyama::api::configuration::whole defaults{empty, tateyama::configuration::default_configuration()};
+    for (auto const* name : {"distributed_query_coordinator", "distributed_query_remote"}) {
+        auto* role = defaults.get_section(name);
+        ASSERT_NE(nullptr, role);
+        EXPECT_EQ(false, role->get<bool>("enabled"));
+    }
+    auto* client = defaults.get_section("distributed_query_client");
+    ASSERT_NE(nullptr, client);
+    EXPECT_EQ("", client->get<std::string>("name").value_or(""));
+    EXPECT_EQ("", client->get<std::string>("uri").value_or(""));
+
+    std::stringstream ss{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\nname=a|b\nuri=dns:///localhost:12345|unix:///tmp/worker.sock\n"};
+    tateyama::api::configuration::whole configured{ss, tateyama::configuration::default_configuration()};
+    EXPECT_EQ(true, configured.get_section("distributed_query_coordinator")->get<bool>("enabled"));
+    EXPECT_EQ(false, configured.get_section("distributed_query_remote")->get<bool>("enabled"));
+    auto* configured_client = configured.get_section("distributed_query_client");
+    auto names = configured_client->get_vector<std::string>("name", "|");
+    auto uris = configured_client->get_vector<std::string>("uri", "|");
+    ASSERT_TRUE(names);
+    ASSERT_TRUE(uris);
+    EXPECT_EQ((std::vector<std::string>{"a", "b"}), *names);
+    EXPECT_EQ((std::vector<std::string>{"dns:///localhost:12345", "unix:///tmp/worker.sock"}), *uris);
+}
+
 TEST_F(bootstrap_configuration_test, conf) {
     setenv("TSURUGI_CONF", "/tmp/bootstrap_configuration_test/var/etc/tsurugi.ini", 1);
     unsetenv("TSURUGI_HOME");
