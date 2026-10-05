@@ -728,13 +728,13 @@ tgctl::return_code tgctl_status() {
     return rtnv;
 }
 
-static pid_t get_pid() {
+static pid_t get_pid(bool check = true) {
     auto bst_conf = configuration::bootstrap_configuration::create_bootstrap_configuration(FLAGS_conf);
     if (bst_conf.valid()) {
         if (auto conf = bst_conf.get_configuration(); conf != nullptr) {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             while (true) {
-                if (auto pid = file_mutex->pid(); pid != 0) {
+                if (auto pid = file_mutex->pid(check); pid != 0) {
                     return pid;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -747,7 +747,7 @@ static pid_t get_pid() {
 
 tgctl::return_code tgctl_diagnostic() {
     try {
-        kill(get_pid(), SIGHUP);
+        kill(get_pid(false), SIGHUP);
         return tgctl::return_code::ok;
     } catch (tgctl::runtime_error &e) {
         std::cerr << e.what() << '\n' << std::flush;
@@ -757,7 +757,7 @@ tgctl::return_code tgctl_diagnostic() {
 
 tgctl::return_code tgctl_pid() {
     try {
-        std::cout << get_pid() << '\n' << std::flush;
+        std::cout << get_pid(false) << '\n' << std::flush;
         return tgctl::return_code::ok;
     } catch (tgctl::runtime_error &e) {
         std::cerr << e.what() << '\n' << std::flush;
