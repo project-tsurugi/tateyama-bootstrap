@@ -117,6 +117,16 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "fullchain_crt=\n"
         "server_key=\n"
 
+    "[distributed_query_coordinator]\n"
+        "enabled=false\n"
+
+    "[distributed_query_remote]\n"
+        "enabled=false\n"
+
+    "[distributed_query_client]\n"
+        "name=\n"
+        "uri=\n"
+
     "[blob_relay]\n"
         "enabled=true\n"
         "session_store=var/blob/sessions\n"
