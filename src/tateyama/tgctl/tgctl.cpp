@@ -241,14 +241,14 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                 std::cerr << "need to specify log type for altimeter enable\n" << std::flush;
                 return static_cast<int>(tateyama::tgctl::return_code::err);
             }
-            return tateyama::altimeter::set_enabled(args.at(3), true);
+            return static_cast<int>(tateyama::altimeter::set_enabled(args.at(3), true));
         }
         if (args.at(2) == "disable") {
             if (args.size() < 4) {
                 std::cerr << "need to specify log type for altimeter disable\n" << std::flush;
                 return static_cast<int>(tateyama::tgctl::return_code::err);
             }
-            return tateyama::altimeter::set_enabled(args.at(3), false);
+            return static_cast<int>(tateyama::altimeter::set_enabled(args.at(3), false));
         }
         if (args.at(2) == "set") {
             if (args.size() < 4) {
@@ -260,21 +260,21 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                     std::cerr << "need to specify parameter for altimeter set event_level\n" << std::flush;
                     return static_cast<int>(tateyama::tgctl::return_code::err);
                 }
-                return tateyama::altimeter::set_log_level("event", args.at(4));
+                return static_cast<int>(tateyama::altimeter::set_log_level("event", args.at(4)));
             }
             if (args.at(3) == "audit_level") {
                 if (args.size() < 5) {
                     std::cerr << "need to specify parameter for altimeter set audit_level\n" << std::flush;
                     return static_cast<int>(tateyama::tgctl::return_code::err);
                 }
-                return tateyama::altimeter::set_log_level("audit", args.at(4));
+                return static_cast<int>(tateyama::altimeter::set_log_level("audit", args.at(4)));
             }
             if (args.at(3) == "statement_duration") {
                 if (args.size() < 5) {
                     std::cerr << "need to specify parameter for altimeter set statement_duration\n" << std::flush;
                     return static_cast<int>(tateyama::tgctl::return_code::err);
                 }
-                return tateyama::altimeter::set_statement_duration(args.at(4));
+                return static_cast<int>(tateyama::altimeter::set_statement_duration(args.at(4)));
             }
         }
         if (args.at(2) == "rotate") {
@@ -282,7 +282,7 @@ static int tgctl_main(const std::vector<std::string>& args) { //NOLINT(readabili
                 std::cerr << "need to specify parameter for altimeter rotate\n" << std::flush;
                 return static_cast<int>(tateyama::tgctl::return_code::err);
             }
-            return tateyama::altimeter::rotate(args.at(3));
+            return static_cast<int>(tateyama::altimeter::rotate(args.at(3)));
         }
         std::cerr << "unknown altimeter-sub command '" << args.at(2) << "'\n" << std::flush;
         return static_cast<int>(tateyama::tgctl::return_code::err);
