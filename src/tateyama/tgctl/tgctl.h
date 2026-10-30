@@ -20,7 +20,7 @@ namespace tateyama::tgctl {
 /**
  * @brief return code
  */
-enum return_code {
+enum class return_code {
     ok = 0,
     err = 1,
 };
