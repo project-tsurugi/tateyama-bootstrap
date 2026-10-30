@@ -73,7 +73,7 @@ const std::size_t check_count_status = 10;     // 200mS
 const std::size_t check_count_kill = 500;      // 10S
 const std::size_t sleep_time_unit_mutex = 50;
 
-enum status_check_result {
+enum class status_check_result {
     undefined = 0,
     error_in_conf_file_name,     // bst_conf is not valid
     error_in_create_conf,        // bst_conf.get_configuration() returns nullptr
@@ -268,16 +268,16 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
 
                 std::unique_ptr<proc_mutex> file_mutex{};
                 // a flag indicating whether the child_pid matches the pid recorded in file_mutex
-                enum {
+                enum class check {
                     init,
                     ok,
                     another,
                     dead_abnormally,
-                } check_result = init;
+                } check_result = check::init;
                 pid_t pid_in_file_mutex{};
                 for (size_t i = chkn; i < check_count; i++) {
                     if (auto krv = kill(child_pid, 0); krv != 0) {
-                        check_result = dead_abnormally;
+                        check_result = check::dead_abnormally;
                         break;
                     }
                     if (!file_mutex) {
@@ -292,12 +292,12 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                         pid_in_file_mutex = file_mutex->pid(false);
                         if (pid_in_file_mutex != 0) {
                             if (child_pid == pid_in_file_mutex) {
-                                check_result = ok;
+                                check_result = check::ok;
                                 chkn = i;
                                 break;
                             }
                             if (auto krv = kill(pid_in_file_mutex, 0); krv == 0) {  // the process (pid_in_file_mutex) is alive
-                                check_result = another;
+                                check_result = check::another;
                                 chkn = i;
                                 break;
                             }
@@ -305,7 +305,7 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                     }
                     usleep(sleep_time_unit_regular * 1000);
                 }
-                if (check_result == ok) {  // case in which child_pid matches the pid recorded in file_mutex
+                if (check_result == check::ok) {  // case in which child_pid matches the pid recorded in file_mutex
                     auto status_info = std::make_unique<server::status_info_bridge>();
                     // wait for creation of shared memory for status info
                     bool status_info_ready = false;
@@ -415,13 +415,13 @@ tgctl::return_code tgctl_start(const std::string& argv0, bool need_check, tateya
                             reason = monitor::reason::timeout;
                         }
                     }
-                } else if (check_result == another) {
+                } else if (check_result == check::another) {
                     if (!FLAGS_quiet) {
                         std::cout << "could not launch " << server_name_string << " as " << server_name_string << " is already running.\n" << std::flush;
                     }
                     rtnv = tgctl::return_code::err;
                     reason = monitor::reason::another_process;
-                } else if (check_result == dead_abnormally) {
+                } else if (check_result == check::dead_abnormally) {
                     if (!FLAGS_quiet) {
                         std::cout << "could not launch " << server_name_string << ", as " << server_name_string << " has exited abnormally.\n" << std::flush;
                     }
@@ -735,6 +735,9 @@ static pid_t get_pid(bool check = true) {
             auto file_mutex = std::make_unique<proc_mutex>(bst_conf.lock_file(), false);
             while (true) {
                 if (auto pid = file_mutex->pid(check); pid != 0) {
+                    if (file_mutex->check() == proc_mutex::lock_state::not_locked) {
+                        throw tgctl::runtime_error(monitor::reason::server, "tsurugidb is not running");
+                    }
                     return pid;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
