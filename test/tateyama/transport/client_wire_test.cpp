@@ -21,6 +21,7 @@
 #include <thread>
 #include <chrono>
 #include <random>
+#include <future>
 
 #include <boost/thread/barrier.hpp>
 
@@ -31,6 +32,22 @@
 
 #include <tateyama/utils/protobuf_utils.h>
 #include <tateyama/proto/framework/request.pb.h>
+
+
+#define TEST_TIMEOUT_BEGIN                              \
+    std::promise<bool> promisedFinished;                \
+    auto futureResult = promisedFinished.get_future();  \
+    std::thread([this](std::promise<bool>& finished) {
+
+#define TEST_TIMEOUT_FAIL_END(X)                                        \
+  finished.set_value(true);                                                 \
+  }, std::ref(promisedFinished)).detach(); \
+  EXPECT_TRUE(futureResult.wait_for(std::chrono::milliseconds(X)) != std::future_status::timeout);
+
+#define TEST_TIMEOUT_SUCCESS_END(X)                                         \
+  finished.set_value(true);                                                 \
+  }, std::ref(promisedFinished)).detach(); \
+  EXPECT_FALSE(futureResult.wait_for(std::chrono::milliseconds(X)) != std::future_status::timeout);
 
 namespace tateyama::transport {
 
@@ -52,6 +69,8 @@ public:
         }
 
         void operator()() {
+            TEST_TIMEOUT_BEGIN
+
             std::random_device seed_gen;
             std::default_random_engine engine(seed_gen());
             std::normal_distribution<> dist(1000, 1000);
@@ -66,6 +85,8 @@ public:
                 }
                 EXPECT_EQ(pattern, rv.value());
             }
+
+            TEST_TIMEOUT_FAIL_END(10000)
         }
 
         std::optional<std::string> send(std::string_view request, std::int32_t t) {
@@ -139,14 +160,14 @@ protected:
     boost::barrier sync_{2};
 };
 
-
 TEST_F(client_wire_test, echo) {
-    tateyama::common::wire::session_wire_container wire(tateyama::common::wire::connection_container("client_wire_test").connect());
+    std::unique_ptr<tateyama::common::wire::session_wire_container> wire{};
+    ASSERT_NO_THROW(wire = std::make_unique<tateyama::common::wire::session_wire_container>(tateyama::common::wire::connection_container("client_wire_test").connect()));
     std::vector<std::unique_ptr<worker>> workers{};
     boost::barrier thread_sync{threads};
 
     for (std::size_t i = 0; i < threads; i++) {
-        workers.emplace_back(std::make_unique<worker>(wire, thread_sync));
+        workers.emplace_back(std::make_unique<worker>(*wire, thread_sync));
     }
 
     std::vector<std::thread> threads{};
@@ -156,7 +177,7 @@ TEST_F(client_wire_test, echo) {
     for (auto&& e: threads) {
         e.join();
     }
-    wire.close();
+    wire->close();
 }
 
 }  // namespace tateyama::transport
