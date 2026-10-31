@@ -78,6 +78,65 @@ You can customize logging in the same way as sharksfin. See sharksfin [README.md
 GLOG_minloglevel=0 tgctl start
 ```
 
+## Distributed query S1 development configuration
+
+The `feature/distributed-query-config` branch supplies empty `name` and `uri`
+defaults for `[distributed_query_client]` and `enabled=false` defaults for
+`[distributed_query_coordinator]` and `[distributed_query_remote]`. To connect to one worker with the Jogasaki S1 implementation:
+
+```ini
+[distributed_query_coordinator]
+enabled=true
+
+[distributed_query_client]
+name=worker_a
+uri=dns:///localhost:52345
+```
+
+Names and URIs are paired by position in `|`-separated lists. The Jogasaki S1
+configuration reader also accepts optional `secure` and `root_cert` lists;
+omitting them selects plaintext and `grpc_default` respectively. For example:
+
+```ini
+[distributed_query_coordinator]
+enabled=true
+
+[distributed_query_client]
+name=worker_a
+uri=dns:///worker-a.example.com:52345
+secure=true
+root_cert=/absolute/path/to/ca.crt
+```
+
+Use Tateyama `feature/distributed-query-s1` (with remote role control) and the Jogasaki
+S1 implementation for distributed query development until those changes are
+merged. This Bootstrap branch declares defaults; the consuming components
+perform validation and initialize connections and services.
+
+The roles are independent and default to disabled. A coordinator requires at
+least one remote server configuration; a disabled coordinator ignores client
+parameters. A remote node requires a working gRPC server and explicitly enables
+its distributed query service:
+
+```ini
+[distributed_query_remote]
+enabled=true
+
+[grpc_server]
+enabled=true
+listen_address=0.0.0.0:52345
+```
+
+Both roles may be enabled on the same node. Role changes require a server
+restart. These controls require the updated Tateyama and Jogasaki S1 consumers;
+adding the settings to an older consumer does not implement the controls.
+
+Catalog fixture settings are development-only and are not part of the standard
+default configuration. Tests that explicitly use `catalog_source=fixture` and
+`fixture_path` also require Jogasaki built with
+`ENABLE_DISTRIBUTED_QUERY_FIXTURES=ON`. These settings do not replace the phase-1
+foreign catalog DDL and catalog RPC design.
+
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
