@@ -72,6 +72,13 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_enable_apply_preserves_order=true\n"
         "dev_enable_early_stop=true\n"
         "dev_scan_impl=auto\n"
+        "dev_index_equivalent_selectivity=0.1\n"
+        "dev_index_full_bound_selectivity=0.3\n"
+        "dev_index_half_bound_selectivity=0.6\n"
+        "dev_index_selectivity_decay=1.0\n"
+        "dev_index_indirect_access_weight=2.0\n"
+        "dev_index_sort_cost=0.1\n"
+        "dev_index_max_early_stop_limit_count=10000\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
