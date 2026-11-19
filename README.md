@@ -131,11 +131,6 @@ Both roles may be enabled on the same node. Role changes require a server
 restart. These controls require the updated Tateyama and Jogasaki S1 consumers;
 adding the settings to an older consumer does not implement the controls.
 
-Catalog fixture settings are development-only and are not part of the standard
-default configuration. Tests that explicitly use `catalog_source=fixture` and
-`fixture_path` also require Jogasaki built with
-`ENABLE_DISTRIBUTED_QUERY_FIXTURES=ON`. These settings do not replace the phase-1
-foreign catalog DDL and catalog RPC design.
 
 ## License
 
