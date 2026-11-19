@@ -129,10 +129,6 @@ enabled on the same node. A coordinator needs at least one worker connection;
 a disabled coordinator ignores the client settings. The worker role requires
 the gRPC server. Apply role changes by restarting the server.
 
-Distributed query execution requires the corresponding Tateyama and Jogasaki
-implementations. The settings alone do not add distributed query support to
-older components.
-
 
 ## License
 
