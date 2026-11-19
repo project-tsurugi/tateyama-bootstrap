@@ -15,6 +15,7 @@
  */
 
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -41,7 +42,7 @@ public:
         FLAGS_minloglevel = previous_minloglevel_;
     }
     void send(google::LogSeverity severity, char const*, char const*, int,
-              google::LogMessageTime const&, char const* message, std::size_t length) override {
+              std::tm const*, char const* message, std::size_t length) override {
         if (severity < google::GLOG_ERROR) return;
         std::lock_guard lock{mutex_};
         errors_.append(message, length).append("\n");
