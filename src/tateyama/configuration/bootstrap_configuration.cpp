@@ -141,6 +141,8 @@ static constexpr std::string_view default_configuration {  // NOLINT
     "[distributed_query_client]\n"
         "name=\n"
         "uri=\n"
+        "secure=false\n"
+        "root_cert=grpc_default\n"
 
     "[blob_relay]\n"
         "enabled=true\n"

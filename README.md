@@ -78,24 +78,13 @@ You can customize logging in the same way as sharksfin. See sharksfin [README.md
 GLOG_minloglevel=0 tgctl start
 ```
 
-## Distributed query S1 development configuration
+## Distributed query configuration
 
-The `feature/distributed-query-config` branch supplies empty `name` and `uri`
-defaults for `[distributed_query_client]` and `enabled=false` defaults for
-`[distributed_query_coordinator]` and `[distributed_query_remote]`. To connect to one worker with the Jogasaki S1 implementation:
+Coordinator and worker roles are independent and disabled by default. Bootstrap
+provides their default settings; Jogasaki configures outgoing connections and
+Tateyama accepts the worker RPCs.
 
-```ini
-[distributed_query_coordinator]
-enabled=true
-
-[distributed_query_client]
-name=worker_a
-uri=dns:///localhost:52345
-```
-
-Names and URIs are paired by position in `|`-separated lists. The Jogasaki S1
-configuration reader also accepts optional `secure` and `root_cert` lists;
-omitting them selects plaintext and `grpc_default` respectively. For example:
+Enable the coordinator and specify its worker connections:
 
 ```ini
 [distributed_query_coordinator]
@@ -104,19 +93,24 @@ enabled=true
 [distributed_query_client]
 name=worker_a
 uri=dns:///worker-a.example.com:52345
-secure=true
-root_cert=/absolute/path/to/ca.crt
 ```
 
-Use Tateyama `feature/distributed-query-s1` (with remote role control) and the Jogasaki
-S1 implementation for distributed query development until those changes are
-merged. This Bootstrap branch declares defaults; the consuming components
-perform validation and initialize connections and services.
+`name` and `uri` are paired by position in `|`-separated lists. When `secure`
+is omitted, every connection uses plaintext. When `root_cert` is omitted, each
+TLS connection uses `grpc_default` roots. If either list is explicitly supplied,
+it must have the same number of elements as `name` and `uri`.
 
-The roles are independent and default to disabled. A coordinator requires at
-least one remote server configuration; a disabled coordinator ignores client
-parameters. A remote node requires a working gRPC server and explicitly enables
-its distributed query service:
+For TLS, configure the coordinator to trust the worker certificate:
+
+```ini
+[distributed_query_client]
+name=worker_a
+uri=dns:///worker-a.example.com:52345
+secure=true
+root_cert=/path/to/ca.crt
+```
+
+Enable the worker and its gRPC listener:
 
 ```ini
 [distributed_query_remote]
@@ -125,11 +119,19 @@ enabled=true
 [grpc_server]
 enabled=true
 listen_address=0.0.0.0:52345
+secure=true
+fullchain_crt=/path/to/worker.crt
+server_key=/path/to/worker.key
 ```
 
-Both roles may be enabled on the same node. Role changes require a server
-restart. These controls require the updated Tateyama and Jogasaki S1 consumers;
-adding the settings to an older consumer does not implement the controls.
+A plaintext worker uses `secure=false` in `[grpc_server]`. Both roles may be
+enabled on the same node. A coordinator needs at least one worker connection;
+a disabled coordinator ignores the client settings. The worker role requires
+the gRPC server. Apply role changes by restarting the server.
+
+Distributed query execution requires the corresponding Tateyama and Jogasaki
+implementations. The settings alone do not add distributed query support to
+older components.
 
 
 ## License
