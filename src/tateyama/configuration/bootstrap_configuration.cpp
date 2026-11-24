@@ -79,6 +79,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "dev_index_indirect_access_weight=2.0\n"
         "dev_index_sort_cost=0.1\n"
         "dev_index_max_early_stop_limit_count=10000\n"
+        "dev_table_metadata_lock_shards=\n"
 
     "[ipc_endpoint]\n"
         "database_name=tsurugi\n"
