@@ -112,7 +112,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "epoch_duration=3000\n"
         "waiting_resolver_threads=2\n"
         "max_concurrent_transactions=\n"
-        "index_restore_threads=4\n"
+        "index_restore_threads=\n"
         "dev_iterator_based_scan=true\n"
 
     "[system]\n"
