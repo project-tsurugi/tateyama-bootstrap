@@ -78,6 +78,58 @@ You can customize logging in the same way as sharksfin. See sharksfin [README.md
 GLOG_minloglevel=0 tgctl start
 ```
 
+## Distributed query configuration
+
+Coordinator and worker roles are independent and disabled by default. Bootstrap
+provides their default settings; Jogasaki configures outgoing connections and
+Tateyama accepts the worker RPCs.
+
+Enable the coordinator and specify its worker connections:
+
+```ini
+[distributed_query_coordinator]
+enabled=true
+
+[distributed_query_client]
+name=worker_a
+uri=dns:///worker-a.example.com:52345
+```
+
+`name` and `uri` are paired by position in `|`-separated lists. When `secure`
+is omitted, every connection uses plaintext. When `root_cert` is omitted, each
+TLS connection uses `grpc_default` roots. If either list is explicitly supplied,
+it must have the same number of elements as `name` and `uri`.
+
+For TLS, configure the coordinator to trust the worker certificate:
+
+```ini
+[distributed_query_client]
+name=worker_a
+uri=dns:///worker-a.example.com:52345
+secure=true
+root_cert=/path/to/ca.crt
+```
+
+Enable the worker and its gRPC listener:
+
+```ini
+[distributed_query_remote]
+enabled=true
+
+[grpc_server]
+enabled=true
+listen_address=0.0.0.0:52345
+secure=true
+fullchain_crt=/path/to/worker.crt
+server_key=/path/to/worker.key
+```
+
+A plaintext worker uses `secure=false` in `[grpc_server]`. Both roles may be
+enabled on the same node. A coordinator needs at least one worker connection;
+a disabled coordinator ignores the client settings. The worker role requires
+the gRPC server. Apply role changes by restarting the server.
+
+
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
